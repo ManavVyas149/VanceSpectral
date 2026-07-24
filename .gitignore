@@ -1,0 +1,41 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build output
+Builds/**/x64/
+Builds/**/Win32/
+Builds/**/Debug/
+Builds/**/Release/
+
+# JUCE generated build files
+Builds/**/CMakeFiles/
+
+# Compiled binaries
+*.exe
+*.dll
+*.lib
+*.exp
+*.pdb
+*.ilk
+
+# Visual Studio intermediate files
+*.obj
+*.idb
+*.ipdb
+*.iobj
+*.tlog
+
+# Audio files
+*.wav
+*.mp3
+*.flac
+*.aiff
+*.ogg
+
+# OS files
+.DS_Store
+Thumbs.db
