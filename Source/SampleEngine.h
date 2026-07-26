@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "EnvelopeData.h"
 
 class SampleEngine
 {
@@ -24,7 +25,11 @@ public:
 
     bool isPlaying() const;
 
+    void updateAmpADSR(float attack, float decay, float sustain, float release);
+    void updateFilterADSR(float attack, float decay, float sustain, float release);
+
 private:
+    juce::CriticalSection lock;
 
     juce::AudioBuffer<float> sample;
 
@@ -39,4 +44,12 @@ private:
     int regionStart = 0;
 
     int regionEnd = 0;
+
+    // Envelopes
+    EnvelopeData ampEnvelope{EnvelopeCategory::AmplifierEnvelope};
+    EnvelopeData filterEnvelope{EnvelopeCategory::FilterEnvelope};
+
+    // Filter DSP states for stereo channels
+    float filterStateL = 0.0f;
+    float filterStateR = 0.0f;
 };

@@ -4,11 +4,15 @@
 //==============================================================================
 VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(VancespectralAudioProcessor& p)
     : AudioProcessorEditor(&p),
-      audioProcessor(p)
+      audioProcessor(p),
+      ampADSRPanel(p.getAPVTS(), "AMP", "AMP_"),
+      filterADSRPanel(p.getAPVTS(), "FILTER", "FILTER_")
 {
     spectrogram = std::make_unique<SpectrogramComponent>(audioProcessor);
 
     addAndMakeVisible(*spectrogram);
+    addAndMakeVisible(ampADSRPanel);
+    addAndMakeVisible(filterADSRPanel);
 
     setSize(1200, 700);
 }
@@ -33,78 +37,62 @@ void VancespectralAudioProcessorEditor::paint(juce::Graphics& g)
     //==============================
     // TOP SECTION
     //==============================
-
-    auto topArea = area.removeFromTop(area.proportionOfHeight(0.60f));
-
+    auto topArea = area.removeFromTop(area.proportionOfHeight(0.54f));
     auto spectrogramArea = topArea.removeFromLeft(topArea.proportionOfWidth(0.72f));
-
     topArea.removeFromLeft(gap);
-
     auto playbackArea = topArea;
 
-//==============================
-// BOTTOM SECTION
-//==============================
+    //==============================
+    // BOTTOM SECTION
+    //==============================
+    area.removeFromTop(gap);
+    auto bottomArea = area;
 
-area.removeFromTop(gap);
+    auto fxArea = bottomArea.removeFromRight(320);
+    bottomArea.removeFromRight(gap);
 
-auto bottomArea = area;
+    auto graphArea = bottomArea.removeFromBottom(100);
+    bottomArea.removeFromBottom(gap);
 
-// FX panel on the right
-auto fxArea = bottomArea.removeFromRight(330);
+    auto filterArea = bottomArea.removeFromRight(bottomArea.getWidth() / 2);
+    bottomArea.removeFromRight(gap);
 
-// Gap
-bottomArea.removeFromRight(gap);
-
-// Bottom graph
-auto graphArea = bottomArea.removeFromBottom(130);
-
-// Gap
-bottomArea.removeFromBottom(gap);
-
-// Filter panel
-auto filterArea = bottomArea.removeFromRight(bottomArea.getWidth() / 2);
-
-// Gap
-bottomArea.removeFromRight(gap);
-
-// AMP panel
-auto ampArea = bottomArea;
+    auto ampArea = bottomArea;
 
     //==============================
     // DRAW PANELS
     //==============================
-
     g.setColour(juce::Colour(8, 8, 8));
     g.fillRoundedRectangle(spectrogramArea.toFloat(), 12.0f);
 
-    g.setColour(juce::Colour(35,35,35));
-    g.fillRoundedRectangle(playbackArea.toFloat(),12.0f);
-    g.fillRoundedRectangle(ampArea.toFloat(),12.0f);
-    g.fillRoundedRectangle(filterArea.toFloat(),12.0f);
-    g.fillRoundedRectangle(fxArea.toFloat(),12.0f);
+    g.setColour(juce::Colour(35, 35, 35));
+    g.fillRoundedRectangle(playbackArea.toFloat(), 12.0f);
+    g.fillRoundedRectangle(ampArea.toFloat(), 12.0f);
+    g.fillRoundedRectangle(filterArea.toFloat(), 12.0f);
+    g.fillRoundedRectangle(fxArea.toFloat(), 12.0f);
 
-    g.setColour(juce::Colour(8,8,8));
-    g.fillRoundedRectangle(graphArea.toFloat(),12.0f);
+    g.setColour(juce::Colour(8, 8, 8));
+    g.fillRoundedRectangle(graphArea.toFloat(), 12.0f);
 
     //==============================
     // LABELS
     //==============================
-
     g.setColour(juce::Colours::white);
     g.setFont(24.0f);
 
     auto drawTitle = [&](juce::String text, juce::Rectangle<int> bounds)
     {
-        g.drawText(text,
-                   bounds.removeFromTop(35).reduced(18,0),
-                   juce::Justification::left);
+        if (bounds.getWidth() > 36 && bounds.getHeight() > 10)
+        {
+            auto titleBounds = bounds.removeFromTop(juce::jmin(35, bounds.getHeight()));
+            g.drawText(text,
+                       titleBounds.reduced(juce::jmin(18, titleBounds.getWidth() / 4), 0),
+                       juce::Justification::left);
+        }
     };
 
     drawTitle("Spectrogram", spectrogramArea);
     drawTitle("Playback", playbackArea);
-    drawTitle("AMP", ampArea);
-    drawTitle("FILTER", filterArea);
     drawTitle("Effects", fxArea);
 }
 
@@ -116,7 +104,7 @@ void VancespectralAudioProcessorEditor::resized()
     auto area = getLocalBounds().reduced(margin);
 
     auto topArea = area.removeFromTop(
-        static_cast<int>(area.getHeight() * 0.60f));
+        static_cast<int>(area.getHeight() * 0.54f));
 
     auto spectrogramPanel =
         topArea.removeFromLeft(
@@ -124,8 +112,26 @@ void VancespectralAudioProcessorEditor::resized()
 
     topArea.removeFromLeft(gap);
 
-    auto playbackPanel = topArea;
-
     if (spectrogram)
         spectrogram->setBounds(spectrogramPanel);
+
+    //==============================
+    // BOTTOM SECTION
+    //==============================
+    area.removeFromTop(gap);
+    auto bottomArea = area;
+
+    auto fxArea = bottomArea.removeFromRight(320);
+    bottomArea.removeFromRight(gap);
+
+    auto graphArea = bottomArea.removeFromBottom(100);
+    bottomArea.removeFromBottom(gap);
+
+    auto filterArea = bottomArea.removeFromRight(bottomArea.getWidth() / 2);
+    bottomArea.removeFromRight(gap);
+
+    auto ampArea = bottomArea;
+
+    ampADSRPanel.setBounds(ampArea.reduced(5));
+    filterADSRPanel.setBounds(filterArea.reduced(5));
 }

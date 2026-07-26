@@ -11,6 +11,7 @@
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
 #include "SpectrogramComponent.h"
+#include "ADSRPanel.h"
 
 //==============================================================================
 /**
@@ -28,6 +29,8 @@ private:
     VancespectralAudioProcessor& audioProcessor;
     
     std::unique_ptr<SpectrogramComponent> spectrogram;
+    ADSRPanel ampADSRPanel;
+    ADSRPanel filterADSRPanel;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (VancespectralAudioProcessorEditor)
 };

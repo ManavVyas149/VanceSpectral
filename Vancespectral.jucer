@@ -32,7 +32,10 @@
       <FILE id="ARFiSZ" name="ToolbarComponent.h" compile="0" resource="0"
             file="Source/ToolbarComponent.h"/>
     </GROUP>
-    <GROUP id="{D2799E5B-D928-092C-DA8E-BF6BA1A2449D}" name="DSP"/>
+    <GROUP id="{D2799E5B-D928-092C-DA8E-BF6BA1A2449D}" name="DSP">
+      <FILE id="eEnvDataCpp" name="EnvelopeData.cpp" compile="1" resource="0" file="Source/EnvelopeData.cpp"/>
+      <FILE id="eEnvDataH" name="EnvelopeData.h" compile="0" resource="0" file="Source/EnvelopeData.h"/>
+    </GROUP>
   </MAINGROUP>
   <MODULES>
     <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>

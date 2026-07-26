@@ -55,32 +55,37 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
     
     void loadSample(const juce::AudioBuffer<float>& buffer)
-{
-    sampleEngine.loadSample(buffer);
-}
+    {
+        sampleEngine.loadSample(buffer);
+    }
 
-void playSample()
-{
-    DBG("Processor Play");
-    sampleEngine.play();
-}
+    void playSample()
+    {
+        DBG("Processor Play");
+        sampleEngine.play();
+    }
 
-void stopSample()
-{
-    sampleEngine.stop();
-}
+    void stopSample()
+    {
+        sampleEngine.stop();
+    }
 
-void setLoop(bool enabled)
-{
-    sampleEngine.setLoop(enabled);
-}
+    void setLoop(bool enabled)
+    {
+        sampleEngine.setLoop(enabled);
+    }
 
-void setRegion(float start, float end)
-{
-    sampleEngine.setRegion(start, end);
-}
+    void setRegion(float start, float end)
+    {
+        sampleEngine.setRegion(start, end);
+    }
+
+    juce::AudioProcessorValueTreeState& getAPVTS() { return apvts; }
+    static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
 private:
     SampleEngine sampleEngine;
+    juce::AudioProcessorValueTreeState apvts;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (VancespectralAudioProcessor)
 };
