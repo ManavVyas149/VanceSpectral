@@ -1,137 +1,163 @@
-#include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "PluginProcessor.h"
 
 //==============================================================================
-VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(VancespectralAudioProcessor& p)
-    : AudioProcessorEditor(&p),
-      audioProcessor(p),
+VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(
+    VancespectralAudioProcessor &p)
+    : AudioProcessorEditor(&p), audioProcessor(p),
       ampADSRPanel(p.getAPVTS(), "AMP", "AMP_"),
-      filterADSRPanel(p.getAPVTS(), "FILTER", "FILTER_")
-{
-    spectrogram = std::make_unique<SpectrogramComponent>(audioProcessor);
+      filterADSRPanel(p.getAPVTS(), "FILTER", "FILTER_") {
+  spectrogram = std::make_unique<SpectrogramComponent>(audioProcessor);
 
-    addAndMakeVisible(*spectrogram);
-    addAndMakeVisible(ampADSRPanel);
-    addAndMakeVisible(filterADSRPanel);
+  addAndMakeVisible(toolbar);
+  addAndMakeVisible(presetHeader);
+  addAndMakeVisible(*spectrogram);
+  addAndMakeVisible(ampADSRPanel);
+  addAndMakeVisible(filterADSRPanel);
 
-    setSize(1200, 700);
+  setSize(1200, 700);
 }
 
-VancespectralAudioProcessorEditor::~VancespectralAudioProcessorEditor()
-{
-}
+VancespectralAudioProcessorEditor::~VancespectralAudioProcessorEditor() {}
 
 //==============================================================================
-void VancespectralAudioProcessorEditor::paint(juce::Graphics& g)
-{
-    //==============================
-    // Background
-    //==============================
-    g.fillAll(juce::Colour::fromRGB(28, 28, 28));
+void VancespectralAudioProcessorEditor::paint(juce::Graphics &g) {
+  //==============================
+  // Background
+  //==============================
+  g.fillAll(juce::Colour::fromRGB(28, 28, 28));
 
-    constexpr int margin = 25;
-    constexpr int gap = 20;
+  constexpr int margin = 12;
+  constexpr int gap = 10;
 
-    auto area = getLocalBounds().reduced(margin);
+  auto area = getLocalBounds().reduced(margin);
 
-    //==============================
-    // TOP SECTION
-    //==============================
-    auto topArea = area.removeFromTop(area.proportionOfHeight(0.54f));
-    auto spectrogramArea = topArea.removeFromLeft(topArea.proportionOfWidth(0.72f));
-    topArea.removeFromLeft(gap);
-    auto playbackArea = topArea;
+  //==============================
+  // RIGHT COLUMN (Playback & Effects)
+  //==============================
+  auto rightColumn = area.removeFromRight(320);
+  area.removeFromRight(gap);
 
-    //==============================
-    // BOTTOM SECTION
-    //==============================
-    area.removeFromTop(gap);
-    auto bottomArea = area;
+  // Playback height (230px)
+  auto playbackArea = rightColumn.removeFromTop(230);
+  rightColumn.removeFromTop(gap);
 
-    auto fxArea = bottomArea.removeFromRight(320);
-    bottomArea.removeFromRight(gap);
+  // Effects is taller (takes the rest of the right column)
+  auto fxArea = rightColumn;
 
-    auto graphArea = bottomArea.removeFromBottom(100);
-    bottomArea.removeFromBottom(gap);
+  //==============================
+  // LEFT TOOLBAR
+  //==============================
+  auto toolbarArea = area.removeFromLeft(42);
+  area.removeFromLeft(gap);
 
-    auto filterArea = bottomArea.removeFromRight(bottomArea.getWidth() / 2);
-    bottomArea.removeFromRight(gap);
+  //==============================
+  // CENTER COLUMN (Spectrogram, Top Box, ADSR Panels)
+  //==============================
+  auto centerColumn = area;
 
-    auto ampArea = bottomArea;
+  // Top dark rectangle (placed at top of drag sample display: 42px height)
+  auto graphArea = centerColumn.removeFromTop(42);
+  centerColumn.removeFromTop(gap);
 
-    //==============================
-    // DRAW PANELS
-    //==============================
-    g.setColour(juce::Colour(8, 8, 8));
-    g.fillRoundedRectangle(spectrogramArea.toFloat(), 12.0f);
+  // Compact ADSR row at bottom (180px height)
+  auto adsrRowArea = centerColumn.removeFromBottom(180);
+  centerColumn.removeFromBottom(gap);
 
-    g.setColour(juce::Colour(35, 35, 35));
-    g.fillRoundedRectangle(playbackArea.toFloat(), 12.0f);
-    g.fillRoundedRectangle(ampArea.toFloat(), 12.0f);
-    g.fillRoundedRectangle(filterArea.toFloat(), 12.0f);
-    g.fillRoundedRectangle(fxArea.toFloat(), 12.0f);
+  auto filterArea = adsrRowArea.removeFromRight(adsrRowArea.getWidth() / 2);
+  adsrRowArea.removeFromRight(gap);
 
-    g.setColour(juce::Colour(8, 8, 8));
-    g.fillRoundedRectangle(graphArea.toFloat(), 12.0f);
+  auto ampArea = adsrRowArea;
 
-    //==============================
-    // LABELS
-    //==============================
-    g.setColour(juce::Colours::white);
-    g.setFont(24.0f);
+  // Spectrogram / Drag sample display (takes remaining center height)
+  auto spectrogramArea = centerColumn;
 
-    auto drawTitle = [&](juce::String text, juce::Rectangle<int> bounds)
-    {
-        if (bounds.getWidth() > 36 && bounds.getHeight() > 10)
-        {
-            auto titleBounds = bounds.removeFromTop(juce::jmin(35, bounds.getHeight()));
-            g.drawText(text,
-                       titleBounds.reduced(juce::jmin(18, titleBounds.getWidth() / 4), 0),
-                       juce::Justification::left);
-        }
-    };
+  //==============================
+  // DRAW PANELS
+  //==============================
+  g.setColour(juce::Colour(8, 8, 8));
+  g.fillRoundedRectangle(spectrogramArea.toFloat(), 10.0f);
 
-    drawTitle("Spectrogram", spectrogramArea);
-    drawTitle("Playback", playbackArea);
-    drawTitle("Effects", fxArea);
+  g.setColour(juce::Colour(35, 35, 35));
+  g.fillRoundedRectangle(playbackArea.toFloat(), 10.0f);
+  g.fillRoundedRectangle(ampArea.toFloat(), 10.0f);
+  g.fillRoundedRectangle(filterArea.toFloat(), 10.0f);
+  g.fillRoundedRectangle(fxArea.toFloat(), 10.0f);
+
+  //==============================
+  // LABELS
+  //==============================
+  g.setColour(juce::Colours::white);
+  g.setFont(22.0f);
+
+  auto drawTitle = [&](juce::String text, juce::Rectangle<int> bounds) {
+    if (bounds.getWidth() > 36 && bounds.getHeight() > 10) {
+      auto titleBounds =
+          bounds.removeFromTop(juce::jmin(32, bounds.getHeight()));
+      g.drawText(
+          text,
+          titleBounds.reduced(juce::jmin(14, titleBounds.getWidth() / 4), 0),
+          juce::Justification::left);
+    }
+  };
+
+  drawTitle("Spectrogram", spectrogramArea);
+  drawTitle("Playback", playbackArea);
+  drawTitle("Effects", fxArea);
 }
 
-void VancespectralAudioProcessorEditor::resized()
-{
-    constexpr int margin = 25;
-    constexpr int gap = 20;
+void VancespectralAudioProcessorEditor::resized() {
+  constexpr int margin = 12;
+  constexpr int gap = 10;
 
-    auto area = getLocalBounds().reduced(margin);
+  auto area = getLocalBounds().reduced(margin);
 
-    auto topArea = area.removeFromTop(
-        static_cast<int>(area.getHeight() * 0.54f));
+  //==============================
+  // RIGHT COLUMN (Playback & Effects)
+  //==============================
+  auto rightColumn = area.removeFromRight(320);
+  area.removeFromRight(gap);
 
-    auto spectrogramPanel =
-        topArea.removeFromLeft(
-            static_cast<int>(topArea.getWidth() * 0.72f));
+  // Playback height (230px)
+  auto playbackArea = rightColumn.removeFromTop(230);
+  rightColumn.removeFromTop(gap);
 
-    topArea.removeFromLeft(gap);
+  // Effects is taller (takes the rest of the right column)
+  auto fxArea = rightColumn;
 
-    if (spectrogram)
-        spectrogram->setBounds(spectrogramPanel);
+  //==============================
+  // LEFT TOOLBAR
+  //==============================
+  auto toolbarArea = area.removeFromLeft(42);
+  area.removeFromLeft(gap);
 
-    //==============================
-    // BOTTOM SECTION
-    //==============================
-    area.removeFromTop(gap);
-    auto bottomArea = area;
+  //==============================
+  // CENTER COLUMN (Spectrogram, Top Box, ADSR Panels)
+  //==============================
+  auto centerColumn = area;
 
-    auto fxArea = bottomArea.removeFromRight(320);
-    bottomArea.removeFromRight(gap);
+  // Top dark rectangle (42px height)
+  auto graphArea = centerColumn.removeFromTop(42);
+  centerColumn.removeFromTop(gap);
 
-    auto graphArea = bottomArea.removeFromBottom(100);
-    bottomArea.removeFromBottom(gap);
+  // Compact ADSR row at bottom (180px height)
+  auto adsrRowArea = centerColumn.removeFromBottom(180);
+  centerColumn.removeFromBottom(gap);
 
-    auto filterArea = bottomArea.removeFromRight(bottomArea.getWidth() / 2);
-    bottomArea.removeFromRight(gap);
+  auto filterArea = adsrRowArea.removeFromRight(adsrRowArea.getWidth() / 2);
+  adsrRowArea.removeFromRight(gap);
 
-    auto ampArea = bottomArea;
+  auto ampArea = adsrRowArea;
 
-    ampADSRPanel.setBounds(ampArea.reduced(5));
-    filterADSRPanel.setBounds(filterArea.reduced(5));
+  // Spectrogram / Drag sample display (takes remaining center height)
+  auto spectrogramArea = centerColumn;
+
+  toolbar.setBounds(toolbarArea);
+  presetHeader.setBounds(graphArea);
+
+  if (spectrogram)
+    spectrogram->setBounds(spectrogramArea);
+
+  ampADSRPanel.setBounds(ampArea.reduced(4));
+  filterADSRPanel.setBounds(filterArea.reduced(4));
 }
