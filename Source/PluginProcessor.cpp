@@ -35,6 +35,16 @@ juce::AudioProcessorValueTreeState::ParameterLayout VancespectralAudioProcessor:
     params.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID("FILTER_RELEASE", 1), "Filter Release", juce::NormalisableRange<float>(0.001f, 5.0f, 0.001f, 0.5f), 0.4f));
 
+    // Playback Mode Parameter (5 states: Forward, Backward, Forw-Backw, Back-Forw, Random)
+    params.push_back(std::make_unique<juce::AudioParameterChoice>(
+        juce::ParameterID("PLAYBACK_MODE", 1), "Playback Mode",
+        juce::StringArray{ "Forward", "Backward", "Forw-Backw", "Back-Forw", "Random" }, 0));
+
+    // Pitch Mode Parameter (3 states: Stretch, Resample, Axial)
+    params.push_back(std::make_unique<juce::AudioParameterChoice>(
+        juce::ParameterID("PITCH_MODE", 1), "Pitch Mode",
+        juce::StringArray{ "Stretch", "Resample", "Axial" }, 0));
+
     return { params.begin(), params.end() };
 }
 
@@ -137,13 +147,7 @@ void VancespectralAudioProcessor::prepareToPlay(
     int samplesPerBlock)
 {
     juce::ignoreUnused(samplesPerBlock);
-
     sampleEngine.prepare(sampleRate);
-
-    DBG("================================");
-    DBG("prepareToPlay");
-    DBG("Sample Rate: " << sampleRate);
-    DBG("Block Size: " << samplesPerBlock);
 }
 
 //==============================================================================
@@ -160,22 +164,13 @@ bool VancespectralAudioProcessor::isBusesLayoutSupported(
     const BusesLayout& layouts) const
 {
 #if JucePlugin_IsMidiEffect
-
     juce::ignoreUnused(layouts);
     return true;
-
 #else
-
     auto output = layouts.getMainOutputChannelSet();
-
-    if (output != juce::AudioChannelSet::mono()
-        && output != juce::AudioChannelSet::stereo())
-    {
+    if (output != juce::AudioChannelSet::mono() && output != juce::AudioChannelSet::stereo())
         return false;
-    }
-
     return true;
-
 #endif
 }
 
@@ -188,7 +183,6 @@ void VancespectralAudioProcessor::processBlock(
     juce::MidiBuffer& midiMessages)
 {
     juce::ignoreUnused(midiMessages);
-
     juce::ScopedNoDenormals noDenormals;
 
     if (buffer.getNumChannels() == 0 || buffer.getNumSamples() == 0)
@@ -196,26 +190,33 @@ void VancespectralAudioProcessor::processBlock(
 
     buffer.clear();
 
-    // Update Amplifier envelope parameters from APVTS
     float ampA = *apvts.getRawParameterValue("AMP_ATTACK");
     float ampD = *apvts.getRawParameterValue("AMP_DECAY");
     float ampS = *apvts.getRawParameterValue("AMP_SUSTAIN");
     float ampR = *apvts.getRawParameterValue("AMP_RELEASE");
     sampleEngine.updateAmpADSR(ampA, ampD, ampS, ampR);
 
-    // Update Filter envelope parameters from APVTS
     float filtA = *apvts.getRawParameterValue("FILTER_ATTACK");
     float filtD = *apvts.getRawParameterValue("FILTER_DECAY");
     float filtS = *apvts.getRawParameterValue("FILTER_SUSTAIN");
     float filtR = *apvts.getRawParameterValue("FILTER_RELEASE");
     sampleEngine.updateFilterADSR(filtA, filtD, filtS, filtR);
 
-    // Generate audio from SampleEngine
-    sampleEngine.process(
-        buffer,
-        0,
-        buffer.getNumSamples()
-    );
+    int playMode = (int)*apvts.getRawParameterValue("PLAYBACK_MODE");
+    int pitchMode = (int)*apvts.getRawParameterValue("PITCH_MODE");
+    sampleEngine.setPlaybackMode(playMode);
+    sampleEngine.setPitchMode(pitchMode);
+
+    if (auto* playHead = getPlayHead())
+    {
+        if (auto position = playHead->getPosition())
+        {
+            if (position->getBpm().hasValue())
+                sampleEngine.setHostBpm(*position->getBpm());
+        }
+    }
+
+    sampleEngine.process(buffer, 0, buffer.getNumSamples());
 }
 
 //==============================================================================
@@ -225,25 +226,21 @@ bool VancespectralAudioProcessor::hasEditor() const
     return true;
 }
 
-juce::AudioProcessorEditor*
-VancespectralAudioProcessor::createEditor()
+juce::AudioProcessorEditor* VancespectralAudioProcessor::createEditor()
 {
     return new VancespectralAudioProcessorEditor(*this);
 }
 
 //==============================================================================
 
-void VancespectralAudioProcessor::getStateInformation(
-    juce::MemoryBlock& destData)
+void VancespectralAudioProcessor::getStateInformation(juce::MemoryBlock& destData)
 {
     auto state = apvts.copyState();
     std::unique_ptr<juce::XmlElement> xml (state.createXml());
     copyXmlToBinary (*xml, destData);
 }
 
-void VancespectralAudioProcessor::setStateInformation(
-    const void* data,
-    int sizeInBytes)
+void VancespectralAudioProcessor::setStateInformation(const void* data, int sizeInBytes)
 {
     std::unique_ptr<juce::XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes));
     if (xmlState.get() != nullptr)
@@ -253,8 +250,7 @@ void VancespectralAudioProcessor::setStateInformation(
 
 //==============================================================================
 
-juce::AudioProcessor*
-JUCE_CALLTYPE createPluginFilter()
+juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
     return new VancespectralAudioProcessor();
 }

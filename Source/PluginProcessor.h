@@ -54,9 +54,9 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
     
-    void loadSample(const juce::AudioBuffer<float>& buffer)
+    void loadSample(const juce::AudioBuffer<float>& buffer, double nativeSampleRate = 44100.0)
     {
-        sampleEngine.loadSample(buffer);
+        sampleEngine.loadSample(buffer, nativeSampleRate);
     }
 
     void playSample()
@@ -70,6 +70,26 @@ public:
         sampleEngine.stop();
     }
 
+    bool isPlaying() const
+    {
+        return sampleEngine.isPlaying();
+    }
+
+    double getPlayheadPosition() const
+    {
+        return sampleEngine.getPlayPositionNormalized();
+    }
+
+    double getRegionStart() const
+    {
+        return sampleEngine.getRegionStartNormalized();
+    }
+
+    double getRegionEnd() const
+    {
+        return sampleEngine.getRegionEndNormalized();
+    }
+
     void setLoop(bool enabled)
     {
         sampleEngine.setLoop(enabled);
@@ -78,6 +98,16 @@ public:
     void setRegion(float start, float end)
     {
         sampleEngine.setRegion(start, end);
+    }
+
+    void setFrequencyFilter(bool enabled, float minFreq, float maxFreq)
+    {
+        sampleEngine.setFrequencyFilter(enabled, minFreq, maxFreq);
+    }
+
+    void setFrequencyFilterBands(const juce::Array<FrequencyBand>& bands)
+    {
+        sampleEngine.setFrequencyFilterBands(bands);
     }
 
     juce::AudioProcessorValueTreeState& getAPVTS() { return apvts; }

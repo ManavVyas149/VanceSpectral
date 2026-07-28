@@ -144,6 +144,9 @@
     </Bscmake>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\Source\SpectralUILookAndFeel.cpp"/>
+    <ClCompile Include="..\..\Source\PresetBarComponent.cpp"/>
+    <ClCompile Include="..\..\Source\SegmentedControlComponent.cpp"/>
     <ClCompile Include="..\..\Source\SampleEngine.cpp"/>
     <ClCompile Include="..\..\Source\PluginEditor.cpp"/>
     <ClCompile Include="..\..\Source\PluginProcessor.cpp"/>

@@ -14,25 +14,31 @@ PresetBrowserOverlay::PresetBrowserOverlay(PresetManager& manager, juce::AudioPr
 
     // Search Box
     addAndMakeVisible(searchBox);
-    searchBox.setTextToShowWhenEmpty("Search presets...", juce::Colour(150, 155, 170));
-    searchBox.setColour(juce::TextEditor::backgroundColourId, juce::Colour(15, 16, 20));
-    searchBox.setColour(juce::TextEditor::textColourId, juce::Colours::white);
-    searchBox.setColour(juce::TextEditor::outlineColourId, juce::Colour(50, 55, 68));
-    searchBox.setColour(juce::TextEditor::focusedOutlineColourId, juce::Colour(0, 200, 255));
+    searchBox.setTextToShowWhenEmpty("Search presets...", SpectralUILookAndFeel::textMutedColour);
+    searchBox.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0x16, 0x16, 0x1C));
+    searchBox.setColour(juce::TextEditor::textColourId, SpectralUILookAndFeel::bgColour);
+    searchBox.setColour(juce::TextEditor::outlineColourId, juce::Colour(0x2A, 0x2A, 0x34));
+    searchBox.setColour(juce::TextEditor::focusedOutlineColourId, SpectralUILookAndFeel::accentColour);
     searchBox.onTextChange = [this]() { filterPresets(); };
 
     // Filter Buttons
     auto setupFilterBtn = [this](juce::TextButton& btn, const juce::String& cat) {
         addAndMakeVisible(btn);
-        btn.setColour(juce::TextButton::buttonColourId, activeCategoryFilter == cat ? juce::Colour(0, 180, 255) : juce::Colour(30, 32, 42));
-        btn.setColour(juce::TextButton::textColourOffId, activeCategoryFilter == cat ? juce::Colours::white : juce::Colour(170, 175, 190));
-        btn.onClick = [this, &btn, cat]() {
+        bool isActive = (activeCategoryFilter == cat);
+        btn.setColour(juce::TextButton::buttonColourId, isActive ? SpectralUILookAndFeel::accentColour : juce::Colour(0x22, 0x22, 0x2A));
+        btn.setColour(juce::TextButton::textColourOffId, isActive ? juce::Colours::black : juce::Colour(0xA0, 0x9E, 0x96));
+        btn.onClick = [this, cat]() {
             activeCategoryFilter = cat;
-            filterAllBtn.setColour(juce::TextButton::buttonColourId, activeCategoryFilter == "ALL" ? juce::Colour(0, 180, 255) : juce::Colour(30, 32, 42));
-            filterSynthBtn.setColour(juce::TextButton::buttonColourId, activeCategoryFilter == "SYNTH" ? juce::Colour(0, 180, 255) : juce::Colour(30, 32, 42));
-            filterLeadBtn.setColour(juce::TextButton::buttonColourId, activeCategoryFilter == "LEAD" ? juce::Colour(0, 180, 255) : juce::Colour(30, 32, 42));
-            filterBassBtn.setColour(juce::TextButton::buttonColourId, activeCategoryFilter == "BASS" ? juce::Colour(0, 180, 255) : juce::Colour(30, 32, 42));
-            filterPadBtn.setColour(juce::TextButton::buttonColourId, activeCategoryFilter == "PAD" ? juce::Colour(0, 180, 255) : juce::Colour(30, 32, 42));
+            auto updateCatBtn = [this](juce::TextButton& b, const juce::String& c) {
+                bool active = (activeCategoryFilter == c);
+                b.setColour(juce::TextButton::buttonColourId, active ? SpectralUILookAndFeel::accentColour : juce::Colour(0x22, 0x22, 0x2A));
+                b.setColour(juce::TextButton::textColourOffId, active ? juce::Colours::black : juce::Colour(0xA0, 0x9E, 0x96));
+            };
+            updateCatBtn(filterAllBtn, "ALL");
+            updateCatBtn(filterSynthBtn, "SYNTH");
+            updateCatBtn(filterLeadBtn, "LEAD");
+            updateCatBtn(filterBassBtn, "BASS");
+            updateCatBtn(filterPadBtn, "PAD");
             filterPresets();
         };
     };
@@ -46,29 +52,29 @@ PresetBrowserOverlay::PresetBrowserOverlay(PresetManager& manager, juce::AudioPr
     // Presets ListBox
     addAndMakeVisible(presetListBox);
     presetListBox.setModel(this);
-    presetListBox.setColour(juce::ListBox::backgroundColourId, juce::Colour(14, 15, 18));
-    presetListBox.setColour(juce::ListBox::outlineColourId, juce::Colour(40, 44, 55));
+    presetListBox.setColour(juce::ListBox::backgroundColourId, juce::Colour(0x12, 0x12, 0x17));
+    presetListBox.setColour(juce::ListBox::outlineColourId, juce::Colour(0x2A, 0x2A, 0x35));
     presetListBox.setRowHeight(38);
 
     // Selected Preset Header / Status Labels
     addAndMakeVisible(selectedPresetTitle);
     selectedPresetTitle.setText("No Preset Selected", juce::dontSendNotification);
-    selectedPresetTitle.setFont(juce::FontOptions(17.0f, juce::Font::bold));
-    selectedPresetTitle.setColour(juce::Label::textColourId, juce::Colour(0, 220, 255));
+    selectedPresetTitle.setFont(SpectralUILookAndFeel::getGeometricFont(15.0f, true));
+    selectedPresetTitle.setColour(juce::Label::textColourId, SpectralUILookAndFeel::accentColour);
 
     addAndMakeVisible(statusLabel);
     statusLabel.setText("Double-click a preset to load", juce::dontSendNotification);
-    statusLabel.setFont(juce::FontOptions(12.0f));
-    statusLabel.setColour(juce::Label::textColourId, juce::Colour(150, 155, 170));
+    statusLabel.setFont(SpectralUILookAndFeel::getGeometricFont(11.5f, false));
+    statusLabel.setColour(juce::Label::textColourId, SpectralUILookAndFeel::textMutedColour);
 
     // Load & Delete Buttons
     addAndMakeVisible(loadPresetBtn);
-    loadPresetBtn.setColour(juce::TextButton::buttonColourId, juce::Colour(0, 150, 230));
-    loadPresetBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+    loadPresetBtn.setColour(juce::TextButton::buttonColourId, SpectralUILookAndFeel::accentColour);
+    loadPresetBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::black);
     loadPresetBtn.onClick = [this]() { executeLoadSelectedPreset(); };
 
     addAndMakeVisible(deletePresetBtn);
-    deletePresetBtn.setColour(juce::TextButton::buttonColourId, juce::Colour(170, 35, 45));
+    deletePresetBtn.setColour(juce::TextButton::buttonColourId, juce::Colour(200, 45, 55));
     deletePresetBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
     deletePresetBtn.onClick = [this]() {
         int r = presetListBox.getSelectedRow();
@@ -85,21 +91,21 @@ PresetBrowserOverlay::PresetBrowserOverlay(PresetManager& manager, juce::AudioPr
 
     // Save Preset Inputs & Button
     addAndMakeVisible(saveNameInput);
-    saveNameInput.setTextToShowWhenEmpty("New Preset Name (e.g. My Lead)", juce::Colour(140, 145, 160));
-    saveNameInput.setColour(juce::TextEditor::backgroundColourId, juce::Colour(15, 16, 20));
-    saveNameInput.setColour(juce::TextEditor::textColourId, juce::Colours::white);
-    saveNameInput.setColour(juce::TextEditor::outlineColourId, juce::Colour(50, 55, 68));
-    saveNameInput.setColour(juce::TextEditor::focusedOutlineColourId, juce::Colour(0, 220, 150));
+    saveNameInput.setTextToShowWhenEmpty("New Preset Name (e.g. My Lead)", SpectralUILookAndFeel::textMutedColour);
+    saveNameInput.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0x16, 0x16, 0x1C));
+    saveNameInput.setColour(juce::TextEditor::textColourId, SpectralUILookAndFeel::bgColour);
+    saveNameInput.setColour(juce::TextEditor::outlineColourId, juce::Colour(0x2A, 0x2A, 0x34));
+    saveNameInput.setColour(juce::TextEditor::focusedOutlineColourId, SpectralUILookAndFeel::accentColour);
 
     addAndMakeVisible(saveCategoryInput);
-    saveCategoryInput.setTextToShowWhenEmpty("Category (e.g. Synth, Lead, Bass)", juce::Colour(140, 145, 160));
-    saveCategoryInput.setColour(juce::TextEditor::backgroundColourId, juce::Colour(15, 16, 20));
-    saveCategoryInput.setColour(juce::TextEditor::textColourId, juce::Colours::white);
-    saveCategoryInput.setColour(juce::TextEditor::outlineColourId, juce::Colour(50, 55, 68));
-    saveCategoryInput.setColour(juce::TextEditor::focusedOutlineColourId, juce::Colour(0, 220, 150));
+    saveCategoryInput.setTextToShowWhenEmpty("Category (e.g. Synth, Lead, Bass)", SpectralUILookAndFeel::textMutedColour);
+    saveCategoryInput.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0x16, 0x16, 0x1C));
+    saveCategoryInput.setColour(juce::TextEditor::textColourId, SpectralUILookAndFeel::bgColour);
+    saveCategoryInput.setColour(juce::TextEditor::outlineColourId, juce::Colour(0x2A, 0x2A, 0x34));
+    saveCategoryInput.setColour(juce::TextEditor::focusedOutlineColourId, SpectralUILookAndFeel::accentColour);
 
     addAndMakeVisible(savePresetBtn);
-    savePresetBtn.setColour(juce::TextButton::buttonColourId, juce::Colour(35, 165, 90));
+    savePresetBtn.setColour(juce::TextButton::buttonColourId, juce::Colour(0x2B, 0x8A, 0x5A)); // Emerald accent
     savePresetBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
     savePresetBtn.onClick = [this]() {
         juce::String name = saveNameInput.getText().trim();
@@ -117,14 +123,14 @@ PresetBrowserOverlay::PresetBrowserOverlay(PresetManager& manager, juce::AudioPr
     // Sample ListBox
     addAndMakeVisible(sampleListBox);
     sampleListBox.setModel(&sampleListModel);
-    sampleListBox.setColour(juce::ListBox::backgroundColourId, juce::Colour(14, 15, 18));
-    sampleListBox.setColour(juce::ListBox::outlineColourId, juce::Colour(40, 44, 55));
+    sampleListBox.setColour(juce::ListBox::backgroundColourId, juce::Colour(0x12, 0x12, 0x17));
+    sampleListBox.setColour(juce::ListBox::outlineColourId, juce::Colour(0x2A, 0x2A, 0x35));
     sampleListBox.setRowHeight(34);
 
     // Sample Action Buttons
     addAndMakeVisible(importSampleBtn);
-    importSampleBtn.setColour(juce::TextButton::buttonColourId, juce::Colour(110, 55, 190));
-    importSampleBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+    importSampleBtn.setColour(juce::TextButton::buttonColourId, juce::Colour(0x24, 0x24, 0x2E));
+    importSampleBtn.setColour(juce::TextButton::textColourOffId, SpectralUILookAndFeel::accentColour);
     importSampleBtn.onClick = [this]() {
         fileChooser = std::make_unique<juce::FileChooser>(
             "Select Audio Sample to Store in Library",
@@ -150,8 +156,8 @@ PresetBrowserOverlay::PresetBrowserOverlay(PresetManager& manager, juce::AudioPr
     };
 
     addAndMakeVisible(loadSampleToEngineBtn);
-    loadSampleToEngineBtn.setColour(juce::TextButton::buttonColourId, juce::Colour(0, 180, 160));
-    loadSampleToEngineBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+    loadSampleToEngineBtn.setColour(juce::TextButton::buttonColourId, juce::Colour(0x24, 0x24, 0x2E));
+    loadSampleToEngineBtn.setColour(juce::TextButton::textColourOffId, SpectralUILookAndFeel::accentColour);
     loadSampleToEngineBtn.onClick = [this]() {
         int r = sampleListBox.getSelectedRow();
         if (r >= 0 && r < allSamples.size())
@@ -266,34 +272,34 @@ void PresetBrowserOverlay::paintListBoxItem(int rowNumber, juce::Graphics& g, in
 
     if (rowIsSelected)
     {
-        g.setColour(juce::Colour(0, 160, 230).withAlpha(0.28f));
+        g.setColour(SpectralUILookAndFeel::accentColour.withAlpha(0.18f));
         g.fillRoundedRectangle(2, 2, (float)width - 4, (float)height - 4, 4.0f);
-        g.setColour(juce::Colour(0, 200, 255));
+        g.setColour(SpectralUILookAndFeel::accentColour);
         g.drawRoundedRectangle(2, 2, (float)width - 4, (float)height - 4, 4.0f, 1.2f);
     }
     else
     {
-        g.setColour(rowNumber % 2 == 0 ? juce::Colour(18, 19, 24) : juce::Colour(14, 15, 18));
+        g.setColour(rowNumber % 2 == 0 ? juce::Colour(0x14, 0x14, 0x1A) : juce::Colour(0x18, 0x18, 0x20));
         g.fillRect(0, 0, width, height);
     }
 
     // Name
-    g.setFont(juce::FontOptions(14.0f, juce::Font::bold));
-    g.setColour(rowIsSelected ? juce::Colours::white : juce::Colour(210, 215, 225));
+    g.setFont(SpectralUILookAndFeel::getGeometricFont(13.0f, true));
+    g.setColour(rowIsSelected ? juce::Colours::white : juce::Colour(0xE0, 0xDC, 0xD0));
     g.drawText(preset.name, 12, 0, width - 110, height, juce::Justification::centredLeft);
 
-    // Category Pill Color
-    juce::Colour catBadgeCol(100, 110, 130);
+    // Category Badge Color
+    juce::Colour catBadgeCol(0x7E, 0x7B, 0x75);
     juce::String catUp = preset.category.toUpperCase();
-    if (catUp == "SYNTH") catBadgeCol = juce::Colour(0, 190, 240);
-    else if (catUp == "LEAD") catBadgeCol = juce::Colour(240, 170, 0);
-    else if (catUp == "BASS") catBadgeCol = juce::Colour(220, 50, 150);
-    else if (catUp == "PAD") catBadgeCol = juce::Colour(140, 70, 240);
-    else if (catUp == "FX") catBadgeCol = juce::Colour(230, 60, 60);
+    if (catUp == "SYNTH") catBadgeCol = SpectralUILookAndFeel::accentColour; // Amber
+    else if (catUp == "LEAD") catBadgeCol = juce::Colour(0x38, 0xBD, 0xF8); // Sky Cyan
+    else if (catUp == "BASS") catBadgeCol = juce::Colour(0x2D, 0xD4, 0xBF); // Emerald
+    else if (catUp == "PAD") catBadgeCol = juce::Colour(0xA8, 0x55, 0xF7); // Purple
+    else if (catUp == "FX") catBadgeCol = juce::Colour(0xF4, 0x3F, 0x5E);  // Rose
 
-    g.setFont(juce::FontOptions(10.0f, juce::Font::bold));
+    g.setFont(SpectralUILookAndFeel::getMonospaceFont(9.5f));
     auto badgeArea = juce::Rectangle<float>((float)width - 85.0f, (float)height * 0.5f - 9.0f, 75.0f, 18.0f);
-    g.setColour(catBadgeCol.withAlpha(0.2f));
+    g.setColour(catBadgeCol.withAlpha(0.15f));
     g.fillRoundedRectangle(badgeArea, 4.0f);
     g.setColour(catBadgeCol);
     g.drawRoundedRectangle(badgeArea, 4.0f, 1.0f);
@@ -321,19 +327,19 @@ void PresetBrowserOverlay::SampleListModel::paintListBoxItem(int rowNumber, juce
 
     if (rowIsSelected)
     {
-        g.setColour(juce::Colour(110, 55, 190).withAlpha(0.3f));
+        g.setColour(SpectralUILookAndFeel::accentColour.withAlpha(0.18f));
         g.fillRoundedRectangle(2, 2, (float)width - 4, (float)height - 4, 4.0f);
-        g.setColour(juce::Colour(170, 90, 255));
+        g.setColour(SpectralUILookAndFeel::accentColour);
         g.drawRoundedRectangle(2, 2, (float)width - 4, (float)height - 4, 4.0f, 1.2f);
     }
     else
     {
-        g.setColour(rowNumber % 2 == 0 ? juce::Colour(18, 19, 24) : juce::Colour(14, 15, 18));
+        g.setColour(rowNumber % 2 == 0 ? juce::Colour(0x14, 0x14, 0x1A) : juce::Colour(0x18, 0x18, 0x20));
         g.fillRect(0, 0, width, height);
     }
 
-    g.setFont(juce::FontOptions(13.0f));
-    g.setColour(rowIsSelected ? juce::Colours::white : juce::Colour(200, 205, 215));
+    g.setFont(SpectralUILookAndFeel::getGeometricFont(12.0f, false));
+    g.setColour(rowIsSelected ? juce::Colours::white : juce::Colour(0xD0, 0xCC, 0xC0));
     g.drawText(sample.getFileName(), 10, 0, width - 20, height, juce::Justification::centredLeft);
 }
 
@@ -358,23 +364,23 @@ void PresetBrowserOverlay::SampleListModel::listBoxItemDoubleClicked(int row, co
 void PresetBrowserOverlay::paint(juce::Graphics& g)
 {
     // Full screen dark translucent overlay backdrop
-    g.fillAll(juce::Colour(10, 11, 15).withAlpha(0.95f));
+    g.fillAll(juce::Colour(0x0A, 0x0A, 0x0E).withAlpha(0.95f));
 
     // Main Modal Box
     auto mainBounds = getLocalBounds().reduced(20).toFloat();
-    g.setColour(juce::Colour(18, 20, 26));
-    g.fillRoundedRectangle(mainBounds, 14.0f);
+    g.setColour(juce::Colour(0x14, 0x14, 0x1A));
+    g.fillRoundedRectangle(mainBounds, 12.0f);
 
-    g.setColour(juce::Colour(45, 50, 65));
-    g.drawRoundedRectangle(mainBounds, 14.0f, 1.5f);
+    g.setColour(juce::Colour(0x2A, 0x2A, 0x36));
+    g.drawRoundedRectangle(mainBounds, 12.0f, 1.5f);
 
     // Title Bar Area (Header)
     auto headerArea = mainBounds.removeFromTop(50.0f);
-    g.setColour(juce::Colour(25, 28, 36));
-    g.fillRoundedRectangle(headerArea.reduced(2.0f, 2.0f), 12.0f);
+    g.setColour(juce::Colour(0x1B, 0x1B, 0x24));
+    g.fillRoundedRectangle(headerArea.reduced(2.0f, 2.0f), 10.0f);
 
-    g.setFont(juce::FontOptions("Consolas", 18.0f, juce::Font::bold));
-    g.setColour(juce::Colours::white);
+    g.setFont(SpectralUILookAndFeel::getMonospaceFont(15.0f));
+    g.setColour(SpectralUILookAndFeel::accentColour);
     g.drawText("PRESET BROWSER & SAMPLE LIBRARY", headerArea.reduced(20.0f, 0.0f), juce::Justification::left, false);
 
     // Sub-Card Background Panels
@@ -391,19 +397,19 @@ void PresetBrowserOverlay::paint(juce::Graphics& g)
     auto col3Bounds = area.toFloat();
 
     auto drawCardPanel = [&](juce::Rectangle<float> cardBounds, const juce::String& cardTitle) {
-        g.setColour(juce::Colour(22, 24, 32));
-        g.fillRoundedRectangle(cardBounds, 10.0f);
+        g.setColour(juce::Colour(0x18, 0x18, 0x20));
+        g.fillRoundedRectangle(cardBounds, 8.0f);
 
-        g.setColour(juce::Colour(42, 46, 60));
-        g.drawRoundedRectangle(cardBounds, 10.0f, 1.2f);
+        g.setColour(juce::Colour(0x2C, 0x2C, 0x3A));
+        g.drawRoundedRectangle(cardBounds, 8.0f, 1.2f);
 
         // Header strip inside card
         auto titleStrip = cardBounds.removeFromTop(36.0f);
-        g.setColour(juce::Colour(28, 30, 40));
-        g.fillRoundedRectangle(titleStrip.reduced(1.0f, 1.0f), 9.0f);
+        g.setColour(juce::Colour(0x20, 0x20, 0x2C));
+        g.fillRoundedRectangle(titleStrip.reduced(1.0f, 1.0f), 7.0f);
 
-        g.setFont(juce::FontOptions(13.0f, juce::Font::bold));
-        g.setColour(juce::Colour(0, 200, 255));
+        g.setFont(SpectralUILookAndFeel::getGeometricFont(12.0f, true));
+        g.setColour(SpectralUILookAndFeel::accentColour);
         g.drawText(cardTitle, titleStrip.reduced(14.0f, 0.0f), juce::Justification::left, false);
     };
 

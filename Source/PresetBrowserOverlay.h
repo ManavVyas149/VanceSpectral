@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 #include "PresetManager.h"
+#include "SpectralUILookAndFeel.h"
 
 class PresetBrowserOverlay : public juce::Component, public juce::ListBoxModel
 {

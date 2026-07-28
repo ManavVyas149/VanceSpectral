@@ -832,6 +832,15 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\Source\SpectralUILookAndFeel.cpp">
+      <Filter>Vancespectral\Components</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\PresetBarComponent.cpp">
+      <Filter>Vancespectral\Components</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\SegmentedControlComponent.cpp">
+      <Filter>Vancespectral\Components</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\Source\SampleEngine.cpp">
       <Filter>Vancespectral\Source</Filter>
     </ClCompile>

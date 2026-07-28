@@ -1,15 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
-
-class ADSRPanelLookAndFeel : public juce::LookAndFeel_V4
-{
-public:
-    ADSRPanelLookAndFeel();
-    void drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height,
-                          float sliderPos, float rotaryStartAngle, float rotaryEndAngle,
-                          juce::Slider& slider) override;
-};
+#include "SpectralUILookAndFeel.h"
 
 class ADSRPanel : public juce::Component
 {
@@ -21,13 +13,55 @@ public:
     void resized() override;
 
 private:
-    juce::String title;
-    ADSRPanelLookAndFeel customLookAndFeel;
+    class HoverValueSlider : public juce::Slider
+    {
+    public:
+        HoverValueSlider(const juce::String& unitSuffix = "") : unit(unitSuffix)
+        {
+            setSliderStyle(juce::Slider::RotaryVerticalDrag);
+            setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+        }
 
-    juce::Slider attackSlider;
-    juce::Slider decaySlider;
-    juce::Slider sustainSlider;
-    juce::Slider releaseSlider;
+        void mouseEnter(const juce::MouseEvent& e) override
+        {
+            juce::Slider::mouseEnter(e);
+            updateTooltipValue();
+        }
+
+        void mouseDrag(const juce::MouseEvent& e) override
+        {
+            juce::Slider::mouseDrag(e);
+            updateTooltipValue();
+        }
+
+    private:
+        void updateTooltipValue()
+        {
+            double val = getValue();
+            juce::String valStr;
+            if (unit == "s" || unit == "ms")
+            {
+                if (val < 1.0)
+                    valStr = juce::String((int)(val * 1000.0)) + " ms";
+                else
+                    valStr = juce::String(val, 2) + " s";
+            }
+            else
+            {
+                valStr = juce::String(val, 2);
+            }
+            setTooltip(valStr);
+        }
+
+        juce::String unit;
+    };
+
+    juce::String title;
+
+    HoverValueSlider attackSlider{ "s" };
+    HoverValueSlider decaySlider{ "s" };
+    HoverValueSlider sustainSlider{ "" };
+    HoverValueSlider releaseSlider{ "s" };
 
     juce::Label attackLabel;
     juce::Label decayLabel;
