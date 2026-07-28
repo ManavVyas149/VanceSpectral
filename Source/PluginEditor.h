@@ -13,6 +13,8 @@
 #include "SpectrogramComponent.h"
 #include "ADSRPanel.h"
 #include "ToolbarComponent.h"
+#include "PresetManager.h"
+#include "PresetBrowserOverlay.h"
 
 //==============================================================================
 class PresetHeaderComponent : public juce::Component
@@ -73,12 +75,31 @@ public:
 
     juce::String getCurrentPreset() const
     {
+        if (currentPresetName.isNotEmpty())
+            return currentPresetName;
+
         if (currentPresetIndex >= 0 && currentPresetIndex < presets.size())
             return presets[currentPresetIndex];
         return "Cold Synth";
     }
 
+    void setPresetName(const juce::String& name)
+    {
+        currentPresetName = name;
+        repaint();
+    }
+
+    void mouseDown(const juce::MouseEvent& e) override
+    {
+        auto bounds = getLocalBounds().reduced(80, 0);
+        if (bounds.contains(e.getPosition()) && onBrowseClicked)
+        {
+            onBrowseClicked();
+        }
+    }
+
     std::function<void(const juce::String&)> onPresetChanged;
+    std::function<void()> onBrowseClicked;
 
     void paint(juce::Graphics& g) override
     {
@@ -220,6 +241,7 @@ private:
 
     juce::StringArray presets;
     int currentPresetIndex = 0;
+    juce::String currentPresetName;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PresetHeaderComponent)
 };
@@ -245,5 +267,9 @@ private:
     ADSRPanel ampADSRPanel;
     ADSRPanel filterADSRPanel;
 
+    PresetManager presetManager;
+    std::unique_ptr<PresetBrowserOverlay> presetOverlay;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (VancespectralAudioProcessorEditor)
 };
+

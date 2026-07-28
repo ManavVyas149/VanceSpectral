@@ -853,7 +853,13 @@
     <ClCompile Include="..\..\Source\ToolbarComponent.cpp">
       <Filter>Vancespectral\Components</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Source\PresetBrowserOverlay.cpp">
+      <Filter>Vancespectral\Components</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\Source\EnvelopeData.cpp">
+      <Filter>Vancespectral\DSP</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\PresetManager.cpp">
       <Filter>Vancespectral\DSP</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\JUCE\modules\juce_audio_basics\audio_play_head\juce_AudioPlayHead.cpp">
@@ -4020,7 +4026,13 @@
     <ClInclude Include="..\..\Source\ToolbarComponent.h">
       <Filter>Vancespectral\Components</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\Source\PresetBrowserOverlay.h">
+      <Filter>Vancespectral\Components</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\Source\EnvelopeData.h">
+      <Filter>Vancespectral\DSP</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\PresetManager.h">
       <Filter>Vancespectral\DSP</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\JUCE\modules\juce_audio_basics\audio_play_head\juce_AudioPlayHead.h">

@@ -31,10 +31,14 @@
             file="Source/ToolbarComponent.cpp"/>
       <FILE id="ARFiSZ" name="ToolbarComponent.h" compile="0" resource="0"
             file="Source/ToolbarComponent.h"/>
+      <FILE id="pBrdOverlayCpp" name="PresetBrowserOverlay.cpp" compile="1" resource="0" file="Source/PresetBrowserOverlay.cpp"/>
+      <FILE id="pBrdOverlayH" name="PresetBrowserOverlay.h" compile="0" resource="0" file="Source/PresetBrowserOverlay.h"/>
     </GROUP>
     <GROUP id="{D2799E5B-D928-092C-DA8E-BF6BA1A2449D}" name="DSP">
       <FILE id="eEnvDataCpp" name="EnvelopeData.cpp" compile="1" resource="0" file="Source/EnvelopeData.cpp"/>
       <FILE id="eEnvDataH" name="EnvelopeData.h" compile="0" resource="0" file="Source/EnvelopeData.h"/>
+      <FILE id="pMngrCpp" name="PresetManager.cpp" compile="1" resource="0" file="Source/PresetManager.cpp"/>
+      <FILE id="pMngrH" name="PresetManager.h" compile="0" resource="0" file="Source/PresetManager.h"/>
     </GROUP>
   </MAINGROUP>
   <MODULES>

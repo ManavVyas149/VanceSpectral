@@ -8,12 +8,48 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(
       ampADSRPanel(p.getAPVTS(), "AMP", "AMP_"),
       filterADSRPanel(p.getAPVTS(), "FILTER", "FILTER_") {
   spectrogram = std::make_unique<SpectrogramComponent>(audioProcessor);
+  presetOverlay = std::make_unique<PresetBrowserOverlay>(presetManager, audioProcessor.getAPVTS());
+
+  presetManager.createDefaultFactoryPresets(audioProcessor.getAPVTS());
 
   addAndMakeVisible(toolbar);
   addAndMakeVisible(presetHeader);
   addAndMakeVisible(*spectrogram);
   addAndMakeVisible(ampADSRPanel);
   addAndMakeVisible(filterADSRPanel);
+
+  addAndMakeVisible(*presetOverlay);
+  presetOverlay->setVisible(false);
+
+  presetHeader.onBrowseClicked = [this]() {
+      presetOverlay->refreshPresetList();
+      presetOverlay->refreshSampleList();
+      presetOverlay->setVisible(true);
+      presetOverlay->toFront(true);
+  };
+
+  presetOverlay->onPresetSelected = [this](const juce::File& presetFile, const juce::String& sampleFileName) {
+      juce::var parsed = juce::JSON::parse(presetFile.loadFileAsString());
+      if (parsed.isObject())
+      {
+          presetHeader.setPresetName(parsed.getProperty("name", presetFile.getFileNameWithoutExtension()).toString());
+      }
+      if (sampleFileName.isNotEmpty())
+      {
+          auto sampleFile = presetManager.getSamplesFolder().getChildFile(sampleFileName);
+          if (sampleFile.existsAsFile() && spectrogram)
+          {
+              spectrogram->loadAudioFile(sampleFile);
+          }
+      }
+  };
+
+  presetOverlay->onSampleSelected = [this](const juce::File& sampleFile) {
+      if (sampleFile.existsAsFile() && spectrogram)
+      {
+          spectrogram->loadAudioFile(sampleFile);
+      }
+  };
 
   setSize(1200, 700);
 }
@@ -160,4 +196,7 @@ void VancespectralAudioProcessorEditor::resized() {
 
   ampADSRPanel.setBounds(ampArea.reduced(4));
   filterADSRPanel.setBounds(filterArea.reduced(4));
-}
+
+  if (presetOverlay)
+    presetOverlay->setBounds(getLocalBounds());
+}
