@@ -18,6 +18,18 @@
     <FILE id="pbEWHa" name="PluginProcessor.cpp" compile="1" resource="0"
           file="Source/PluginProcessor.cpp"/>
     <GROUP id="{7A9E65E4-8849-49F8-6B91-2E2408E54330}" name="Components">
+      <FILE id="rCSfNQ" name="PresetBarComponent.cpp" compile="1" resource="0"
+            file="Source/PresetBarComponent.cpp"/>
+      <FILE id="N66zbb" name="PresetBarComponent.h" compile="0" resource="0"
+            file="Source/PresetBarComponent.h"/>
+      <FILE id="DEmgyT" name="SegmentedControlComponent.cpp" compile="1"
+            resource="0" file="Source/SegmentedControlComponent.cpp"/>
+      <FILE id="JgE9KZ" name="SegmentedControlComponent.h" compile="0" resource="0"
+            file="Source/SegmentedControlComponent.h"/>
+      <FILE id="OryZ78" name="SpectralUILookAndFeel.cpp" compile="1" resource="0"
+            file="Source/SpectralUILookAndFeel.cpp"/>
+      <FILE id="Yf0giR" name="SpectralUILookAndFeel.h" compile="0" resource="0"
+            file="Source/SpectralUILookAndFeel.h"/>
       <FILE id="vYzQyG" name="ADSRPanel.cpp" compile="1" resource="0" file="Source/ADSRPanel.cpp"/>
       <FILE id="oceJYd" name="ADSRPanel.h" compile="0" resource="0" file="Source/ADSRPanel.h"/>
       <FILE id="Iccgaw" name="EffectsPanel.cpp" compile="1" resource="0"
@@ -31,13 +43,18 @@
             file="Source/ToolbarComponent.cpp"/>
       <FILE id="ARFiSZ" name="ToolbarComponent.h" compile="0" resource="0"
             file="Source/ToolbarComponent.h"/>
-      <FILE id="pBrdOverlayCpp" name="PresetBrowserOverlay.cpp" compile="1" resource="0" file="Source/PresetBrowserOverlay.cpp"/>
-      <FILE id="pBrdOverlayH" name="PresetBrowserOverlay.h" compile="0" resource="0" file="Source/PresetBrowserOverlay.h"/>
+      <FILE id="pBrdOverlayCpp" name="PresetBrowserOverlay.cpp" compile="1"
+            resource="0" file="Source/PresetBrowserOverlay.cpp"/>
+      <FILE id="pBrdOverlayH" name="PresetBrowserOverlay.h" compile="0" resource="0"
+            file="Source/PresetBrowserOverlay.h"/>
     </GROUP>
     <GROUP id="{D2799E5B-D928-092C-DA8E-BF6BA1A2449D}" name="DSP">
-      <FILE id="eEnvDataCpp" name="EnvelopeData.cpp" compile="1" resource="0" file="Source/EnvelopeData.cpp"/>
-      <FILE id="eEnvDataH" name="EnvelopeData.h" compile="0" resource="0" file="Source/EnvelopeData.h"/>
-      <FILE id="pMngrCpp" name="PresetManager.cpp" compile="1" resource="0" file="Source/PresetManager.cpp"/>
+      <FILE id="eEnvDataCpp" name="EnvelopeData.cpp" compile="1" resource="0"
+            file="Source/EnvelopeData.cpp"/>
+      <FILE id="eEnvDataH" name="EnvelopeData.h" compile="0" resource="0"
+            file="Source/EnvelopeData.h"/>
+      <FILE id="pMngrCpp" name="PresetManager.cpp" compile="1" resource="0"
+            file="Source/PresetManager.cpp"/>
       <FILE id="pMngrH" name="PresetManager.h" compile="0" resource="0" file="Source/PresetManager.h"/>
     </GROUP>
   </MAINGROUP>

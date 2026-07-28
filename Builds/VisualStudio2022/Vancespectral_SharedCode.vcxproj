@@ -144,12 +144,12 @@
     </Bscmake>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\Source\SpectralUILookAndFeel.cpp"/>
-    <ClCompile Include="..\..\Source\PresetBarComponent.cpp"/>
-    <ClCompile Include="..\..\Source\SegmentedControlComponent.cpp"/>
     <ClCompile Include="..\..\Source\SampleEngine.cpp"/>
     <ClCompile Include="..\..\Source\PluginEditor.cpp"/>
     <ClCompile Include="..\..\Source\PluginProcessor.cpp"/>
+    <ClCompile Include="..\..\Source\PresetBarComponent.cpp"/>
+    <ClCompile Include="..\..\Source\SegmentedControlComponent.cpp"/>
+    <ClCompile Include="..\..\Source\SpectralUILookAndFeel.cpp"/>
     <ClCompile Include="..\..\Source\ADSRPanel.cpp"/>
     <ClCompile Include="..\..\Source\EffectsPanel.cpp"/>
     <ClCompile Include="..\..\Source\SpectrogramComponent.cpp"/>
@@ -3103,6 +3103,9 @@
     <ClInclude Include="..\..\Source\SampleEngine.h"/>
     <ClInclude Include="..\..\Source\PluginEditor.h"/>
     <ClInclude Include="..\..\Source\PluginProcessor.h"/>
+    <ClInclude Include="..\..\Source\PresetBarComponent.h"/>
+    <ClInclude Include="..\..\Source\SegmentedControlComponent.h"/>
+    <ClInclude Include="..\..\Source\SpectralUILookAndFeel.h"/>
     <ClInclude Include="..\..\Source\ADSRPanel.h"/>
     <ClInclude Include="..\..\Source\EffectsPanel.h"/>
     <ClInclude Include="..\..\Source\SpectrogramComponent.h"/>

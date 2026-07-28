@@ -832,15 +832,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\Source\SpectralUILookAndFeel.cpp">
-      <Filter>Vancespectral\Components</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Source\PresetBarComponent.cpp">
-      <Filter>Vancespectral\Components</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Source\SegmentedControlComponent.cpp">
-      <Filter>Vancespectral\Components</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\Source\SampleEngine.cpp">
       <Filter>Vancespectral\Source</Filter>
     </ClCompile>
@@ -849,6 +840,15 @@
     </ClCompile>
     <ClCompile Include="..\..\Source\PluginProcessor.cpp">
       <Filter>Vancespectral</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\PresetBarComponent.cpp">
+      <Filter>Vancespectral\Components</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\SegmentedControlComponent.cpp">
+      <Filter>Vancespectral\Components</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\SpectralUILookAndFeel.cpp">
+      <Filter>Vancespectral\Components</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Source\ADSRPanel.cpp">
       <Filter>Vancespectral\Components</Filter>
@@ -4022,6 +4022,15 @@
     </ClInclude>
     <ClInclude Include="..\..\Source\PluginProcessor.h">
       <Filter>Vancespectral</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\PresetBarComponent.h">
+      <Filter>Vancespectral\Components</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\SegmentedControlComponent.h">
+      <Filter>Vancespectral\Components</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\SpectralUILookAndFeel.h">
+      <Filter>Vancespectral\Components</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\ADSRPanel.h">
       <Filter>Vancespectral\Components</Filter>

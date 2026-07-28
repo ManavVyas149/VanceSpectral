@@ -104,10 +104,31 @@
       <AdditionalDependencies>NewProject.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Lib>
     <PreBuildEvent>
-      <Command>echo Prebuild complete</Command>
+      <Command>if not exist &quot;$(OutDir)\\NewProject.vst3\&quot; (
+    del /s /q &quot;$(OutDir)\\NewProject.vst3&quot;
+    mkdir &quot;$(OutDir)\\NewProject.vst3&quot;
+)
+if not exist &quot;$(OutDir)\\NewProject.vst3\Contents\&quot; (
+    del /s /q &quot;$(OutDir)\\NewProject.vst3\Contents&quot;
+    mkdir &quot;$(OutDir)\\NewProject.vst3\Contents&quot;
+)
+if not exist &quot;$(OutDir)\\NewProject.vst3\Contents\x86_64-win\&quot; (
+    del /s /q &quot;$(OutDir)\\NewProject.vst3\Contents\x86_64-win&quot;
+    mkdir &quot;$(OutDir)\\NewProject.vst3\Contents\x86_64-win&quot;
+)
+</Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>echo VST3 Build Complete</Command>
+      <Command>copy /Y &quot;$(OutDir)\NewProject.dll&quot; &quot;$(OutDir)\NewProject.vst3\Contents\x86_64-win\NewProject.vst3&quot;
+if exist &quot;$(OutDir)\NewProject.vst3\Contents\Resources\moduleinfo.json&quot; (
+    del /s /q &quot;$(OutDir)\NewProject.vst3\Contents\Resources\moduleinfo.json&quot;
+)
+if not exist &quot;$(OutDir)\NewProject.vst3\Contents\Resources\&quot; (
+    mkdir &quot;$(OutDir)\NewProject.vst3\Contents\Resources\&quot;
+)
+echo &quot;running &quot;$(SolutionDir)Win32\$(Configuration)\VST3 Manifest Helper\juce_vst3_helper.exe&quot; &gt; &quot;$(OutDir)\NewProject.vst3\Contents\Resources\moduleinfo.json&quot;&quot;
+&quot;$(SolutionDir)Win32\$(Configuration)\VST3 Manifest Helper\juce_vst3_helper.exe&quot; &gt; &quot;$(OutDir)\NewProject.vst3\Contents\Resources\moduleinfo.json&quot;
+</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
