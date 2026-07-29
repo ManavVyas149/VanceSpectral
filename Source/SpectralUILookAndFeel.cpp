@@ -102,11 +102,77 @@ void SpectralUILookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, in
     g.fillPath(p);
 }
 
+void SpectralUILookAndFeel::drawLinearSlider(juce::Graphics& g, int x, int y, int width, int height,
+                                              float sliderPos, float minSliderPos, float maxSliderPos,
+                                              const juce::Slider::SliderStyle style, juce::Slider& slider)
+{
+    juce::ignoreUnused(minSliderPos, maxSliderPos, style);
+
+    if (width <= 0 || height <= 0)
+        return;
+
+    auto bounds = juce::Rectangle<int>(x, y, width, height).toFloat();
+
+    // 1. Label 'VOLUME' on left edge
+    auto labelArea = bounds.removeFromLeft(52.0f);
+    g.setFont(getGeometricFont(10.0f, true));
+    g.setColour(textMutedColour);
+    g.drawText("VOLUME", labelArea, juce::Justification::left, true);
+
+    // 2. Numeric dB readout on right edge
+    auto readoutArea = bounds.removeFromRight(50.0f);
+    float val = (float)slider.getValue();
+    juce::String valStr;
+    if (val <= -47.5f)
+        valStr = "-inf";
+    else if (val > 0.0f)
+        valStr = "+" + juce::String(val, 1) + " dB";
+    else
+        valStr = juce::String(val, 1) + " dB";
+
+    g.setFont(getMonospaceFont(10.0f));
+    g.setColour(slider.isMouseOverOrDragging() ? accentColour : textMainColour);
+    g.drawText(valStr, readoutArea, juce::Justification::right, true);
+
+    // 3. Track area in center
+    bounds.reduce(6.0f, 0.0f);
+    float trackHeight = 6.0f;
+    float trackY = bounds.getCentreY() - trackHeight * 0.5f;
+    auto trackArea = juce::Rectangle<float>(bounds.getX(), trackY, bounds.getWidth(), trackHeight);
+
+    // Dark charcoal / black background track
+    g.setColour(graphBgColour);
+    g.fillRoundedRectangle(trackArea, 3.0f);
+
+    // Hairline border
+    g.setColour(dividerColour);
+    g.drawRoundedRectangle(trackArea, 3.0f, 1.0f);
+
+    // Orange horizontal fill/progress bar
+    float fillWidth = juce::jlimit(0.0f, trackArea.getWidth(), sliderPos - trackArea.getX());
+    if (fillWidth > 0.0f)
+    {
+        auto fillRect = trackArea.withWidth(fillWidth);
+        g.setColour(slider.isMouseOverOrDragging() ? accentColour : accentColour.withAlpha(0.85f));
+        g.fillRoundedRectangle(fillRect, 3.0f);
+    }
+
+    // Small vertical tick handle/thumb
+    float handleWidth = 3.0f;
+    float handleHeight = trackHeight + 6.0f;
+    float handleX = juce::jlimit(trackArea.getX(), trackArea.getRight() - handleWidth, sliderPos - handleWidth * 0.5f);
+    float handleY = bounds.getCentreY() - handleHeight * 0.5f;
+
+    g.setColour(slider.isMouseOverOrDragging() ? textMainColour : textMainColour.withAlpha(0.9f));
+    g.fillRoundedRectangle(handleX, handleY, handleWidth, handleHeight, 1.5f);
+}
+
 void SpectralUILookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& button,
                                                   const juce::Colour& backgroundColour,
                                                   bool shouldDrawButtonAsHighlighted,
                                                   bool shouldDrawButtonAsDown)
 {
+    juce::ignoreUnused(backgroundColour);
     auto bounds = button.getLocalBounds().toFloat();
     float cornerRadius = 4.0f;
 

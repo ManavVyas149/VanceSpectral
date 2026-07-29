@@ -3,8 +3,7 @@
 
 VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(VancespectralAudioProcessor &p)
     : AudioProcessorEditor(&p), audioProcessor(p),
-      ampADSRPanel(p.getAPVTS(), "AMP ENV", "AMP_"),
-      filterADSRPanel(p.getAPVTS(), "FILTER ENV", "FILTER_") {
+      adsrPanel(p.getAPVTS()) {
   
   setLookAndFeel(&spectralLookAndFeel);
   setWantsKeyboardFocus(true);
@@ -19,8 +18,14 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
   addAndMakeVisible(*spectrogram);
   addAndMakeVisible(playbackControl);
   addAndMakeVisible(pitchControl);
-  addAndMakeVisible(ampADSRPanel);
-  addAndMakeVisible(filterADSRPanel);
+  addAndMakeVisible(adsrPanel);
+
+  volumeSlider.setSliderStyle(juce::Slider::LinearHorizontal);
+  volumeSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+  addAndMakeVisible(volumeSlider);
+
+  volumeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+      audioProcessor.getAPVTS(), "GAIN", volumeSlider);
 
   addAndMakeVisible(*presetOverlay);
   presetOverlay->setVisible(false);
@@ -158,17 +163,6 @@ VancespectralAudioProcessorEditor::~VancespectralAudioProcessorEditor() {
   setLookAndFeel(nullptr);
 }
 
-bool VancespectralAudioProcessorEditor::keyPressed(const juce::KeyPress &key) {
-  if (key == juce::KeyPress::spaceKey) {
-    if (audioProcessor.isPlaying())
-      audioProcessor.stopSample();
-    else
-      audioProcessor.playSample();
-    return true;
-  }
-  return AudioProcessorEditor::keyPressed(key);
-}
-
 void VancespectralAudioProcessorEditor::paint(juce::Graphics &g) {
   auto bounds = getLocalBounds().toFloat();
 
@@ -199,7 +193,12 @@ void VancespectralAudioProcessorEditor::resized() {
   constexpr int gap = 12;
 
   auto area = getLocalBounds().reduced(margin);
-  area.removeFromBottom(24); // Reserve for footer strip
+  auto footerArea = area.removeFromBottom(24); // Reserve for footer strip
+
+  // Compact master volume slider on far right of bottom footer bar (opposite branding text)
+  int volumeWidth = 200;
+  auto volumeArea = footerArea.removeFromRight(volumeWidth);
+  volumeSlider.setBounds(volumeArea);
 
   // Top Bar (Preset Browser) - 36px height
   auto topBarArea = area.removeFromTop(36);
@@ -235,12 +234,85 @@ void VancespectralAudioProcessorEditor::resized() {
   controlsArea.removeFromTop(gap);
   pitchControl.setBounds(controlsArea);
 
-  // Envelope section (Amp Env + Filter Env) taking remaining lower width
-  int envWidth = (lowerArea.getWidth() - gap) / 2;
-  ampADSRPanel.setBounds(lowerArea.removeFromLeft(envWidth));
-  lowerArea.removeFromLeft(gap);
-  filterADSRPanel.setBounds(lowerArea);
+  // Unified Envelope + Exciter section taking ~60% of remaining lower width
+  int envWidth = (int)(lowerArea.getWidth() * 0.60f);
+  adsrPanel.setBounds(lowerArea.removeFromLeft(envWidth));
 
   if (presetOverlay)
     presetOverlay->setBounds(getLocalBounds());
+}
+
+int VancespectralAudioProcessorEditor::getQwertySemitone(juce::juce_wchar c) {
+  c = juce::CharacterFunctions::toLowerCase(c);
+  switch (c) {
+    case 'a': return 0;  // C
+    case 'w': return 1;  // C#
+    case 's': return 2;  // D
+    case 'e': return 3;  // D#
+    case 'd': return 4;  // E
+    case 'f': return 5;  // F
+    case 't': return 6;  // F#
+    case 'g': return 7;  // G
+    case 'y': return 8;  // G#
+    case 'h': return 9;  // A
+    case 'u': return 10; // A#
+    case 'j': return 11; // B
+    case 'k': return 12; // C4
+    case 'o': return 13; // C#4
+    case 'l': return 14; // D4
+    case 'p': return 15; // D#4
+    default: return -1;
+  }
+}
+
+bool VancespectralAudioProcessorEditor::keyPressed(const juce::KeyPress &key) {
+  if (key == juce::KeyPress::spaceKey) {
+    if (audioProcessor.isPlaying())
+      audioProcessor.stopSample();
+    else
+      audioProcessor.playSample();
+    return true;
+  }
+
+  auto c = juce::CharacterFunctions::toLowerCase(key.getTextCharacter());
+
+  if (c == 'z') {
+    currentOctaveOffset = juce::jmax(-36, currentOctaveOffset - 12);
+    return true;
+  }
+  if (c == 'x') {
+    currentOctaveOffset = juce::jmin(36, currentOctaveOffset + 12);
+    return true;
+  }
+
+  int semitones = getQwertySemitone(c);
+  if (semitones >= 0) {
+    int note = 60 + currentOctaveOffset + semitones;
+    int code = key.getKeyCode();
+    if (activeQwertyNoteKeys.find(code) == activeQwertyNoteKeys.end()) {
+      activeQwertyNoteKeys.insert(code);
+      audioProcessor.getSampleEngine().noteOn(note);
+    }
+    return true;
+  }
+
+  return juce::AudioProcessorEditor::keyPressed(key);
+}
+
+bool VancespectralAudioProcessorEditor::keyStateChanged(bool isKeyDown) {
+  if (!isKeyDown) {
+    std::vector<int> releasedKeys;
+    for (int keyCode : activeQwertyNoteKeys) {
+      if (!juce::KeyPress::isKeyCurrentlyDown(keyCode)) {
+        releasedKeys.push_back(keyCode);
+      }
+    }
+    for (int keyCode : releasedKeys) {
+      activeQwertyNoteKeys.erase(keyCode);
+    }
+    if (!releasedKeys.empty() && activeQwertyNoteKeys.empty()) {
+      audioProcessor.getSampleEngine().noteOff(60 + currentOctaveOffset);
+    }
+  }
+  return false;
 }

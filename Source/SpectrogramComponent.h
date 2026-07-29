@@ -109,11 +109,25 @@ private:
     juce::Point<float> dragCurrentPosNormalized;
     juce::Path currentDrawingPathNormalized;
 
+    enum class DragState {
+        None,
+        DrawingNew,
+        MovingSelection,
+        ResizingTopLeft,
+        ResizingTopRight,
+        ResizingBottomLeft,
+        ResizingBottomRight,
+        DraggingStartMarker,
+        DraggingEndMarker
+    };
+
+    DragState dragState = DragState::None;
+    juce::Point<float> dragStartMousePosNormalized;
+    juce::Rectangle<float> initialSelectionBoundsNormalized;
+
     // Start & End Region Endpoints (0..1 normalized)
     float startPosition = 0.0f;
     float endPosition = 1.0f;
-    bool draggingStartMarker = false;
-    bool draggingEndMarker = false;
 
     LoopButton loopButton;
     bool loopEnabled = false;

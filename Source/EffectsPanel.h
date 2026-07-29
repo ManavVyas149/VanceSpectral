@@ -18,7 +18,7 @@ public:
     EffectsPanel() = default;
     ~EffectsPanel() override = default;
 
-    void paint(juce::Graphics& g) override {}
+    void paint(juce::Graphics& g) override { juce::ignoreUnused(g); }
     void resized() override {}
 
 private:

@@ -6,7 +6,7 @@
 class ADSRPanel : public juce::Component
 {
 public:
-    ADSRPanel(juce::AudioProcessorValueTreeState& apvts, const juce::String& panelTitle, const juce::String& paramPrefix);
+    explicit ADSRPanel(juce::AudioProcessorValueTreeState& apvts);
     ~ADSRPanel() override;
 
     void paint(juce::Graphics& g) override;
@@ -46,6 +46,10 @@ private:
                 else
                     valStr = juce::String(val, 2) + " s";
             }
+            else if (unit == "%")
+            {
+                valStr = juce::String((int)(val * 100.0)) + " %";
+            }
             else
             {
                 valStr = juce::String(val, 2);
@@ -56,23 +60,55 @@ private:
         juce::String unit;
     };
 
-    juce::String title;
+    // AMP ENV Sliders & Labels
+    HoverValueSlider ampAttackSlider{ "s" };
+    HoverValueSlider ampDecaySlider{ "s" };
+    HoverValueSlider ampSustainSlider{ "" };
+    HoverValueSlider ampReleaseSlider{ "s" };
 
-    HoverValueSlider attackSlider{ "s" };
-    HoverValueSlider decaySlider{ "s" };
-    HoverValueSlider sustainSlider{ "" };
-    HoverValueSlider releaseSlider{ "s" };
+    juce::Label ampAttackLabel;
+    juce::Label ampDecayLabel;
+    juce::Label ampSustainLabel;
+    juce::Label ampReleaseLabel;
 
-    juce::Label attackLabel;
-    juce::Label decayLabel;
-    juce::Label sustainLabel;
-    juce::Label releaseLabel;
+    // FILTER ENV Sliders & Labels
+    HoverValueSlider filterAttackSlider{ "s" };
+    HoverValueSlider filterDecaySlider{ "s" };
+    HoverValueSlider filterSustainSlider{ "" };
+    HoverValueSlider filterReleaseSlider{ "s" };
+
+    juce::Label filterAttackLabel;
+    juce::Label filterDecayLabel;
+    juce::Label filterSustainLabel;
+    juce::Label filterReleaseLabel;
+
+    // PITCH & EXCITER Sliders & Labels
+    HoverValueSlider pitchSlider{ "st" };
+    juce::Label pitchLabel;
+
+    HoverValueSlider exciterSlider{ "%" };
+    juce::Label exciterLabel;
 
     using Attachment = juce::AudioProcessorValueTreeState::SliderAttachment;
-    std::unique_ptr<Attachment> attackAttachment;
-    std::unique_ptr<Attachment> decayAttachment;
-    std::unique_ptr<Attachment> sustainAttachment;
-    std::unique_ptr<Attachment> releaseAttachment;
+    std::unique_ptr<Attachment> ampAttackAttachment;
+    std::unique_ptr<Attachment> ampDecayAttachment;
+    std::unique_ptr<Attachment> ampSustainAttachment;
+    std::unique_ptr<Attachment> ampReleaseAttachment;
+
+    std::unique_ptr<Attachment> filterAttackAttachment;
+    std::unique_ptr<Attachment> filterDecayAttachment;
+    std::unique_ptr<Attachment> filterSustainAttachment;
+    std::unique_ptr<Attachment> filterReleaseAttachment;
+
+    std::unique_ptr<Attachment> pitchAttachment;
+    std::unique_ptr<Attachment> exciterAttachment;
+
+    juce::Rectangle<int> ampHeaderArea;
+    juce::Rectangle<int> filterHeaderArea;
+    juce::Rectangle<int> pitchHeaderArea;
+    juce::Rectangle<int> exciterHeaderArea;
+    int dividerY{ 0 };
+    int exciterDividerX{ 0 };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ADSRPanel)
 };

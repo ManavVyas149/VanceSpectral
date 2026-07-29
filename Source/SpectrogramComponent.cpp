@@ -61,15 +61,20 @@ juce::String SpectrogramComponent::formatFrequency(float hz) {
 
 void SpectrogramComponent::updateFrequencyFilterFromSelections() {
   if (!fileLoaded || selections.isEmpty()) {
-    processor.setFrequencyFilterBands(juce::Array<FrequencyBand>());
+    processor.setSpectralRegions(juce::Array<SpectralRegion>());
     return;
   }
 
-  juce::Array<FrequencyBand> bands;
+  juce::Array<SpectralRegion> regions;
   for (int i = 0; i < selections.size(); ++i) {
     const auto &reg = selections.getReference(i);
     auto bounds = reg.normalizedBounds;
     if (!bounds.isEmpty()) {
+      SpectralRegion sr;
+      sr.id = reg.id;
+      sr.startNorm = bounds.getX();
+      sr.endNorm = bounds.getRight();
+
       float yTop = bounds.getY();
       float yBottom = bounds.getBottom();
 
@@ -79,11 +84,24 @@ void SpectrogramComponent::updateFrequencyFilterFromSelections() {
       if (minFreq > maxFreq)
         std::swap(minFreq, maxFreq);
 
-      bands.add({minFreq, maxFreq});
+      sr.minFreq = minFreq;
+      sr.maxFreq = maxFreq;
+
+      regions.add(sr);
     }
   }
 
-  processor.setFrequencyFilterBands(bands);
+  processor.setSpectralRegions(regions);
+
+  // Sync active selection to processor playback region
+  if (activeSelectionIndex >= 0 && activeSelectionIndex < selections.size()) {
+    auto bounds = selections.getReference(activeSelectionIndex).normalizedBounds;
+    if (!bounds.isEmpty()) {
+      startPosition = bounds.getX();
+      endPosition = bounds.getRight();
+      processor.setRegion(startPosition, endPosition);
+    }
+  }
 }
 
 juce::Colour
@@ -332,28 +350,48 @@ void SpectrogramComponent::mouseDown(const juce::MouseEvent &e) {
   float startX = graphBounds.getX() + graphBounds.getWidth() * startPosition;
   float endX = graphBounds.getX() + graphBounds.getWidth() * endPosition;
 
-  if (std::abs(mouseX - startX) <= 16.0f) {
-    draggingStartMarker = true;
+  if (std::abs(mouseX - startX) <= 12.0f) {
+    dragState = DragState::DraggingStartMarker;
     return;
   }
 
-  if (std::abs(mouseX - endX) <= 16.0f) {
-    draggingEndMarker = true;
+  if (std::abs(mouseX - endX) <= 12.0f) {
+    dragState = DragState::DraggingEndMarker;
     return;
   }
 
-  if (!graphBounds.contains(e.position))
+  if (!graphBounds.contains(e.position) || !fileLoaded)
     return;
 
-  float normX = juce::jlimit(
-      0.0f, 1.0f, (e.position.x - graphBounds.getX()) / graphBounds.getWidth());
-  float normY = juce::jlimit(0.0f, 1.0f,
-                             (e.position.y - graphBounds.getY()) /
-                                 graphBounds.getHeight());
+  float normX = juce::jlimit(0.0f, 1.0f, (e.position.x - graphBounds.getX()) / graphBounds.getWidth());
+  float normY = juce::jlimit(0.0f, 1.0f, (e.position.y - graphBounds.getY()) / graphBounds.getHeight());
 
-  if (!fileLoaded)
+  // 1. Double click toggles Play/Pause
+  if (e.getNumberOfClicks() >= 2) {
+    if (processor.isPlaying())
+      processor.stopSample();
+    else
+      processor.playSample();
     return;
+  }
 
+  // 2. Check if clicking on tag 'x' delete button on any selection region
+  for (int i = selections.size() - 1; i >= 0; --i) {
+    auto b = selections.getReference(i).normalizedBounds;
+    float rx = graphBounds.getX() + b.getX() * graphBounds.getWidth();
+    float ry = graphBounds.getY() + b.getY() * graphBounds.getHeight();
+    juce::Rectangle<float> deleteBtnRect(rx + 138.0f, ry + 2.0f, 14.0f, 14.0f);
+
+    if (deleteBtnRect.contains(e.position)) {
+      selections.remove(i);
+      activeSelectionIndex = selections.isEmpty() ? -1 : selections.size() - 1;
+      updateFrequencyFilterFromSelections();
+      repaint();
+      return;
+    }
+  }
+
+  // 3. Handle Erase Tool
   if (currentTool == ToolType::Erase) {
     for (int i = selections.size() - 1; i >= 0; --i) {
       if (selections.getReference(i).normalizedBounds.contains(normX, normY)) {
@@ -367,6 +405,7 @@ void SpectrogramComponent::mouseDown(const juce::MouseEvent &e) {
     return;
   }
 
+  // 4. Handle Copy Tool
   if (currentTool == ToolType::Copy) {
     for (int i = selections.size() - 1; i >= 0; --i) {
       if (selections.getReference(i).normalizedBounds.contains(normX, normY)) {
@@ -383,25 +422,64 @@ void SpectrogramComponent::mouseDown(const juce::MouseEvent &e) {
     return;
   }
 
-  if (e.getNumberOfClicks() >= 2) {
-    if (processor.isPlaying())
-      processor.stopSample();
-    else
-      processor.playSample();
-    return;
-  }
+  // 5. Check if clicking on active selection corner handles (for resizing)
+  if (activeSelectionIndex >= 0 && activeSelectionIndex < selections.size()) {
+    auto b = selections.getReference(activeSelectionIndex).normalizedBounds;
+    float rx = graphBounds.getX() + b.getX() * graphBounds.getWidth();
+    float ry = graphBounds.getY() + b.getY() * graphBounds.getHeight();
+    float rw = b.getWidth() * graphBounds.getWidth();
+    float rh = b.getHeight() * graphBounds.getHeight();
 
-  for (int i = selections.size() - 1; i >= 0; --i) {
-    if (selections.getReference(i).normalizedBounds.contains(normX, normY)) {
-      activeSelectionIndex = i;
-      updateFrequencyFilterFromSelections();
-      repaint();
-      break;
+    float hs = 12.0f;
+    juce::Rectangle<float> tl(rx - hs * 0.5f, ry - hs * 0.5f, hs, hs);
+    juce::Rectangle<float> tr(rx + rw - hs * 0.5f, ry - hs * 0.5f, hs, hs);
+    juce::Rectangle<float> bl(rx - hs * 0.5f, ry + rh - hs * 0.5f, hs, hs);
+    juce::Rectangle<float> br(rx + rw - hs * 0.5f, ry + rh - hs * 0.5f, hs, hs);
+
+    if (tl.contains(e.position)) {
+      dragState = DragState::ResizingTopLeft;
+      initialSelectionBoundsNormalized = b;
+      dragStartMousePosNormalized = juce::Point<float>(normX, normY);
+      return;
+    }
+    if (tr.contains(e.position)) {
+      dragState = DragState::ResizingTopRight;
+      initialSelectionBoundsNormalized = b;
+      dragStartMousePosNormalized = juce::Point<float>(normX, normY);
+      return;
+    }
+    if (bl.contains(e.position)) {
+      dragState = DragState::ResizingBottomLeft;
+      initialSelectionBoundsNormalized = b;
+      dragStartMousePosNormalized = juce::Point<float>(normX, normY);
+      return;
+    }
+    if (br.contains(e.position)) {
+      dragState = DragState::ResizingBottomRight;
+      initialSelectionBoundsNormalized = b;
+      dragStartMousePosNormalized = juce::Point<float>(normX, normY);
+      return;
     }
   }
 
+  // 6. Check if clicking inside ANY existing selection (for selection & moving)
+  for (int i = selections.size() - 1; i >= 0; --i) {
+    if (selections.getReference(i).normalizedBounds.contains(normX, normY)) {
+      activeSelectionIndex = i;
+      dragState = DragState::MovingSelection;
+      initialSelectionBoundsNormalized = selections.getReference(i).normalizedBounds;
+      dragStartMousePosNormalized = juce::Point<float>(normX, normY);
+      updateFrequencyFilterFromSelections();
+      processor.playSample();
+      repaint();
+      return;
+    }
+  }
+
+  // 7. Otherwise, start drawing a new selection region (additive)
   if (currentTool != ToolType::None) {
     isDrawing = true;
+    dragState = DragState::DrawingNew;
     dragStartPosNormalized = juce::Point<float>(normX, normY);
     dragCurrentPosNormalized = dragStartPosNormalized;
 
@@ -414,84 +492,136 @@ void SpectrogramComponent::mouseDown(const juce::MouseEvent &e) {
 
 void SpectrogramComponent::mouseDrag(const juce::MouseEvent &e) {
   auto fullBounds = getLocalBounds().toFloat();
-  if (fullBounds.isEmpty())
+  if (fullBounds.isEmpty() || !fileLoaded)
     return;
 
   auto graphBounds = fullBounds.withTrimmedLeft(38.0f);
-  float normX = juce::jlimit(
-      0.0f, 1.0f, (e.position.x - graphBounds.getX()) / graphBounds.getWidth());
+  float normX = juce::jlimit(0.0f, 1.0f, (e.position.x - graphBounds.getX()) / graphBounds.getWidth());
+  float normY = juce::jlimit(0.0f, 1.0f, (e.position.y - graphBounds.getY()) / graphBounds.getHeight());
 
-  if (draggingStartMarker) {
+  if (dragState == DragState::DraggingStartMarker) {
     startPosition = juce::jlimit(0.0f, endPosition - 0.01f, normX);
     processor.setRegion(startPosition, endPosition);
     repaint();
     return;
   }
 
-  if (draggingEndMarker) {
+  if (dragState == DragState::DraggingEndMarker) {
     endPosition = juce::jlimit(startPosition + 0.01f, 1.0f, normX);
     processor.setRegion(startPosition, endPosition);
     repaint();
     return;
   }
 
-  if (!isDrawing || currentTool == ToolType::None)
+  if (dragState == DragState::MovingSelection && activeSelectionIndex >= 0 && activeSelectionIndex < selections.size()) {
+    float dx = normX - dragStartMousePosNormalized.x;
+    float dy = normY - dragStartMousePosNormalized.y;
+    auto b = initialSelectionBoundsNormalized.translated(dx, dy);
+
+    if (b.getX() < 0.0f) b.setX(0.0f);
+    if (b.getY() < 0.0f) b.setY(0.0f);
+    if (b.getRight() > 1.0f) b.setX(1.0f - b.getWidth());
+    if (b.getBottom() > 1.0f) b.setY(1.0f - b.getHeight());
+
+    selections.getReference(activeSelectionIndex).normalizedBounds = b;
+    updateFrequencyFilterFromSelections();
+    repaint();
     return;
-
-  float normY = juce::jlimit(0.0f, 1.0f,
-                             (e.position.y - graphBounds.getY()) /
-                                 graphBounds.getHeight());
-  dragCurrentPosNormalized = juce::Point<float>(normX, normY);
-
-  if (currentTool == ToolType::Freehand) {
-    currentDrawingPathNormalized.lineTo(dragCurrentPosNormalized);
   }
 
-  repaint();
+  if ((dragState == DragState::ResizingTopLeft || dragState == DragState::ResizingTopRight ||
+       dragState == DragState::ResizingBottomLeft || dragState == DragState::ResizingBottomRight) &&
+      activeSelectionIndex >= 0 && activeSelectionIndex < selections.size()) {
+
+    auto initB = initialSelectionBoundsNormalized;
+    float left = initB.getX();
+    float top = initB.getY();
+    float right = initB.getRight();
+    float bottom = initB.getBottom();
+
+    if (dragState == DragState::ResizingTopLeft) {
+      left = juce::jmin(normX, right - 0.01f);
+      top = juce::jmin(normY, bottom - 0.01f);
+    } else if (dragState == DragState::ResizingTopRight) {
+      right = juce::jmax(normX, left + 0.01f);
+      top = juce::jmin(normY, bottom - 0.01f);
+    } else if (dragState == DragState::ResizingBottomLeft) {
+      left = juce::jmin(normX, right - 0.01f);
+      bottom = juce::jmax(normY, top + 0.01f);
+    } else if (dragState == DragState::ResizingBottomRight) {
+      right = juce::jmax(normX, left + 0.01f);
+      bottom = juce::jmax(normY, top + 0.01f);
+    }
+
+    selections.getReference(activeSelectionIndex).normalizedBounds =
+        juce::Rectangle<float>(left, top, right - left, bottom - top);
+    updateFrequencyFilterFromSelections();
+    repaint();
+    return;
+  }
+
+  if (dragState == DragState::DrawingNew) {
+    dragCurrentPosNormalized = juce::Point<float>(normX, normY);
+
+    if (currentTool == ToolType::Freehand) {
+      currentDrawingPathNormalized.lineTo(dragCurrentPosNormalized);
+    }
+    repaint();
+  }
 }
 
 void SpectrogramComponent::mouseUp(const juce::MouseEvent &) {
-  if (draggingStartMarker || draggingEndMarker) {
-    draggingStartMarker = false;
-    draggingEndMarker = false;
+  if (dragState == DragState::DraggingStartMarker || dragState == DragState::DraggingEndMarker) {
+    dragState = DragState::None;
     return;
   }
 
-  if (!isDrawing || currentTool == ToolType::None)
+  if (dragState == DragState::MovingSelection || dragState == DragState::ResizingTopLeft ||
+      dragState == DragState::ResizingTopRight || dragState == DragState::ResizingBottomLeft ||
+      dragState == DragState::ResizingBottomRight) {
+    dragState = DragState::None;
+    updateFrequencyFilterFromSelections();
+    repaint();
     return;
-  isDrawing = false;
+  }
 
-  SelectionRegion newRegion;
-  newRegion.id = nextSelectionId++;
-  newRegion.type = currentTool;
+  if (dragState == DragState::DrawingNew) {
+    dragState = DragState::None;
+    isDrawing = false;
 
-  if (currentTool == ToolType::RectangleSelect) {
-    float x1 = juce::jmin(dragStartPosNormalized.x, dragCurrentPosNormalized.x);
-    float y1 = juce::jmin(dragStartPosNormalized.y, dragCurrentPosNormalized.y);
-    float w = std::abs(dragCurrentPosNormalized.x - dragStartPosNormalized.x);
-    float h = std::abs(dragCurrentPosNormalized.y - dragStartPosNormalized.y);
+    SelectionRegion newRegion;
+    newRegion.id = nextSelectionId++;
+    newRegion.type = currentTool;
 
-    if (w > 0.01f && h > 0.01f) {
-      newRegion.normalizedBounds = juce::Rectangle<float>(x1, y1, w, h);
+    if (currentTool == ToolType::RectangleSelect) {
+      float x1 = juce::jmin(dragStartPosNormalized.x, dragCurrentPosNormalized.x);
+      float y1 = juce::jmin(dragStartPosNormalized.y, dragCurrentPosNormalized.y);
+      float w = std::abs(dragCurrentPosNormalized.x - dragStartPosNormalized.x);
+      float h = std::abs(dragCurrentPosNormalized.y - dragStartPosNormalized.y);
+
+      if (w > 0.01f && h > 0.01f) {
+        newRegion.normalizedBounds = juce::Rectangle<float>(x1, y1, w, h);
+        newRegion.isSelected = true;
+        selections.add(newRegion);
+        activeSelectionIndex = selections.size() - 1;
+      }
+    } else if (currentTool == ToolType::Freehand) {
+      currentDrawingPathNormalized.closeSubPath();
+      newRegion.normalizedPath = currentDrawingPathNormalized;
+      newRegion.normalizedBounds = currentDrawingPathNormalized.getBounds();
       newRegion.isSelected = true;
-      selections.add(newRegion);
-      activeSelectionIndex = selections.size() - 1;
-    }
-  } else if (currentTool == ToolType::Freehand) {
-    currentDrawingPathNormalized.closeSubPath();
-    newRegion.normalizedPath = currentDrawingPathNormalized;
-    newRegion.normalizedBounds = currentDrawingPathNormalized.getBounds();
-    newRegion.isSelected = true;
 
-    if (!newRegion.normalizedBounds.isEmpty()) {
-      selections.add(newRegion);
-      activeSelectionIndex = selections.size() - 1;
+      if (!newRegion.normalizedBounds.isEmpty()) {
+        selections.add(newRegion);
+        activeSelectionIndex = selections.size() - 1;
+      }
     }
+
+    currentDrawingPathNormalized.clear();
+    updateFrequencyFilterFromSelections();
+    processor.playSample();
+    repaint();
   }
-
-  currentDrawingPathNormalized.clear();
-  updateFrequencyFilterFromSelections();
-  repaint();
 }
 
 bool SpectrogramComponent::keyPressed(const juce::KeyPress &key) {
@@ -700,16 +830,20 @@ void SpectrogramComponent::paint(juce::Graphics &g) {
                          formatFrequency(minF) + " - " +
                          formatFrequency(maxF) + "]";
 
-      // Dark background pill box for text legibility over spectrogram
-      juce::Rectangle<float> tagBg(rect.getX() + 2.0f, rect.getY() + 2.0f,
-                                   145.0f, 15.0f);
-      g.setColour(juce::Colour::fromRGB(0x10, 0x11, 0x14).withAlpha(0.85f));
+      // Dark background pill box for text legibility over spectrogram with delete 'x' button
+      juce::Rectangle<float> tagBg(rect.getX() + 2.0f, rect.getY() + 2.0f, 156.0f, 16.0f);
+      g.setColour(juce::Colour::fromRGB(0x10, 0x11, 0x14).withAlpha(0.90f));
       g.fillRoundedRectangle(tagBg, 3.0f);
 
       g.setFont(SpectralUILookAndFeel::getMonospaceFont(9.0f));
       g.setColour(SpectralUILookAndFeel::accentColour);
-      g.drawText(tag, tagBg.toNearestInt().withTrimmedLeft(4),
+      g.drawText(tag, tagBg.toNearestInt().withTrimmedLeft(4).withTrimmedRight(16),
                  juce::Justification::centredLeft, false);
+
+      // Draw 'x' delete button on tag
+      juce::Rectangle<float> deleteBtn(tagBg.getRight() - 15.0f, tagBg.getY() + 1.0f, 14.0f, 14.0f);
+      g.setColour(SpectralUILookAndFeel::accentColour);
+      g.drawText("x", deleteBtn.toNearestInt(), juce::Justification::centred, false);
     }
   }
 

@@ -190,7 +190,7 @@ bool PresetManager::loadPreset(const juce::File& presetFile,
         for (const auto& prop : paramsObj->getProperties())
         {
             juce::String paramID = prop.name.toString();
-            float normValue = (float)prop.value;
+            float normValue = static_cast<float>(static_cast<double>(prop.value));
 
             if (auto* param = apvts.getParameter(paramID))
             {

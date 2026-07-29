@@ -110,6 +110,13 @@ public:
         sampleEngine.setFrequencyFilterBands(bands);
     }
 
+    void setSpectralRegions(const juce::Array<SpectralRegion>& regions)
+    {
+        sampleEngine.setSpectralRegions(regions);
+    }
+
+    SampleEngine& getSampleEngine() { return sampleEngine; }
+
     juce::AudioProcessorValueTreeState& getAPVTS() { return apvts; }
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 

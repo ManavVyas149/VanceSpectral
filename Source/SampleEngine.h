@@ -11,6 +11,14 @@ struct FrequencyBand {
     float maxFreq = 20000.0f;
 };
 
+struct SpectralRegion {
+    int id = 1;
+    float startNorm = 0.0f;
+    float endNorm = 1.0f;
+    float minFreq = 20.0f;
+    float maxFreq = 20000.0f;
+};
+
 class SampleEngine
 {
 public:
@@ -26,11 +34,15 @@ public:
     void play();
     void stop();
 
+    void noteOn(int midiNoteNumber, float velocity = 1.0f);
+    void noteOff(int midiNoteNumber);
+
     void setLoop(bool shouldLoop);
     void setRegion(float startNormalized, float endNormalized);
 
     void setPlaybackMode(int modeIndex);
     void setPitchMode(int modeIndex);
+    void setPitchSemitones(float semitones);
     void setHostBpm(double bpm);
 
     bool isPlaying() const;
@@ -43,6 +55,9 @@ public:
 
     void setFrequencyFilter(bool enabled, float minFreq, float maxFreq);
     void setFrequencyFilterBands(const juce::Array<FrequencyBand>& bands);
+    void setSpectralRegions(const juce::Array<SpectralRegion>& regions);
+
+    void setExciterAmount(float amount);
 
 private:
     struct BandFilter
@@ -71,6 +86,14 @@ private:
     bool playDirectionForward = true;
     int randomGrainCounter = 0;
 
+    // Pitch Tracking & Pitch Shifter States
+    int currentNoteNumber = 60;
+    float pitchSemitones = 0.0f;
+    float currentPitchRatio = 1.0f;
+    double pitchPhase = 0.0;
+
+    void updatePitchRatio();
+
     // Envelopes
     EnvelopeData ampEnvelope{EnvelopeCategory::AmplifierEnvelope};
     EnvelopeData filterEnvelope{EnvelopeCategory::FilterEnvelope};
@@ -79,8 +102,20 @@ private:
     float filterStateL = 0.0f;
     float filterStateR = 0.0f;
 
+    // Exciter state
+    float exciterAmount = 0.0f;
+
     // Spectrogram Selection Multi-Bandpass Filter
     bool freqFilterEnabled = false;
     juce::Array<FrequencyBand> filterBands;
     juce::OwnedArray<BandFilter> bandFilters;
+
+    // Time & Frequency Spectral Region Isolation Filters
+    struct RegionFilterPair {
+        SpectralRegion region;
+        juce::IIRFilter hpL, hpR;
+        juce::IIRFilter lpL, lpR;
+    };
+    juce::Array<SpectralRegion> spectralRegions;
+    juce::OwnedArray<RegionFilterPair> regionFilterPairs;
 };

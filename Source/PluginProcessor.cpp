@@ -45,6 +45,18 @@ juce::AudioProcessorValueTreeState::ParameterLayout VancespectralAudioProcessor:
         juce::ParameterID("PITCH_MODE", 1), "Pitch Mode",
         juce::StringArray{ "Stretch", "Resample", "Axial" }, 0));
 
+    // Pitch Semitones Offset Parameter (-24 to +24 semitones, default 0 st)
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("PITCH_SEMITONES", 1), "Pitch Shift", juce::NormalisableRange<float>(-24.0f, 24.0f, 1.0f), 0.0f));
+
+    // Exciter Parameter (0.0 to 1.0, default 0.0)
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("EXCITER", 1), "Exciter", juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.0f));
+
+    // Master Gain Parameter (-48.0 dB to +6.0 dB, default 0.0 dB)
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("GAIN", 1), "Master Gain", juce::NormalisableRange<float>(-48.0f, 6.0f, 0.1f), 0.0f));
+
     return { params.begin(), params.end() };
 }
 
@@ -182,13 +194,29 @@ void VancespectralAudioProcessor::processBlock(
     juce::AudioBuffer<float>& buffer,
     juce::MidiBuffer& midiMessages)
 {
-    juce::ignoreUnused(midiMessages);
     juce::ScopedNoDenormals noDenormals;
 
     if (buffer.getNumChannels() == 0 || buffer.getNumSamples() == 0)
         return;
 
     buffer.clear();
+
+    for (const auto metadata : midiMessages)
+    {
+        auto msg = metadata.getMessage();
+        if (msg.isNoteOn())
+        {
+            sampleEngine.noteOn(msg.getNoteNumber(), msg.getVelocity() / 127.0f);
+        }
+        else if (msg.isNoteOff())
+        {
+            sampleEngine.noteOff(msg.getNoteNumber());
+        }
+        else if (msg.isAllNotesOff())
+        {
+            sampleEngine.stop();
+        }
+    }
 
     float ampA = *apvts.getRawParameterValue("AMP_ATTACK");
     float ampD = *apvts.getRawParameterValue("AMP_DECAY");
@@ -204,12 +232,16 @@ void VancespectralAudioProcessor::processBlock(
 
     int playMode = (int)*apvts.getRawParameterValue("PLAYBACK_MODE");
     int pitchMode = (int)*apvts.getRawParameterValue("PITCH_MODE");
+    float pitchSemis = *apvts.getRawParameterValue("PITCH_SEMITONES");
+    float exciterVal = *apvts.getRawParameterValue("EXCITER");
     sampleEngine.setPlaybackMode(playMode);
     sampleEngine.setPitchMode(pitchMode);
+    sampleEngine.setPitchSemitones(pitchSemis);
+    sampleEngine.setExciterAmount(exciterVal);
 
-    if (auto* playHead = getPlayHead())
+    if (auto* ph = getPlayHead())
     {
-        if (auto position = playHead->getPosition())
+        if (auto position = ph->getPosition())
         {
             if (position->getBpm().hasValue())
                 sampleEngine.setHostBpm(*position->getBpm());
@@ -217,6 +249,10 @@ void VancespectralAudioProcessor::processBlock(
     }
 
     sampleEngine.process(buffer, 0, buffer.getNumSamples());
+
+    float masterGainDb = *apvts.getRawParameterValue("GAIN");
+    float masterGainLinear = juce::Decibels::decibelsToGain(masterGainDb);
+    buffer.applyGain(masterGainLinear);
 }
 
 //==============================================================================
