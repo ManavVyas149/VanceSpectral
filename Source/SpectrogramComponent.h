@@ -32,10 +32,19 @@ public:
     void fileDragExit(const juce::StringArray& files) override;
     void filesDropped(const juce::StringArray& files, int x, int y) override;
 
-    void loadAudioFile(const juce::File& file);
+    void loadAudioFile(const juce::File& file, bool isPartOfPresetLoad = false);
+    void restorePresetSnapshot(float startRegion, float endRegion, const juce::var& selectionsVar);
+    juce::var getSelectionsAsVar() const;
+    float getStartRegion() const { return startPosition; }
+    float getEndRegion() const { return endPosition; }
+    juce::File getLoadedFile() const { return loadedFile; }
+
+    std::function<void()> onManualSampleLoaded;
+
     void changeListenerCallback(juce::ChangeBroadcaster*) override;
     void timerCallback() override;
 
+    void mouseMove(const juce::MouseEvent& e) override;
     void mouseDown(const juce::MouseEvent& e) override;
     void mouseDrag(const juce::MouseEvent& e) override;
     void mouseUp(const juce::MouseEvent& e) override;
@@ -79,8 +88,12 @@ private:
     };
 
     static float yToFrequency(float normY);
+    static float frequencyToY(float hz);
     static juce::String formatFrequency(float hz);
     void updateFrequencyFilterFromSelections();
+
+    juce::Rectangle<float> getGraphBounds() const;
+    juce::Rectangle<float> getAxisBounds() const;
 
     void generateSpectrogramImage();
     void drawWaveform(juce::Graphics& g, juce::Rectangle<float> bounds);
@@ -128,6 +141,11 @@ private:
     // Start & End Region Endpoints (0..1 normalized)
     float startPosition = 0.0f;
     float endPosition = 1.0f;
+
+    juce::File createTempWavForExport(bool exportSelectionOnly);
+    void startExternalDrag(const juce::MouseEvent& e);
+    bool isExternalDragging = false;
+    juce::Point<float> mouseDownPos;
 
     LoopButton loopButton;
     bool loopEnabled = false;

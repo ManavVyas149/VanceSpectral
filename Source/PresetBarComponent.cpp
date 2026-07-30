@@ -16,7 +16,15 @@ PresetBarComponent::PresetBarComponent()
 
 void PresetBarComponent::setPresetName(const juce::String& name)
 {
-    currentPresetName = name;
+    juce::String cleanName = name;
+    while (cleanName.endsWithIgnoreCase("_Export") || cleanName.endsWithIgnoreCase("_Rendered_Region"))
+    {
+        if (cleanName.endsWithIgnoreCase("_Export"))
+            cleanName = cleanName.dropLastCharacters(7);
+        else if (cleanName.endsWithIgnoreCase("_Rendered_Region"))
+            cleanName = cleanName.dropLastCharacters(16);
+    }
+    currentPresetName = cleanName;
     repaint();
 }
 

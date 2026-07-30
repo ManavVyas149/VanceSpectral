@@ -11,7 +11,8 @@
 #include "PresetManager.h"
 #include "PresetBrowserOverlay.h"
 
-class VancespectralAudioProcessorEditor : public juce::AudioProcessorEditor
+class VancespectralAudioProcessorEditor : public juce::AudioProcessorEditor,
+                                          public juce::DragAndDropContainer
 {
 public:
     VancespectralAudioProcessorEditor(VancespectralAudioProcessor&);
@@ -46,8 +47,10 @@ private:
     std::unique_ptr<juce::ParameterAttachment> playbackAttachment;
     std::unique_ptr<juce::ParameterAttachment> pitchAttachment;
 
+#include <map>
+
     int currentOctaveOffset = 0;
-    std::set<int> activeQwertyNoteKeys;
+    std::map<int, int> activeQwertyNoteKeys;
     static int getQwertySemitone(juce::juce_wchar c);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(VancespectralAudioProcessorEditor)

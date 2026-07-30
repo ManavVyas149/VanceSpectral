@@ -34,34 +34,33 @@ void SampleEngine::loadSample(const juce::AudioBuffer<float>& buffer, double sam
 
 void SampleEngine::setPlaybackMode(int modeIndex)
 {
-    const juce::ScopedLock sl(lock);
     modeIndex = juce::jlimit(0, 4, modeIndex);
     playbackMode = static_cast<PlaybackMode>(modeIndex);
 }
 
 void SampleEngine::setPitchMode(int modeIndex)
 {
-    const juce::ScopedLock sl(lock);
     pitchMode = static_cast<PitchMode>(juce::jlimit(0, 2, modeIndex));
     updatePitchRatio();
 }
 
 void SampleEngine::setPitchSemitones(float semitones)
 {
-    const juce::ScopedLock sl(lock);
     pitchSemitones = semitones;
     updatePitchRatio();
 }
 
 void SampleEngine::updatePitchRatio()
 {
-    float totalSemis = (pitchMode == PitchMode::Axial) ? pitchSemitones : ((float)(currentNoteNumber - 60) + pitchSemitones);
+    auto pMode = pitchMode.load();
+    float semis = pitchSemitones.load();
+    int note = currentNoteNumber.load();
+    float totalSemis = (pMode == PitchMode::Axial) ? semis : ((float)(note - 60) + semis);
     currentPitchRatio = std::pow(2.0f, totalSemis / 12.0f);
 }
 
 void SampleEngine::setHostBpm(double bpm)
 {
-    const juce::ScopedLock sl(lock);
     if (bpm > 20.0 && bpm < 400.0)
         hostBpm = bpm;
 }
@@ -72,23 +71,27 @@ void SampleEngine::play()
     if (sample.getNumSamples() == 0)
         return;
 
-    if (playbackMode == PlaybackMode::Backward || playbackMode == PlaybackMode::BackForw)
+    auto pMode = playbackMode.load();
+    int rEnd = regionEnd.load();
+    int rStart = regionStart.load();
+
+    if (pMode == PlaybackMode::Backward || pMode == PlaybackMode::BackForw)
     {
-        currentSample = (double)juce::jmax(0, regionEnd - 1);
+        currentSample = (double)juce::jmax(0, rEnd - 1);
         playDirectionForward = false;
     }
-    else if (playbackMode == PlaybackMode::Random)
+    else if (pMode == PlaybackMode::Random)
     {
-        double span = (double)(regionEnd - regionStart);
+        double span = (double)(rEnd - rStart);
         if (span > 10.0)
-            currentSample = (double)regionStart + juce::Random::getSystemRandom().nextDouble() * (span - 10.0);
+            currentSample = (double)rStart + juce::Random::getSystemRandom().nextDouble() * (span - 10.0);
         else
-            currentSample = (double)regionStart;
+            currentSample = (double)rStart;
         playDirectionForward = true;
     }
     else // Forward or ForwBackw
     {
-        currentSample = (double)regionStart;
+        currentSample = (double)rStart;
         playDirectionForward = true;
     }
 
@@ -174,28 +177,28 @@ void SampleEngine::setRegion(float startNormalized, float endNormalized)
     if (sample.getNumSamples() == 0)
         return;
 
-    regionStart = (int)(startNormalized * (float)sample.getNumSamples());
-    regionEnd = (int)(endNormalized * (float)sample.getNumSamples());
+    int rStart = (int)(startNormalized * (float)sample.getNumSamples());
+    int rEnd = (int)(endNormalized * (float)sample.getNumSamples());
 
-    regionStart = juce::jlimit(0, sample.getNumSamples() - 1, regionStart);
-    regionEnd = juce::jlimit(regionStart + 1, sample.getNumSamples(), regionEnd);
+    rStart = juce::jlimit(0, sample.getNumSamples() - 1, rStart);
+    rEnd = juce::jlimit(rStart + 1, sample.getNumSamples(), rEnd);
+
+    regionStart = rStart;
+    regionEnd = rEnd;
 }
 
 void SampleEngine::updateAmpADSR(float attack, float decay, float sustain, float release)
 {
-    const juce::ScopedLock sl(lock);
     ampEnvelope.updateADSR(attack, decay, sustain, release);
 }
 
 void SampleEngine::updateFilterADSR(float attack, float decay, float sustain, float release)
 {
-    const juce::ScopedLock sl(lock);
     filterEnvelope.updateADSR(attack, decay, sustain, release);
 }
 
 void SampleEngine::setExciterAmount(float amount)
 {
-    const juce::ScopedLock sl(lock);
     exciterAmount = juce::jlimit(0.0f, 1.0f, amount);
 }
 
@@ -214,21 +217,28 @@ void SampleEngine::setFrequencyFilterBands(const juce::Array<FrequencyBand>& ban
     freqFilterEnabled = !filterBands.isEmpty();
 
     bandFilters.clear();
-    double sr = targetSampleRate > 0.0 ? targetSampleRate : 44100.0;
+    double targetSr = targetSampleRate.load();
+    double sr = targetSr > 0.0 ? targetSr : 44100.0;
+    float nyquist = (float)(sr * 0.49);
 
     for (const auto& band : filterBands)
     {
         auto* filterPair = bandFilters.add(std::make_unique<BandFilter>());
-        float minF = juce::jlimit(20.0f, (float)(sr * 0.49), band.minFreq);
-        float maxF = juce::jlimit(minF + 10.0f, (float)(sr * 0.49), band.maxFreq);
+        float minF = juce::jlimit(20.0f, nyquist - 20.0f, band.minFreq);
+        float maxF = juce::jlimit(minF + 10.0f, nyquist, band.maxFreq);
 
         auto hpCoeffs = juce::IIRCoefficients::makeHighPass(sr, minF);
         auto lpCoeffs = juce::IIRCoefficients::makeLowPass(sr, maxF);
 
-        filterPair->hpL.setCoefficients(hpCoeffs);
-        filterPair->hpR.setCoefficients(hpCoeffs);
-        filterPair->lpL.setCoefficients(lpCoeffs);
-        filterPair->lpR.setCoefficients(lpCoeffs);
+        filterPair->hpL1.setCoefficients(hpCoeffs);
+        filterPair->hpL2.setCoefficients(hpCoeffs);
+        filterPair->hpR1.setCoefficients(hpCoeffs);
+        filterPair->hpR2.setCoefficients(hpCoeffs);
+
+        filterPair->lpL1.setCoefficients(lpCoeffs);
+        filterPair->lpL2.setCoefficients(lpCoeffs);
+        filterPair->lpR1.setCoefficients(lpCoeffs);
+        filterPair->lpR2.setCoefficients(lpCoeffs);
     }
 }
 
@@ -238,23 +248,30 @@ void SampleEngine::setSpectralRegions(const juce::Array<SpectralRegion>& regions
     spectralRegions = regions;
     regionFilterPairs.clear();
 
-    double sr = targetSampleRate > 0.0 ? targetSampleRate : 44100.0;
+    double targetSr = targetSampleRate.load();
+    double sr = targetSr > 0.0 ? targetSr : 44100.0;
+    float nyquist = (float)(sr * 0.49);
 
     for (const auto& r : spectralRegions)
     {
         auto* pair = regionFilterPairs.add(std::make_unique<RegionFilterPair>());
         pair->region = r;
 
-        float minF = juce::jlimit(20.0f, (float)(sr * 0.49), r.minFreq);
-        float maxF = juce::jlimit(minF + 10.0f, (float)(sr * 0.49), r.maxFreq);
+        float minF = juce::jlimit(20.0f, nyquist - 20.0f, r.minFreq);
+        float maxF = juce::jlimit(minF + 10.0f, nyquist, r.maxFreq);
 
         auto hpCoeffs = juce::IIRCoefficients::makeHighPass(sr, minF);
         auto lpCoeffs = juce::IIRCoefficients::makeLowPass(sr, maxF);
 
-        pair->hpL.setCoefficients(hpCoeffs);
-        pair->hpR.setCoefficients(hpCoeffs);
-        pair->lpL.setCoefficients(lpCoeffs);
-        pair->lpR.setCoefficients(lpCoeffs);
+        pair->hpL1.setCoefficients(hpCoeffs);
+        pair->hpL2.setCoefficients(hpCoeffs);
+        pair->hpR1.setCoefficients(hpCoeffs);
+        pair->hpR2.setCoefficients(hpCoeffs);
+
+        pair->lpL1.setCoefficients(lpCoeffs);
+        pair->lpL2.setCoefficients(lpCoeffs);
+        pair->lpR1.setCoefficients(lpCoeffs);
+        pair->lpR2.setCoefficients(lpCoeffs);
     }
 }
 
@@ -400,19 +417,18 @@ void SampleEngine::process(juce::AudioBuffer<float>& output,
         float filterVal = filterEnvelope.getNextSample();
 
         auto getSampleAtPos = [&](int channelIdx, double samplePos) -> float {
-            if (totalSamples == 0 || numSampleChannels == 0) return 0.0f;
+            if (totalSamples == 0 || numSampleChannels == 0 || std::isnan(samplePos) || std::isinf(samplePos)) return 0.0f;
             int ch = juce::jlimit(0, numSampleChannels - 1, channelIdx);
 
             int t0 = (int)samplePos;
+            if (t0 < 0 || t0 >= totalSamples) return 0.0f;
+
             int t1 = juce::jmin(totalSamples - 1, t0 + 1);
             float fr = (float)(samplePos - (double)t0);
 
-            if (t0 >= 0 && t0 < totalSamples) {
-                float s0 = sample.getSample(ch, t0);
-                float s1 = sample.getSample(ch, t1);
-                return s0 + fr * (s1 - s0);
-            }
-            return 0.0f;
+            float s0 = sample.getSample(ch, t0);
+            float s1 = sample.getSample(ch, t1);
+            return s0 + fr * (s1 - s0);
         };
 
         float rawSampleL = 0.0f;
@@ -467,11 +483,29 @@ void SampleEngine::process(juce::AudioBuffer<float>& output,
                 {
                     activeRegionFound = true;
 
-                    float bL = rfp->hpL.processSingleSampleRaw(outSampleL);
-                    bL = rfp->lpL.processSingleSampleRaw(bL);
+                    float bL = outSampleL;
+                    if (rfp->region.minFreq > 22.0f)
+                    {
+                        bL = rfp->hpL1.processSingleSampleRaw(bL);
+                        bL = rfp->hpL2.processSingleSampleRaw(bL);
+                    }
+                    if (rfp->region.maxFreq < 19500.0f)
+                    {
+                        bL = rfp->lpL1.processSingleSampleRaw(bL);
+                        bL = rfp->lpL2.processSingleSampleRaw(bL);
+                    }
 
-                    float bR = rfp->hpR.processSingleSampleRaw(outSampleR);
-                    bR = rfp->lpR.processSingleSampleRaw(bR);
+                    float bR = outSampleR;
+                    if (rfp->region.minFreq > 22.0f)
+                    {
+                        bR = rfp->hpR1.processSingleSampleRaw(bR);
+                        bR = rfp->hpR2.processSingleSampleRaw(bR);
+                    }
+                    if (rfp->region.maxFreq < 19500.0f)
+                    {
+                        bR = rfp->lpR1.processSingleSampleRaw(bR);
+                        bR = rfp->lpR2.processSingleSampleRaw(bR);
+                    }
 
                     sumL += bL;
                     sumR += bR;
@@ -495,11 +529,15 @@ void SampleEngine::process(juce::AudioBuffer<float>& output,
             float sumR = 0.0f;
             for (auto* bf : bandFilters)
             {
-                float bL = bf->hpL.processSingleSampleRaw(outSampleL);
-                bL = bf->lpL.processSingleSampleRaw(bL);
+                float bL = bf->hpL1.processSingleSampleRaw(outSampleL);
+                bL = bf->hpL2.processSingleSampleRaw(bL);
+                bL = bf->lpL1.processSingleSampleRaw(bL);
+                bL = bf->lpL2.processSingleSampleRaw(bL);
 
-                float bR = bf->hpR.processSingleSampleRaw(outSampleR);
-                bR = bf->lpR.processSingleSampleRaw(bR);
+                float bR = bf->hpR1.processSingleSampleRaw(outSampleR);
+                bR = bf->hpR2.processSingleSampleRaw(bR);
+                bR = bf->lpR1.processSingleSampleRaw(bR);
+                bR = bf->lpR2.processSingleSampleRaw(bR);
 
                 sumL += bL;
                 sumR += bR;

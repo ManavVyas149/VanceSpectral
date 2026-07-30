@@ -117,6 +117,8 @@ public:
 
     SampleEngine& getSampleEngine() { return sampleEngine; }
 
+    void resetParametersToDefault();
+
     juce::AudioProcessorValueTreeState& getAPVTS() { return apvts; }
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 

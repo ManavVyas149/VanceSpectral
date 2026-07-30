@@ -10,6 +10,7 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
 
   spectrogram = std::make_unique<SpectrogramComponent>(audioProcessor);
   presetOverlay = std::make_unique<PresetBrowserOverlay>(presetManager, audioProcessor.getAPVTS());
+  presetOverlay->bindSpectrogramComponent(spectrogram.get());
 
   presetManager.createDefaultFactoryPresets(audioProcessor.getAPVTS());
 
@@ -62,7 +63,57 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
     presetOverlay->toFront(true);
   };
 
-  presetBar.onPrevClicked = [this]() {
+  auto syncUIFromAPVTS = [this]() {
+    if (auto* param = audioProcessor.getAPVTS().getParameter("PLAYBACK_MODE")) {
+      int idx = juce::jlimit(0, 4, (int)std::round(param->getValue() * 4.0f));
+      playbackControl.setSelectedIndex(idx, false);
+    }
+    if (auto* param = audioProcessor.getAPVTS().getParameter("PITCH_MODE")) {
+      int idx = juce::jlimit(0, 2, (int)std::round(param->getValue() * 2.0f));
+      pitchControl.setSelectedIndex(idx, false);
+    }
+  };
+
+  // Callback when user loads a sample manually (independent of preset browser)
+  spectrogram->onManualSampleLoaded = [this, syncUIFromAPVTS]() {
+    syncUIFromAPVTS();
+    if (spectrogram && spectrogram->isFileLoaded())
+      presetBar.setPresetName(spectrogram->getLoadedFile().getFileNameWithoutExtension());
+    else
+      presetBar.setPresetName("Custom / Unsaved");
+
+    if (presetOverlay)
+      presetOverlay->clearActivePresetSelection();
+  };
+
+  // Atomic preset load helper
+  auto loadPresetAtomic = [this, syncUIFromAPVTS](const juce::File& presetFile) {
+    juce::String sampleFileName;
+    float startReg = 0.0f;
+    float endReg = 1.0f;
+    juce::var selectionsVar;
+
+    if (presetManager.loadPreset(presetFile, audioProcessor.getAPVTS(), sampleFileName, startReg, endReg, selectionsVar)) {
+      juce::var parsed = juce::JSON::parse(presetFile.loadFileAsString());
+      if (parsed.isObject()) {
+        presetBar.setPresetName(parsed.getProperty("name", presetFile.getFileNameWithoutExtension()).toString());
+      }
+      syncUIFromAPVTS();
+
+      if (sampleFileName.isNotEmpty() && spectrogram) {
+        auto sampleFile = presetManager.getSamplesFolder().getChildFile(sampleFileName);
+        if (sampleFile.existsAsFile()) {
+          spectrogram->loadAudioFile(sampleFile, true); // true = isPartOfPresetLoad!
+        }
+      }
+
+      if (spectrogram) {
+        spectrogram->restorePresetSnapshot(startReg, endReg, selectionsVar);
+      }
+    }
+  };
+
+  presetBar.onPrevClicked = [this, loadPresetAtomic]() {
     auto allPresets = presetManager.getAllPresets();
     if (!allPresets.isEmpty()) {
       juce::String current = presetBar.getCurrentPresetName();
@@ -73,19 +124,11 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
           break;
         }
       }
-      auto selected = allPresets[index];
-      presetBar.setPresetName(selected.name);
-      juce::String sampleFile;
-      presetManager.loadPreset(selected.file, audioProcessor.getAPVTS(), sampleFile);
-      if (sampleFile.isNotEmpty() && spectrogram) {
-        auto file = presetManager.getSamplesFolder().getChildFile(sampleFile);
-        if (file.existsAsFile())
-          spectrogram->loadAudioFile(file);
-      }
+      loadPresetAtomic(allPresets[index].file);
     }
   };
 
-  presetBar.onNextClicked = [this]() {
+  presetBar.onNextClicked = [this, loadPresetAtomic]() {
     auto allPresets = presetManager.getAllPresets();
     if (!allPresets.isEmpty()) {
       juce::String current = presetBar.getCurrentPresetName();
@@ -96,34 +139,17 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
           break;
         }
       }
-      auto selected = allPresets[index];
-      presetBar.setPresetName(selected.name);
-      juce::String sampleFile;
-      presetManager.loadPreset(selected.file, audioProcessor.getAPVTS(), sampleFile);
-      if (sampleFile.isNotEmpty() && spectrogram) {
-        auto file = presetManager.getSamplesFolder().getChildFile(sampleFile);
-        if (file.existsAsFile())
-          spectrogram->loadAudioFile(file);
-      }
+      loadPresetAtomic(allPresets[index].file);
     }
   };
 
-  presetOverlay->onPresetSelected = [this](const juce::File &presetFile, const juce::String &sampleFileName) {
-    juce::var parsed = juce::JSON::parse(presetFile.loadFileAsString());
-    if (parsed.isObject()) {
-      presetBar.setPresetName(parsed.getProperty("name", presetFile.getFileNameWithoutExtension()).toString());
-    }
-    if (sampleFileName.isNotEmpty()) {
-      auto sampleFile = presetManager.getSamplesFolder().getChildFile(sampleFileName);
-      if (sampleFile.existsAsFile() && spectrogram) {
-        spectrogram->loadAudioFile(sampleFile);
-      }
-    }
+  presetOverlay->onPresetSelected = [this, loadPresetAtomic](const juce::File &presetFile, const juce::String &) {
+    loadPresetAtomic(presetFile);
   };
 
   presetOverlay->onSampleSelected = [this](const juce::File &sampleFile) {
     if (sampleFile.existsAsFile() && spectrogram) {
-      spectrogram->loadAudioFile(sampleFile);
+      spectrogram->loadAudioFile(sampleFile, false); // false = manual sample load resets settings
     }
   };
 
@@ -145,15 +171,7 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
   // Auto-load initial default factory preset on startup
   auto allPresets = presetManager.getAllPresets();
   if (!allPresets.isEmpty()) {
-    auto defaultPreset = allPresets[0];
-    presetBar.setPresetName(defaultPreset.name);
-    juce::String sampleFile;
-    presetManager.loadPreset(defaultPreset.file, audioProcessor.getAPVTS(), sampleFile);
-    if (sampleFile.isNotEmpty() && spectrogram) {
-      auto file = presetManager.getSamplesFolder().getChildFile(sampleFile);
-      if (file.existsAsFile())
-        spectrogram->loadAudioFile(file);
-    }
+    loadPresetAtomic(allPresets[0].file);
   }
 
   setSize(1040, 640);
@@ -186,6 +204,16 @@ void VancespectralAudioProcessorEditor::paint(juce::Graphics &g) {
 
   g.drawText("VANCE SPECTRAL - SPECTRAL FREQUENCY SAMPLER",
              footerArea.reduced(32.0f, 0.0f).toNearestInt(), juce::Justification::left, true);
+
+  // Draw Base Octave Readout Badge in bottom status bar (matching FL Studio / Ableton)
+  int octaveNum = 3 + (currentOctaveOffset / 12);
+  juce::String octaveText = "OCTAVE: C" + juce::String(octaveNum) + " [Z/X]";
+  auto octaveRect = footerArea.toNearestInt().withTrimmedLeft(410).withWidth(110).reduced(0, 3);
+  g.setColour(juce::Colour(0x22, 0x22, 0x2E));
+  g.fillRoundedRectangle(octaveRect.toFloat(), 3.0f);
+  g.setColour(SpectralUILookAndFeel::accentColour);
+  g.setFont(SpectralUILookAndFeel::getMonospaceFont(9.5f));
+  g.drawText(octaveText, octaveRect, juce::Justification::centred, false);
 }
 
 void VancespectralAudioProcessorEditor::resized() {
@@ -245,27 +273,35 @@ void VancespectralAudioProcessorEditor::resized() {
 int VancespectralAudioProcessorEditor::getQwertySemitone(juce::juce_wchar c) {
   c = juce::CharacterFunctions::toLowerCase(c);
   switch (c) {
-    case 'a': return 0;  // C
-    case 'w': return 1;  // C#
-    case 's': return 2;  // D
-    case 'e': return 3;  // D#
-    case 'd': return 4;  // E
-    case 'f': return 5;  // F
-    case 't': return 6;  // F#
-    case 'g': return 7;  // G
-    case 'y': return 8;  // G#
-    case 'h': return 9;  // A
-    case 'u': return 10; // A#
-    case 'j': return 11; // B
-    case 'k': return 12; // C4
-    case 'o': return 13; // C#4
-    case 'l': return 14; // D4
-    case 'p': return 15; // D#4
+    // Lower Octave Row (Bottom letter row)
+    case 'a': return 0;   // C
+    case 'w': return 1;   // C#
+    case 's': return 2;   // D
+    case 'e': return 3;   // D#
+    case 'd': return 4;   // E
+    case 'f': return 5;   // F
+    case 't': return 6;   // F#
+    case 'g': return 7;   // G
+    case 'y': return 8;   // G#
+    case 'h': return 9;   // A
+    case 'u': return 10;  // A#
+    case 'j': return 11;  // B
+
+    // Upper Octave Row (Continues seamlessly into next row)
+    case 'k': return 12;  // C (next octave up)
+    case 'o': return 13;  // C#
+    case 'l': return 14;  // D
+    case 'p': return 15;  // D#
+    case ';': return 16;  // E
+    case '\'': return 17; // F
     default: return -1;
   }
 }
 
 bool VancespectralAudioProcessorEditor::keyPressed(const juce::KeyPress &key) {
+  if (!hasKeyboardFocus(true))
+    return false;
+
   if (key == juce::KeyPress::spaceKey) {
     if (audioProcessor.isPlaying())
       audioProcessor.stopSample();
@@ -278,19 +314,21 @@ bool VancespectralAudioProcessorEditor::keyPressed(const juce::KeyPress &key) {
 
   if (c == 'z') {
     currentOctaveOffset = juce::jmax(-36, currentOctaveOffset - 12);
+    repaint();
     return true;
   }
   if (c == 'x') {
     currentOctaveOffset = juce::jmin(36, currentOctaveOffset + 12);
+    repaint();
     return true;
   }
 
   int semitones = getQwertySemitone(c);
   if (semitones >= 0) {
-    int note = 60 + currentOctaveOffset + semitones;
+    int note = juce::jlimit(0, 127, 60 + currentOctaveOffset + semitones);
     int code = key.getKeyCode();
     if (activeQwertyNoteKeys.find(code) == activeQwertyNoteKeys.end()) {
-      activeQwertyNoteKeys.insert(code);
+      activeQwertyNoteKeys[code] = note;
       audioProcessor.getSampleEngine().noteOn(note);
     }
     return true;
@@ -302,16 +340,17 @@ bool VancespectralAudioProcessorEditor::keyPressed(const juce::KeyPress &key) {
 bool VancespectralAudioProcessorEditor::keyStateChanged(bool isKeyDown) {
   if (!isKeyDown) {
     std::vector<int> releasedKeys;
-    for (int keyCode : activeQwertyNoteKeys) {
-      if (!juce::KeyPress::isKeyCurrentlyDown(keyCode)) {
-        releasedKeys.push_back(keyCode);
+    for (const auto& [code, note] : activeQwertyNoteKeys) {
+      if (!juce::KeyPress::isKeyCurrentlyDown(code)) {
+        releasedKeys.push_back(code);
       }
     }
-    for (int keyCode : releasedKeys) {
-      activeQwertyNoteKeys.erase(keyCode);
-    }
-    if (!releasedKeys.empty() && activeQwertyNoteKeys.empty()) {
-      audioProcessor.getSampleEngine().noteOff(60 + currentOctaveOffset);
+    for (int code : releasedKeys) {
+      auto it = activeQwertyNoteKeys.find(code);
+      if (it != activeQwertyNoteKeys.end()) {
+        audioProcessor.getSampleEngine().noteOff(it->second);
+        activeQwertyNoteKeys.erase(it);
+      }
     }
   }
   return false;

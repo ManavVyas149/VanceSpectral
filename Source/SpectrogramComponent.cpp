@@ -19,24 +19,59 @@ SpectrogramComponent::SpectrogramComponent(VancespectralAudioProcessor &p)
 
 SpectrogramComponent::~SpectrogramComponent() { stopTimer(); }
 
-void SpectrogramComponent::timerCallback() { repaint(); }
+void SpectrogramComponent::timerCallback() {
+  if (processor.isPlaying() || isDrawing || dragState != DragState::None) {
+    repaint();
+  }
+}
 
-void SpectrogramComponent::loadAudioFile(const juce::File &file) {
+void SpectrogramComponent::loadAudioFile(const juce::File &file, bool isPartOfPresetLoad) {
+  if (!file.existsAsFile() || file.getSize() == 0) {
+    auto* dialog = new juce::AlertWindow(
+        "Invalid Sample File",
+        "The selected audio file is empty or missing: " + file.getFileName(),
+        juce::AlertWindow::WarningIcon);
+    dialog->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    dialog->enterModalState(true, nullptr, true);
+    return;
+  }
+
   reader.reset(formatManager.createReaderFor(file));
 
-  if (reader == nullptr)
+  if (reader == nullptr || reader->lengthInSamples == 0 || reader->numChannels == 0) {
+    reader.reset();
+    auto* dialog = new juce::AlertWindow(
+        "Unsupported Sample Format",
+        "Could not decode audio from file: " + file.getFileName() + "\nPlease ensure it is a valid WAV, MP3, FLAC, AIFF, or OGG file.",
+        juce::AlertWindow::WarningIcon);
+    dialog->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    dialog->enterModalState(true, nullptr, true);
     return;
+  }
 
   audioBuffer.setSize((int)reader->numChannels, (int)reader->lengthInSamples);
   reader->read(&audioBuffer, 0, (int)reader->lengthInSamples, 0, true, true);
+  double sampleRate = reader->sampleRate;
+  reader.reset();
 
   loadedFile = file;
   fileLoaded = true;
 
-  startPosition = 0.0f;
-  endPosition = 1.0f;
+  if (!isPartOfPresetLoad) {
+    // Rule #2: Loading a sample manually resets all settings to default
+    processor.resetParametersToDefault();
 
-  processor.loadSample(audioBuffer, reader->sampleRate);
+    startPosition = 0.0f;
+    endPosition = 1.0f;
+
+    selections.clear();
+    activeSelectionIndex = -1;
+
+    if (onManualSampleLoaded)
+      onManualSampleLoaded();
+  }
+
+  processor.loadSample(audioBuffer, sampleRate);
   processor.setRegion(startPosition, endPosition);
   processor.setLoop(loopEnabled);
   updateFrequencyFilterFromSelections();
@@ -48,15 +83,87 @@ void SpectrogramComponent::loadAudioFile(const juce::File &file) {
   repaint();
 }
 
+void SpectrogramComponent::restorePresetSnapshot(float startRegion, float endRegion, const juce::var& selectionsVar) {
+  startPosition = juce::jlimit(0.0f, 1.0f, startRegion);
+  endPosition = juce::jlimit(0.0f, 1.0f, endRegion);
+  if (endPosition <= startPosition)
+    endPosition = juce::jmin(1.0f, startPosition + 0.05f);
+
+  processor.setRegion(startPosition, endPosition);
+
+  selections.clear();
+  activeSelectionIndex = -1;
+
+  if (selectionsVar.isArray()) {
+    auto* arr = selectionsVar.getArray();
+    for (const auto& item : *arr) {
+      if (item.isObject()) {
+        auto* obj = item.getDynamicObject();
+        float x = (float)(double)obj->getProperty("x");
+        float y = (float)(double)obj->getProperty("y");
+        float w = (float)(double)obj->getProperty("w");
+        float h = (float)(double)obj->getProperty("h");
+
+        SelectionRegion reg;
+        reg.id = nextSelectionId++;
+        reg.type = ToolType::RectangleSelect;
+        reg.normalizedBounds = juce::Rectangle<float>(x, y, w, h);
+        reg.normalizedPath.addRectangle(reg.normalizedBounds);
+        reg.isSelected = false;
+
+        selections.add(reg);
+      }
+    }
+    if (!selections.isEmpty())
+      activeSelectionIndex = selections.size() - 1;
+  }
+
+  updateFrequencyFilterFromSelections();
+  repaint();
+}
+
+juce::var SpectrogramComponent::getSelectionsAsVar() const {
+  juce::Array<juce::var> selArr;
+  for (const auto& reg : selections) {
+    auto* obj = new juce::DynamicObject();
+    obj->setProperty("x", reg.normalizedBounds.getX());
+    obj->setProperty("y", reg.normalizedBounds.getY());
+    obj->setProperty("w", reg.normalizedBounds.getWidth());
+    obj->setProperty("h", reg.normalizedBounds.getHeight());
+    selArr.add(juce::var(obj));
+  }
+  return juce::var(selArr);
+}
+
 float SpectrogramComponent::yToFrequency(float normY) {
   normY = juce::jlimit(0.0f, 1.0f, normY);
   return 20.0f * std::pow(1000.0f, 1.0f - normY);
+}
+
+float SpectrogramComponent::frequencyToY(float hz) {
+  hz = juce::jlimit(20.0f, 20000.0f, hz);
+  return 1.0f - (std::log(hz / 20.0f) / std::log(1000.0f));
 }
 
 juce::String SpectrogramComponent::formatFrequency(float hz) {
   if (hz >= 1000.0f)
     return juce::String(hz / 1000.0f, 1) + "kHz";
   return juce::String((int)hz) + "Hz";
+}
+
+juce::Rectangle<float> SpectrogramComponent::getAxisBounds() const {
+  auto bounds = getLocalBounds().toFloat();
+  if (bounds.isEmpty())
+    return {};
+  return bounds.removeFromLeft(44.0f).reduced(0.0f, 10.0f);
+}
+
+juce::Rectangle<float> SpectrogramComponent::getGraphBounds() const {
+  auto bounds = getLocalBounds().toFloat();
+  if (bounds.isEmpty())
+    return {};
+  bounds.removeFromLeft(44.0f);
+  return bounds.reduced(0.0f, 10.0f);
 }
 
 void SpectrogramComponent::updateFrequencyFilterFromSelections() {
@@ -133,8 +240,11 @@ void SpectrogramComponent::generateSpectrogramImage() {
   if (!fileLoaded || audioBuffer.getNumSamples() == 0)
     return;
 
-  int imgWidth = juce::jmax(100, getWidth() > 40 ? getWidth() - 38 : 560);
+  int imgWidth = juce::jmax(100, getWidth() > 50 ? getWidth() - 44 : 560);
   int imgHeight = juce::jmax(100, getHeight() > 0 ? getHeight() : 350);
+
+  if (!spectrogramImage.isNull() && spectrogramImage.getWidth() == imgWidth && spectrogramImage.getHeight() == imgHeight)
+    return;
 
   spectrogramImage = juce::Image(juce::Image::RGB, imgWidth, imgHeight, false);
 
@@ -193,29 +303,38 @@ void SpectrogramComponent::generateSpectrogramImage() {
 void SpectrogramComponent::drawFrequencyAxis(
     juce::Graphics &g, juce::Rectangle<float> axisBounds) {
   g.setFont(SpectralUILookAndFeel::getMonospaceFont(8.5f));
-  g.setColour(SpectralUILookAndFeel::textMutedColour);
 
-  // Standard order: 20kHz at Top -> 20Hz at Bottom
   struct ScalePoint {
-    float normY; // 0 at top, 1 at bottom
+    float freq;
     const char *label;
   };
 
-  ScalePoint points[] = {{0.04f, "20kHz"}, {0.18f, "10kHz"}, {0.34f, "5kHz"},
-                         {0.50f, "1kHz"},  {0.66f, "500Hz"}, {0.82f, "100Hz"},
-                         {0.96f, "20Hz"}};
+  ScalePoint points[] = {
+      {20000.0f, "20kHz"},
+      {10000.0f, "10kHz"},
+      {5000.0f,  "5kHz"},
+      {2000.0f,  "2kHz"},
+      {1000.0f,  "1kHz"},
+      {500.0f,   "500Hz"},
+      {200.0f,   "200Hz"},
+      {100.0f,   "100Hz"},
+      {20.0f,    "20Hz"}
+  };
 
-  float rightEdge = axisBounds.getRight() - 4.0f;
+  float rightEdge = axisBounds.getRight() - 3.0f;
+  float parentBottom = getLocalBounds().toFloat().getBottom();
 
   for (const auto &pt : points) {
-    float y = axisBounds.getY() + pt.normY * axisBounds.getHeight();
+    float normY = frequencyToY(pt.freq);
+    float y = axisBounds.getY() + normY * axisBounds.getHeight();
 
-    // Draw tick mark line
+    // Draw tick mark line into graph boundary
     g.setColour(SpectralUILookAndFeel::dividerColour.withAlpha(0.6f));
     g.drawLine(rightEdge - 3.0f, y, rightEdge, y, 1.0f);
 
-    // Draw label text right-aligned
-    juce::Rectangle<int> labelRect((int)axisBounds.getX(), (int)(y - 7.0f),
+    // Keep label text within component canvas boundaries
+    float labelY = juce::jlimit(2.0f, parentBottom - 15.0f, y - 7.0f);
+    juce::Rectangle<int> labelRect((int)axisBounds.getX() + 2, (int)labelY,
                                    (int)(rightEdge - axisBounds.getX() - 5.0f),
                                    14);
     g.setColour(SpectralUILookAndFeel::textMutedColour);
@@ -224,8 +343,8 @@ void SpectrogramComponent::drawFrequencyAxis(
 
   // Draw axis hairline separator line
   g.setColour(SpectralUILookAndFeel::dividerColour);
-  g.drawVerticalLine((int)axisBounds.getRight(), axisBounds.getY(),
-                     axisBounds.getBottom());
+  g.drawVerticalLine((int)rightEdge, axisBounds.getY() - 4.0f,
+                     axisBounds.getBottom() + 4.0f);
 }
 
 void SpectrogramComponent::drawWaveform(juce::Graphics &g,
@@ -338,13 +457,118 @@ void SpectrogramComponent::changeListenerCallback(juce::ChangeBroadcaster *) {
   repaint();
 }
 
-void SpectrogramComponent::mouseDown(const juce::MouseEvent &e) {
-  grabKeyboardFocus();
-  auto fullBounds = getLocalBounds().toFloat();
-  if (fullBounds.isEmpty())
+juce::File SpectrogramComponent::createTempWavForExport(bool exportSelectionOnly) {
+  if (!fileLoaded || audioBuffer.getNumSamples() == 0)
+    return {};
+
+  juce::File tempDir = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
+                          .getChildFile("VanceSpectral")
+                          .getChildFile("TempExports");
+  if (!tempDir.exists())
+    tempDir.createDirectory();
+
+  // Clean old exports older than 1 hour
+  auto oldFiles = tempDir.findChildFiles(juce::File::TypesOfFileToFind::findFiles, false, "*.wav");
+  for (const auto& f : oldFiles) {
+    if (f.getLastModificationTime() < juce::Time::getCurrentTime() - juce::RelativeTime::hours(1))
+      f.deleteFile();
+  }
+
+  juce::String baseName = loadedFile.getFileNameWithoutExtension();
+  while (baseName.endsWithIgnoreCase("_Export") || baseName.endsWithIgnoreCase("_Rendered_Region")) {
+    if (baseName.endsWithIgnoreCase("_Export"))
+      baseName = baseName.dropLastCharacters(7);
+    else if (baseName.endsWithIgnoreCase("_Rendered_Region"))
+      baseName = baseName.dropLastCharacters(16);
+  }
+
+  if (baseName.isEmpty())
+    baseName = "Sample";
+
+  juce::String exportFileName = exportSelectionOnly 
+      ? baseName + "_Rendered_Region.wav" 
+      : baseName + "_Export.wav";
+
+  juce::File exportFile = tempDir.getChildFile(exportFileName);
+  if (exportFile.existsAsFile())
+    exportFile.deleteFile();
+
+  int totalSamples = audioBuffer.getNumSamples();
+  int startSample = 0;
+  int numSamples = totalSamples;
+
+  if (exportSelectionOnly) {
+    startSample = juce::jlimit(0, totalSamples - 1, (int)(startPosition * (float)totalSamples));
+    int endSample = juce::jlimit(startSample + 1, totalSamples, (int)(endPosition * (float)totalSamples));
+    numSamples = endSample - startSample;
+  }
+
+  if (numSamples <= 0)
+    return loadedFile;
+
+  juce::WavAudioFormat wavFormat;
+  auto fileStream = std::make_unique<juce::FileOutputStream>(exportFile);
+  if (fileStream == nullptr || fileStream->failedToOpen())
+    return loadedFile;
+
+  double sr = reader != nullptr && reader->sampleRate > 0.0 ? reader->sampleRate : 44100.0;
+  std::unique_ptr<juce::AudioFormatWriter> writer(
+      wavFormat.createWriterFor(fileStream.release(),
+                                sr,
+                                (unsigned int)audioBuffer.getNumChannels(),
+                                24, // 24-bit PCM depth
+                                {}, 0));
+
+  if (writer != nullptr) {
+    juce::AudioBuffer<float> exportBuffer(audioBuffer.getNumChannels(), numSamples);
+    for (int ch = 0; ch < audioBuffer.getNumChannels(); ++ch) {
+      exportBuffer.copyFrom(ch, 0, audioBuffer, ch, startSample, numSamples);
+    }
+
+    writer->writeFromAudioSampleBuffer(exportBuffer, 0, numSamples);
+    writer.reset();
+    return exportFile;
+  }
+
+  return loadedFile;
+}
+
+void SpectrogramComponent::startExternalDrag(const juce::MouseEvent &e) {
+  if (!fileLoaded || isExternalDragging)
     return;
 
-  auto graphBounds = fullBounds.withTrimmedLeft(38.0f);
+  isExternalDragging = true;
+  repaint();
+
+  bool shiftHeld = e.mods.isShiftDown();
+  bool trimmed = (startPosition > 0.001f || endPosition < 0.999f || !selections.isEmpty());
+  bool exportSelectionOnly = shiftHeld || trimmed;
+
+  juce::File exportFile = createTempWavForExport(exportSelectionOnly);
+  if (!exportFile.existsAsFile())
+    exportFile = loadedFile;
+
+  if (exportFile.existsAsFile()) {
+    if (auto* dragContainer = juce::DragAndDropContainer::findParentDragContainerFor(this)) {
+      juce::StringArray files;
+      files.add(exportFile.getFullPathName());
+      dragContainer->performExternalDragDropOfFiles(files, false);
+    }
+  }
+
+  isExternalDragging = false;
+  repaint();
+}
+
+void SpectrogramComponent::mouseMove(const juce::MouseEvent &) {}
+
+void SpectrogramComponent::mouseDown(const juce::MouseEvent &e) {
+  grabKeyboardFocus();
+  mouseDownPos = e.position;
+
+  auto graphBounds = getGraphBounds();
+  if (graphBounds.isEmpty())
+    return;
 
   float mouseX = e.position.x;
   float startX = graphBounds.getX() + graphBounds.getWidth() * startPosition;
@@ -491,11 +715,16 @@ void SpectrogramComponent::mouseDown(const juce::MouseEvent &e) {
 }
 
 void SpectrogramComponent::mouseDrag(const juce::MouseEvent &e) {
-  auto fullBounds = getLocalBounds().toFloat();
-  if (fullBounds.isEmpty() || !fileLoaded)
+  auto graphBounds = getGraphBounds();
+  if (graphBounds.isEmpty() || !fileLoaded)
     return;
 
-  auto graphBounds = fullBounds.withTrimmedLeft(38.0f);
+  if (!isExternalDragging && e.getDistanceFromDragStart() > 14) {
+    if (e.mods.isShiftDown() || e.mods.isAltDown() || !graphBounds.contains(e.position)) {
+      startExternalDrag(e);
+      return;
+    }
+  }
   float normX = juce::jlimit(0.0f, 1.0f, (e.position.x - graphBounds.getX()) / graphBounds.getWidth());
   float normY = juce::jlimit(0.0f, 1.0f, (e.position.y - graphBounds.getY()) / graphBounds.getHeight());
 
@@ -652,11 +881,11 @@ void SpectrogramComponent::paint(juce::Graphics &g) {
   g.setColour(SpectralUILookAndFeel::graphBgColour);
   g.fillRoundedRectangle(bounds, 8.0f);
 
-  // Left Frequency Axis Margin (38px width, 20kHz at Top -> 20Hz at Bottom)
-  auto axisBounds = bounds.removeFromLeft(38.0f);
+  // Left Frequency Axis Margin (44px width, 20kHz at Top -> 20Hz at Bottom)
+  auto axisBounds = getAxisBounds();
   drawFrequencyAxis(g, axisBounds);
 
-  auto graphBounds = bounds;
+  auto graphBounds = getGraphBounds();
 
   if (fileLoaded && !spectrogramImage.isNull()) {
     // 1. Draw Spectrogram Image

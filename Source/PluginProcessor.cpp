@@ -284,6 +284,23 @@ void VancespectralAudioProcessor::setStateInformation(const void* data, int size
             apvts.replaceState (juce::ValueTree::fromXml (*xmlState));
 }
 
+void VancespectralAudioProcessor::resetParametersToDefault()
+{
+    const char* paramIDs[] = {
+        "AMP_ATTACK", "AMP_DECAY", "AMP_SUSTAIN", "AMP_RELEASE",
+        "FILTER_ATTACK", "FILTER_DECAY", "FILTER_SUSTAIN", "FILTER_RELEASE",
+        "PLAYBACK_MODE", "PITCH_MODE", "PITCH_SEMITONES", "EXCITER", "GAIN"
+    };
+
+    for (const auto& id : paramIDs)
+    {
+        if (auto* param = apvts.getParameter(id))
+        {
+            param->setValueNotifyingHost(param->getDefaultValue());
+        }
+    }
+}
+
 //==============================================================================
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <atomic>
 #include "EnvelopeData.h"
 
 enum class PlaybackMode { Forward = 0, Backward, ForwBackw, BackForw, Random };
@@ -62,35 +63,41 @@ public:
 private:
     struct BandFilter
     {
-        juce::IIRFilter hpL, hpR;
-        juce::IIRFilter lpL, lpR;
+        juce::IIRFilter hpL1, hpL2, hpR1, hpR2;
+        juce::IIRFilter lpL1, lpL2, lpR1, lpR2;
+    };
+
+    struct RegionFilterPair {
+        SpectralRegion region;
+        juce::IIRFilter hpL1, hpL2, hpR1, hpR2;
+        juce::IIRFilter lpL1, lpL2, lpR1, lpR2;
     };
 
     juce::CriticalSection lock;
 
     juce::AudioBuffer<float> sample;
-    double currentSample = 0.0;
-    double targetSampleRate = 44100.0;
-    double nativeSampleRate = 44100.0;
-    double hostBpm = 120.0;
+    std::atomic<double> currentSample{ 0.0 };
+    std::atomic<double> targetSampleRate{ 44100.0 };
+    std::atomic<double> nativeSampleRate{ 44100.0 };
+    std::atomic<double> hostBpm{ 120.0 };
 
-    bool playing = false;
-    bool looping = false;
+    std::atomic<bool> playing{ false };
+    std::atomic<bool> looping{ false };
 
-    int regionStart = 0;
-    int regionEnd = 0;
+    std::atomic<int> regionStart{ 0 };
+    std::atomic<int> regionEnd{ 0 };
 
-    PlaybackMode playbackMode = PlaybackMode::Forward;
-    PitchMode pitchMode = PitchMode::Stretch;
+    std::atomic<PlaybackMode> playbackMode{ PlaybackMode::Forward };
+    std::atomic<PitchMode> pitchMode{ PitchMode::Stretch };
 
-    bool playDirectionForward = true;
-    int randomGrainCounter = 0;
+    std::atomic<bool> playDirectionForward{ true };
+    std::atomic<int> randomGrainCounter{ 0 };
 
     // Pitch Tracking & Pitch Shifter States
-    int currentNoteNumber = 60;
-    float pitchSemitones = 0.0f;
-    float currentPitchRatio = 1.0f;
-    double pitchPhase = 0.0;
+    std::atomic<int> currentNoteNumber{ 60 };
+    std::atomic<float> pitchSemitones{ 0.0f };
+    std::atomic<float> currentPitchRatio{ 1.0f };
+    std::atomic<double> pitchPhase{ 0.0 };
 
     void updatePitchRatio();
 
@@ -103,19 +110,14 @@ private:
     float filterStateR = 0.0f;
 
     // Exciter state
-    float exciterAmount = 0.0f;
+    std::atomic<float> exciterAmount{ 0.0f };
 
     // Spectrogram Selection Multi-Bandpass Filter
-    bool freqFilterEnabled = false;
+    std::atomic<bool> freqFilterEnabled{ false };
     juce::Array<FrequencyBand> filterBands;
     juce::OwnedArray<BandFilter> bandFilters;
 
     // Time & Frequency Spectral Region Isolation Filters
-    struct RegionFilterPair {
-        SpectralRegion region;
-        juce::IIRFilter hpL, hpR;
-        juce::IIRFilter lpL, lpR;
-    };
     juce::Array<SpectralRegion> spectralRegions;
     juce::OwnedArray<RegionFilterPair> regionFilterPairs;
 };

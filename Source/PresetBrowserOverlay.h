@@ -27,6 +27,9 @@ public:
     std::function<void()> onClose;
 
     void setCurrentlyLoadedSampleName(const juce::String& name) { currentSampleName = name; }
+    void bindSpectrogramComponent(class SpectrogramComponent* comp) { spectrogram = comp; }
+    void clearActivePresetSelection();
+    juce::File getActivePresetFile() const { return activePresetFile; }
 
 private:
     PresetManager& presetManager;
@@ -35,8 +38,14 @@ private:
     // Header Components
     juce::TextButton closeButton{ "X" };
 
-    // Column 1: Presets & Search
+    // Column 1: Presets & Bank & Search
+    juce::ComboBox bankSelector;
+    juce::TextButton bankActionsBtn{ "BANK..." };
+
     juce::TextEditor searchBox;
+    juce::ComboBox sortSelector;
+    juce::TextButton favoriteFilterBtn;
+
     juce::ListBox presetListBox;
 
     juce::TextButton filterAllBtn{ "ALL" };
@@ -44,8 +53,12 @@ private:
     juce::TextButton filterLeadBtn{ "LEAD" };
     juce::TextButton filterBassBtn{ "BASS" };
     juce::TextButton filterPadBtn{ "PAD" };
+    juce::TextButton filterFxBtn{ "FX" };
 
     juce::String activeCategoryFilter = "ALL";
+    juce::String activeBankFilter = "ALL BANKS";
+    bool onlyFavoritesFilter = false;
+    int activeSortMode = 0; // 0: A-Z, 1: Favorites First, 2: Recently Used
 
     // Column 2: Preset Details & Actions
     juce::Label statusLabel;
@@ -56,13 +69,20 @@ private:
     juce::TextButton deletePresetBtn{ "DELETE PRESET" };
 
     juce::TextEditor saveNameInput;
-    juce::TextEditor saveCategoryInput;
+    juce::ComboBox saveCategoryInput;
+    juce::ComboBox saveBankSelector;
     juce::TextButton savePresetBtn{ "SAVE CURRENT PRESET" };
+
+    bool confirmDeletePresetPending = false;
 
     // Column 3: Sample Storage
     juce::ListBox sampleListBox;
     juce::TextButton importSampleBtn{ "IMPORT SAMPLE FILE" };
     juce::TextButton loadSampleToEngineBtn{ "LOAD SAMPLE" };
+    juce::TextButton renameSampleBtn{ "RENAME SAMPLE" };
+    juce::TextButton deleteSampleBtn{ "DELETE SAMPLE" };
+
+    bool confirmDeleteSamplePending = false;
 
     // Data lists
     juce::Array<PresetInfo> allPresets;
@@ -72,12 +92,17 @@ private:
     int selectedPresetIndex = -1;
     int selectedSampleIndex = -1;
 
+    juce::File activePresetFile;
     juce::String currentSampleName;
+    class SpectrogramComponent* spectrogram = nullptr;
     std::unique_ptr<juce::FileChooser> fileChooser;
 
     void filterPresets();
+    void refreshBankList();
     void updateSelectedPresetDetails();
     void executeLoadSelectedPreset();
+    void showBankActionsMenu();
+    void showRenameSampleDialog(int sampleRow);
 
     class SampleListModel : public juce::ListBoxModel
     {
@@ -87,6 +112,7 @@ private:
         void paintListBoxItem(int rowNumber, juce::Graphics& g, int width, int height, bool rowIsSelected) override;
         void listBoxItemClicked(int row, const juce::MouseEvent& e) override;
         void listBoxItemDoubleClicked(int row, const juce::MouseEvent& e) override;
+        juce::var getDragSourceDescription(const juce::SparseSet<int>& selectedRows) override;
     private:
         PresetBrowserOverlay& owner;
     };
