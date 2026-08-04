@@ -54,20 +54,67 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
     
+    void setLoadedSample(const juce::File& file, const juce::AudioBuffer<float>& buffer, double nativeSampleRate)
+    {
+        loadedSampleFile = file;
+        loadedSampleFileName = file.getFileName();
+        sampleLoaded = true;
+        sampleEngine.loadSample(buffer, nativeSampleRate);
+    }
+
+    juce::File getLoadedSampleFile() const { return loadedSampleFile; }
+    juce::String getLoadedSampleFileName() const { return loadedSampleFileName; }
+    bool isSampleLoaded() const { return sampleLoaded; }
+
+    void setRegion(float start, float end)
+    {
+        startRegionNormalized = juce::jlimit(0.0f, 1.0f, start);
+        endRegionNormalized = juce::jlimit(0.0f, 1.0f, end);
+        sampleEngine.setRegion(startRegionNormalized, endRegionNormalized);
+    }
+    float getRegionStartNormalized() const { return startRegionNormalized; }
+    float getRegionEndNormalized() const { return endRegionNormalized; }
+
+    void setLoop(bool enabled)
+    {
+        loopEnabled = enabled;
+        sampleEngine.setLoop(enabled);
+    }
+    bool getLoopEnabled() const { return loopEnabled; }
+
+    void setSelectionsVar(const juce::var& var) { selectionsVar = var; }
+    juce::var getSelectionsVar() const { return selectionsVar; }
+
+    void setCurrentPresetName(const juce::String& name) { currentPresetName = name; }
+    juce::String getCurrentPresetName() const { return currentPresetName; }
+
+    bool isPluginInitialized() const { return isInitialized; }
+    void setPluginInitialized(bool init) { isInitialized = init; }
+
     void loadSample(const juce::AudioBuffer<float>& buffer, double nativeSampleRate = 44100.0)
     {
         sampleEngine.loadSample(buffer, nativeSampleRate);
     }
 
-    void playSample()
+    void noteOn(int midiNoteNumber, float velocity = 1.0f)
     {
-        DBG("Processor Play");
-        sampleEngine.play();
+        sampleEngine.noteOn(midiNoteNumber, velocity);
     }
 
-    void stopSample()
+    void noteOff(int midiNoteNumber = -1)
     {
-        sampleEngine.stop();
+        sampleEngine.noteOff(midiNoteNumber);
+    }
+
+    void playSample(int midiNoteNumber = 60, float velocity = 1.0f)
+    {
+        DBG("Processor Play");
+        noteOn(midiNoteNumber, velocity);
+    }
+
+    void stopSample(int midiNoteNumber = -1)
+    {
+        noteOff(midiNoteNumber);
     }
 
     bool isPlaying() const
@@ -88,16 +135,6 @@ public:
     double getRegionEnd() const
     {
         return sampleEngine.getRegionEndNormalized();
-    }
-
-    void setLoop(bool enabled)
-    {
-        sampleEngine.setLoop(enabled);
-    }
-
-    void setRegion(float start, float end)
-    {
-        sampleEngine.setRegion(start, end);
     }
 
     void setFrequencyFilter(bool enabled, float minFreq, float maxFreq)
@@ -125,6 +162,18 @@ public:
 private:
     SampleEngine sampleEngine;
     juce::AudioProcessorValueTreeState apvts;
+
+    juce::File loadedSampleFile;
+    juce::String loadedSampleFileName;
+    bool sampleLoaded = false;
+
+    float startRegionNormalized = 0.0f;
+    float endRegionNormalized = 1.0f;
+    bool loopEnabled = false;
+
+    juce::var selectionsVar;
+    juce::String currentPresetName = "Custom / Unsaved";
+    bool isInitialized = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (VancespectralAudioProcessor)
 };

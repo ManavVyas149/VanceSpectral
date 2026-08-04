@@ -128,7 +128,7 @@ void SampleEngine::noteOn(int midiNoteNumber, float velocity)
 void SampleEngine::noteOff(int midiNoteNumber)
 {
     const juce::ScopedLock sl(lock);
-    if (midiNoteNumber == currentNoteNumber)
+    if (midiNoteNumber < 0 || midiNoteNumber == currentNoteNumber)
     {
         ampEnvelope.noteOff();
         filterEnvelope.noteOff();

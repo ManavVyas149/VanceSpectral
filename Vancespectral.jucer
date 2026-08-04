@@ -2,8 +2,8 @@
 
 <JUCERPROJECT id="x1HegH" name="Vancespectral" projectType="audioplug" useAppConfig="0"
               addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" pluginFormats="buildAAX,buildAU,buildStandalone,buildVST3"
-              pluginCharacteristicsValue="pluginIsSynth" pluginName="VanceSpectral"
-              cppLanguageStandard="20" pluginCode="VnSp">
+              pluginCharacteristicsValue="pluginIsSynth,pluginWantsMidiIn" pluginIsSynth="1" pluginWantsMidiIn="1" pluginProducesMidiOut="0" pluginIsMidiEffect="0" pluginVst3Category="Instrument|Synth" pluginAUIsSynth="1"
+              pluginName="VanceSpectral" cppLanguageStandard="20" pluginCode="VnSp">
   <MAINGROUP id="hPZGRE" name="Vancespectral">
     <GROUP id="{7B78F46C-B590-FAE7-F2A0-143A27469585}" name="Source">
       <FILE id="IbS1Uw" name="SampleEngine.cpp" compile="1" resource="0"

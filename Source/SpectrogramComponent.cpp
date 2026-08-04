@@ -1,5 +1,6 @@
 #include "SpectrogramComponent.h"
 #include "PluginProcessor.h"
+#include "PresetManager.h"
 
 SpectrogramComponent::SpectrogramComponent(VancespectralAudioProcessor &p)
     : processor(p) {
@@ -67,11 +68,18 @@ void SpectrogramComponent::loadAudioFile(const juce::File &file, bool isPartOfPr
     selections.clear();
     activeSelectionIndex = -1;
 
+    processor.setCurrentPresetName("Custom / Unsaved");
+
     if (onManualSampleLoaded)
       onManualSampleLoaded();
   }
 
-  processor.loadSample(audioBuffer, sampleRate);
+  // Import sample to Samples folder if loaded externally
+  PresetManager pm;
+  juce::File imported = pm.importSample(file);
+  juce::File fileToUse = imported.existsAsFile() ? imported : file;
+
+  processor.setLoadedSample(fileToUse, audioBuffer, sampleRate);
   processor.setRegion(startPosition, endPosition);
   processor.setLoop(loopEnabled);
   updateFrequencyFilterFromSelections();
@@ -80,6 +88,63 @@ void SpectrogramComponent::loadAudioFile(const juce::File &file, bool isPartOfPr
   if (onFileLoadedStateChanged)
     onFileLoadedStateChanged(true);
 
+  repaint();
+}
+
+void SpectrogramComponent::restoreFromProcessorState() {
+  if (processor.isSampleLoaded()) {
+    loadedFile = processor.getLoadedSampleFile();
+    if (loadedFile.existsAsFile()) {
+      reader.reset(formatManager.createReaderFor(loadedFile));
+      if (reader != nullptr) {
+        audioBuffer.setSize((int)reader->numChannels, (int)reader->lengthInSamples);
+        reader->read(&audioBuffer, 0, (int)reader->lengthInSamples, 0, true, true);
+        reader.reset();
+        fileLoaded = true;
+      }
+    }
+  }
+
+  startPosition = processor.getRegionStartNormalized();
+  endPosition = processor.getRegionEndNormalized();
+  loopEnabled = processor.getLoopEnabled();
+  loopButton.setToggleState(loopEnabled, juce::dontSendNotification);
+
+  selections.clear();
+  activeSelectionIndex = -1;
+
+  juce::var selVar = processor.getSelectionsVar();
+  if (selVar.isArray()) {
+    auto* arr = selVar.getArray();
+    for (const auto& item : *arr) {
+      if (item.isObject()) {
+        auto* obj = item.getDynamicObject();
+        float x = (float)(double)obj->getProperty("x");
+        float y = (float)(double)obj->getProperty("y");
+        float w = (float)(double)obj->getProperty("w");
+        float h = (float)(double)obj->getProperty("h");
+
+        SelectionRegion reg;
+        reg.id = nextSelectionId++;
+        reg.type = ToolType::RectangleSelect;
+        reg.normalizedBounds = juce::Rectangle<float>(x, y, w, h);
+        reg.normalizedPath.addRectangle(reg.normalizedBounds);
+        reg.isSelected = false;
+
+        selections.add(reg);
+      }
+    }
+    if (!selections.isEmpty())
+      activeSelectionIndex = selections.size() - 1;
+  }
+
+  if (fileLoaded) {
+    generateSpectrogramImage();
+    if (onFileLoadedStateChanged)
+      onFileLoadedStateChanged(true);
+  }
+
+  updateFrequencyFilterFromSelections();
   repaint();
 }
 
@@ -169,6 +234,7 @@ juce::Rectangle<float> SpectrogramComponent::getGraphBounds() const {
 void SpectrogramComponent::updateFrequencyFilterFromSelections() {
   if (!fileLoaded || selections.isEmpty()) {
     processor.setSpectralRegions(juce::Array<SpectralRegion>());
+    processor.setSelectionsVar(juce::var());
     return;
   }
 
@@ -199,6 +265,7 @@ void SpectrogramComponent::updateFrequencyFilterFromSelections() {
   }
 
   processor.setSpectralRegions(regions);
+  processor.setSelectionsVar(getSelectionsAsVar());
 
   // Sync active selection to processor playback region
   if (activeSelectionIndex >= 0 && activeSelectionIndex < selections.size()) {

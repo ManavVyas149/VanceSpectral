@@ -33,6 +33,7 @@ public:
     void filesDropped(const juce::StringArray& files, int x, int y) override;
 
     void loadAudioFile(const juce::File& file, bool isPartOfPresetLoad = false);
+    void restoreFromProcessorState();
     void restorePresetSnapshot(float startRegion, float endRegion, const juce::var& selectionsVar);
     juce::var getSelectionsAsVar() const;
     float getStartRegion() const { return startPosition; }

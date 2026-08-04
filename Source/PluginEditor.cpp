@@ -168,10 +168,20 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
     }
   };
 
-  // Auto-load initial default factory preset on startup
-  auto allPresets = presetManager.getAllPresets();
-  if (!allPresets.isEmpty()) {
-    loadPresetAtomic(allPresets[0].file);
+  // Auto-load initial default factory preset on initial startup; otherwise restore UI display state from processor
+  if (!audioProcessor.isPluginInitialized()) {
+    auto allPresets = presetManager.getAllPresets();
+    if (!allPresets.isEmpty()) {
+      loadPresetAtomic(allPresets[0].file);
+    }
+    audioProcessor.setPluginInitialized(true);
+  } else {
+    if (spectrogram) {
+      spectrogram->restoreFromProcessorState();
+    }
+    presetBar.setPresetName(audioProcessor.getCurrentPresetName());
+    syncUIFromAPVTS();
+    toolbar.setEnabled(spectrogram && spectrogram->isFileLoaded());
   }
 
   setSize(1040, 640);

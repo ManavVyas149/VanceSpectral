@@ -8,6 +8,7 @@
 
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "PresetManager.h"
 
 //==============================================================================
 
@@ -92,11 +93,7 @@ const juce::String VancespectralAudioProcessor::getName() const
 
 bool VancespectralAudioProcessor::acceptsMidi() const
 {
-#if JucePlugin_WantsMidiInput
     return true;
-#else
-    return false;
-#endif
 }
 
 bool VancespectralAudioProcessor::producesMidi() const
@@ -212,9 +209,9 @@ void VancespectralAudioProcessor::processBlock(
         {
             sampleEngine.noteOff(msg.getNoteNumber());
         }
-        else if (msg.isAllNotesOff())
+        else if (msg.isAllNotesOff() || msg.isAllSoundOff())
         {
-            sampleEngine.stop();
+            sampleEngine.noteOff(-1);
         }
     }
 
@@ -272,16 +269,98 @@ juce::AudioProcessorEditor* VancespectralAudioProcessor::createEditor()
 void VancespectralAudioProcessor::getStateInformation(juce::MemoryBlock& destData)
 {
     auto state = apvts.copyState();
+    state.setProperty("loadedSampleFileName", loadedSampleFileName, nullptr);
+    state.setProperty("loadedSampleFilePath", loadedSampleFile.getFullPathName(), nullptr);
+    state.setProperty("regionStart", (double)startRegionNormalized, nullptr);
+    state.setProperty("regionEnd", (double)endRegionNormalized, nullptr);
+    state.setProperty("loopEnabled", loopEnabled, nullptr);
+    state.setProperty("currentPresetName", currentPresetName, nullptr);
+    state.setProperty("selectionsJson", juce::JSON::toString(selectionsVar), nullptr);
+    state.setProperty("isInitialized", isInitialized, nullptr);
+
     std::unique_ptr<juce::XmlElement> xml (state.createXml());
-    copyXmlToBinary (*xml, destData);
+    if (xml != nullptr)
+        copyXmlToBinary (*xml, destData);
 }
 
 void VancespectralAudioProcessor::setStateInformation(const void* data, int sizeInBytes)
 {
     std::unique_ptr<juce::XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes));
-    if (xmlState.get() != nullptr)
-        if (xmlState->hasTagName (apvts.state.getType()))
-            apvts.replaceState (juce::ValueTree::fromXml (*xmlState));
+    if (xmlState.get() != nullptr && xmlState->hasTagName (apvts.state.getType()))
+    {
+        auto vt = juce::ValueTree::fromXml (*xmlState);
+        apvts.replaceState (vt);
+
+        loadedSampleFileName = vt.getProperty("loadedSampleFileName", "").toString();
+        juce::String filePath = vt.getProperty("loadedSampleFilePath", "").toString();
+        startRegionNormalized = (float)(double)vt.getProperty("regionStart", 0.0);
+        endRegionNormalized = (float)(double)vt.getProperty("regionEnd", 1.0);
+        loopEnabled = (bool)vt.getProperty("loopEnabled", false);
+        currentPresetName = vt.getProperty("currentPresetName", "Custom / Unsaved").toString();
+        juce::String selectionsJson = vt.getProperty("selectionsJson", "[]").toString();
+        selectionsVar = juce::JSON::parse(selectionsJson);
+        isInitialized = (bool)vt.getProperty("isInitialized", true);
+
+        // Attempt to locate and reload audio sample into DSP
+        juce::File sampleFile(filePath);
+        if (!sampleFile.existsAsFile() && loadedSampleFileName.isNotEmpty())
+        {
+            PresetManager pm;
+            sampleFile = pm.getSamplesFolder().getChildFile(loadedSampleFileName);
+        }
+
+        if (sampleFile.existsAsFile())
+        {
+            juce::AudioFormatManager formatManager;
+            formatManager.registerBasicFormats();
+            std::unique_ptr<juce::AudioFormatReader> reader (formatManager.createReaderFor(sampleFile));
+            if (reader != nullptr)
+            {
+                juce::AudioBuffer<float> buffer((int)reader->numChannels, (int)reader->lengthInSamples);
+                reader->read(&buffer, 0, (int)reader->lengthInSamples, 0, true, true);
+                setLoadedSample(sampleFile, buffer, reader->sampleRate);
+            }
+        }
+
+        setRegion(startRegionNormalized, endRegionNormalized);
+        setLoop(loopEnabled);
+
+        // Convert selectionsVar to spectral regions array for DSP engine
+        if (selectionsVar.isArray())
+        {
+            juce::Array<SpectralRegion> regions;
+            auto* arr = selectionsVar.getArray();
+            int id = 1;
+            for (const auto& item : *arr)
+            {
+                if (item.isObject())
+                {
+                    auto* obj = item.getDynamicObject();
+                    float x = (float)(double)obj->getProperty("x");
+                    float y = (float)(double)obj->getProperty("y");
+                    float w = (float)(double)obj->getProperty("w");
+                    float h = (float)(double)obj->getProperty("h");
+
+                    SpectralRegion sr;
+                    sr.id = id++;
+                    sr.startNorm = x;
+                    sr.endNorm = x + w;
+
+                    float yTop = juce::jlimit(0.0f, 1.0f, y);
+                    float yBottom = juce::jlimit(0.0f, 1.0f, y + h);
+
+                    float maxFreq = 20.0f * std::pow(1000.0f, 1.0f - yTop);
+                    float minFreq = 20.0f * std::pow(1000.0f, 1.0f - yBottom);
+                    if (minFreq > maxFreq) std::swap(minFreq, maxFreq);
+
+                    sr.minFreq = minFreq;
+                    sr.maxFreq = maxFreq;
+                    regions.add(sr);
+                }
+            }
+            sampleEngine.setSpectralRegions(regions);
+        }
+    }
 }
 
 void VancespectralAudioProcessor::resetParametersToDefault()
