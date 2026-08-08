@@ -1,57 +1,47 @@
-===============================================================================
-VanceSpectral - Spectral Frequency Sampler Plugin
-===============================================================================
+VanceSpectral Audio Plugin v1.0.0
+=================================
 
-VanceSpectral is a real-time spectral frequency sampler and audio instrument designed
-for deep sound design, precise spectral filtering, dynamic pitch shifting, and sample manipulation.
+VanceSpectral is a polyphonic spectral sampling instrument and audio plugin featuring sample-accurate pitch glide, frequency-rectangle filtering, and dynamic audio visualization.
 
--------------------------------------------------------------------------------
 INSTALLATION INSTRUCTIONS
--------------------------------------------------------------------------------
+-------------------------
 
-Simply copy the appropriate plugin format file(s) for your Operating System into
-your DAW's system plugin directory:
+Copy the relevant plugin format(s) for your Operating System into your DAW's standard plugin directory:
 
---- WINDOWS ---
-• VST3: Copy "Windows/VST3/VanceSpectral.vst3" to:
+Windows Installation:
+- VST3: Copy 'Windows/VST3/VanceSpectral.vst3' to:
   C:\Program Files\Common Files\VST3\
 
-• CLAP: Copy "Windows/CLAP/VanceSpectral.clap" to:
+- CLAP: Copy 'Windows/CLAP/VanceSpectral.clap' to:
   C:\Program Files\Common Files\CLAP\
 
-• AAX:  Copy "Windows/AAX/VanceSpectral.aaxplugin" to:
+- AAX: Copy 'Windows/AAX/VanceSpectral.aaxplugin' to:
   C:\Program Files\Common Files\Avid\Audio\Plug-Ins\
 
---- macOS ---
-• VST3: Copy "macOS/VST3/VanceSpectral.vst3" to:
+macOS Installation:
+- VST3: Copy 'macOS/VST3/VanceSpectral.vst3' to:
   /Library/Audio/Plug-Ins/VST3/
 
-• CLAP: Copy "macOS/CLAP/VanceSpectral.clap" to:
+- CLAP: Copy 'macOS/CLAP/VanceSpectral.clap' to:
   /Library/Audio/Plug-Ins/CLAP/
 
-• AAX:  Copy "macOS/AAX/VanceSpectral.aaxplugin" to:
+- AAX: Copy 'macOS/AAX/VanceSpectral.aaxplugin' to:
   /Library/Application Support/Avid/Audio/Plug-Ins/
 
-• AU:   Copy "macOS/AU/VanceSpectral.component" to:
+- Audio Unit (AU): Copy 'macOS/AU/VanceSpectral.component' to:
   /Library/Audio/Plug-Ins/Components/
 
--------------------------------------------------------------------------------
-DEPENDENCIES & CODE SIGNING NOTE
--------------------------------------------------------------------------------
-• Self-Contained Builds: All builds are statically linked and fully self-contained.
-  No external frameworks, dylibs, runtime installer packages, or build tools are required.
+NOTE ON SECURITY WARNINGS & CODE SIGNING
+-----------------------------------------
+These initial builds are currently unsigned. When launching VanceSpectral for the first time:
+- macOS: Gatekeeper may display a security prompt. Right-click the plugin file and select 'Open', or go to System Settings -> Privacy & Security -> Allow.
+- Windows: SmartScreen may display an unrecognized app warning. Click 'More info' and select 'Run anyway'.
+Both warnings are expected until code signing certificates are attached in future releases.
 
-• Security Warnings: These pre-release builds are currently unsigned.
-  - On macOS: Gatekeeper may display a security alert on first load. To bypass,
-    right-click (or Control-click) the plugin file -> select "Open", or approve it under
-    System Settings -> Privacy & Security.
-  - On Windows: Windows Defender / SmartScreen may display an unrecognized app notice.
-    Click "More info" -> "Run anyway".
-  (Official certificate signing will be added in a future production release.)
+AFTER COPYING FILES
+-------------------
+Rescan plugins within your Digital Audio Workstation (DAW) or restart your DAW to load VanceSpectral.
 
--------------------------------------------------------------------------------
-FINAL STEP
--------------------------------------------------------------------------------
-After copying the plugin files, open your DAW (FL Studio, Ableton Live, Logic Pro,
-Pro Tools, Reaper, Cubase, etc.) and perform a full plugin rescan (or restart your DAW).
-===============================================================================
+SELF-CONTAINED BUILD & DEPENDENCIES
+-----------------------------------
+All plugin binaries in this package are fully self-contained. JUCE core components, custom DSP engines, and UI graphics are statically linked into the plugin binary. No separately installed frameworks, JUCE runtime libraries, or dev toolchains are required on the host system. Standard OS C++ runtime libraries (MSVC Redistributable on Windows / macOS Core Audio & System Frameworks on macOS) are utilized natively.

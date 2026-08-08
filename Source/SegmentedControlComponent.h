@@ -16,6 +16,7 @@ public:
     void setSelectedIndex(int newIndex, bool sendNotification = true);
 
     std::function<void(int)> onSelectionChanged;
+    std::function<void(int index, bool isReclick)> onOptionClicked;
 
 private:
     juce::String labelText;

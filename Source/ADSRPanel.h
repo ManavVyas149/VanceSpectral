@@ -11,6 +11,7 @@ public:
 
     void paint(juce::Graphics& g) override;
     void resized() override;
+    void updateTimbreEnabledState(int pitchModeIndex, bool isPoly);
 
 private:
     class HoverValueSlider : public juce::Slider
@@ -82,14 +83,52 @@ private:
     juce::Label filterSustainLabel;
     juce::Label filterReleaseLabel;
 
-    // PITCH & EXCITER Sliders & Labels
+    // PITCH, GLIDE & EXCITER Sliders & Labels
     HoverValueSlider pitchSlider{ "st" };
     juce::Label pitchLabel;
+
+    juce::Slider timbreSlider;
+    juce::Label timbreLabel;
+    class DisclosureButton : public juce::Button
+    {
+    public:
+        DisclosureButton() : juce::Button("TimbreToggle") {}
+        void paintButton(juce::Graphics& g, bool isHighlighted, bool isDown) override
+        {
+            juce::ignoreUnused(isDown);
+            auto bounds = getLocalBounds().toFloat().reduced(2.0f);
+            g.setColour(isHighlighted ? SpectralUILookAndFeel::accentColour : SpectralUILookAndFeel::textMutedColour);
+
+            juce::Path p;
+            if (getToggleState()) // Expanded (pointing down)
+            {
+                p.addTriangle(bounds.getX() + 2.0f, bounds.getY() + 4.0f,
+                              bounds.getRight() - 2.0f, bounds.getY() + 4.0f,
+                              bounds.getCentreX(), bounds.getBottom() - 3.0f);
+            }
+            else // Collapsed (pointing right)
+            {
+                p.addTriangle(bounds.getX() + 3.0f, bounds.getY() + 2.0f,
+                              bounds.getRight() - 3.0f, bounds.getCentreY(),
+                              bounds.getX() + 3.0f, bounds.getBottom() - 2.0f);
+            }
+            g.fillPath(p);
+        }
+    };
+    DisclosureButton timbreDisclosureButton;
+    bool timbreExpanded = false;
+
+    HoverValueSlider glideSlider{ "s" };
+    juce::Label glideLabel;
 
     HoverValueSlider exciterSlider{ "%" };
     juce::Label exciterLabel;
 
+    HoverValueSlider driftSlider{ "%" };
+    juce::Label driftLabel;
+
     using Attachment = juce::AudioProcessorValueTreeState::SliderAttachment;
+    using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
     std::unique_ptr<Attachment> ampAttackAttachment;
     std::unique_ptr<Attachment> ampDecayAttachment;
     std::unique_ptr<Attachment> ampSustainAttachment;
@@ -101,6 +140,10 @@ private:
     std::unique_ptr<Attachment> filterReleaseAttachment;
 
     std::unique_ptr<Attachment> pitchAttachment;
+    std::unique_ptr<Attachment> timbreAttachment;
+    std::unique_ptr<ButtonAttachment> timbreLinkAttachment;
+    std::unique_ptr<Attachment> driftAttachment;
+    std::unique_ptr<Attachment> glideAttachment;
     std::unique_ptr<Attachment> exciterAttachment;
 
     juce::Rectangle<int> ampHeaderArea;

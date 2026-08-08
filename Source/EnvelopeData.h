@@ -21,6 +21,7 @@ public:
     void reset();
 
     float getNextSample();
+    float getCurrentLevel() const { return currentLevel; }
     void applyEnvelopeToBuffer(juce::AudioBuffer<float>& buffer, int startSample, int numSamples);
     
     bool isActive() const;
@@ -30,4 +31,5 @@ private:
     EnvelopeCategory envelopeCategory;
     juce::ADSR adsr;
     juce::ADSR::Parameters adsrParams;
+    float currentLevel = 0.0f;
 };

@@ -37,11 +37,13 @@ void EnvelopeData::noteOff()
 void EnvelopeData::reset()
 {
     adsr.reset();
+    currentLevel = 0.0f;
 }
 
 float EnvelopeData::getNextSample()
 {
-    return adsr.getNextSample();
+    currentLevel = adsr.getNextSample();
+    return currentLevel;
 }
 
 void EnvelopeData::applyEnvelopeToBuffer(juce::AudioBuffer<float>& buffer, int startSample, int numSamples)

@@ -9,7 +9,10 @@ SegmentedControlComponent::SegmentedControlComponent(const juce::String& section
         addAndMakeVisible(btn);
 
         btn->onClick = [this, i]() {
+            bool isReclick = (i == selectedIndex);
             setSelectedIndex(i, true);
+            if (onOptionClicked)
+                onOptionClicked(i, isReclick);
         };
     }
 }

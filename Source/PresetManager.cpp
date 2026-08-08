@@ -84,6 +84,8 @@ void PresetManager::createFactoryPreset(const juce::String& name, const juce::St
     paramsObj->setProperty("PITCH_MODE", 0.0f);
     paramsObj->setProperty("PITCH_SEMITONES", 0.0f);
     paramsObj->setProperty("EXCITER", 0.0f);
+    paramsObj->setProperty("POLY_MODE", 0.0f);
+    paramsObj->setProperty("GLIDE", 0.0f);
     paramsObj->setProperty("GAIN", 0.0f);
 
     obj->setProperty("parameters", paramsObj);
@@ -381,7 +383,7 @@ bool PresetManager::savePreset(const juce::String& presetName,
     const char* paramIDs[] = {
         "AMP_ATTACK", "AMP_DECAY", "AMP_SUSTAIN", "AMP_RELEASE",
         "FILTER_ATTACK", "FILTER_DECAY", "FILTER_SUSTAIN", "FILTER_RELEASE",
-        "PLAYBACK_MODE", "PITCH_MODE", "PITCH_SEMITONES", "EXCITER", "GAIN"
+        "PLAYBACK_MODE", "PITCH_MODE", "PITCH_SEMITONES", "EXCITER", "POLY_MODE", "GLIDE", "GAIN"
     };
 
     for (const auto& id : paramIDs)

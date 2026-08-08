@@ -127,6 +127,31 @@ public:
         return sampleEngine.getPlayPositionNormalized();
     }
 
+    juce::Array<float> getActiveVoicePositions() const
+    {
+        return sampleEngine.getActiveVoicePositionsNormalized();
+    }
+
+    juce::Array<ActiveVoiceVisualInfo> getActiveVoiceVisualInfos() const
+    {
+        return sampleEngine.getActiveVoiceVisualInfos();
+    }
+
+    PlaybackMode getPlaybackMode() const
+    {
+        return sampleEngine.getPlaybackMode();
+    }
+
+    void rerollRandomDirection()
+    {
+        sampleEngine.rerollRandomDirection();
+    }
+
+    bool isPolyMode() const
+    {
+        return sampleEngine.getPolyMode();
+    }
+
     double getRegionStart() const
     {
         return sampleEngine.getRegionStartNormalized();
@@ -162,6 +187,7 @@ public:
 private:
     SampleEngine sampleEngine;
     juce::AudioProcessorValueTreeState apvts;
+    juce::LinearSmoothedValue<float> masterGainSmoother;
 
     juce::File loadedSampleFile;
     juce::String loadedSampleFileName;

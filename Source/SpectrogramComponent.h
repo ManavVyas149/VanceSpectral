@@ -35,6 +35,7 @@ public:
     void loadAudioFile(const juce::File& file, bool isPartOfPresetLoad = false);
     void restoreFromProcessorState();
     void restorePresetSnapshot(float startRegion, float endRegion, const juce::var& selectionsVar);
+    void generateRandomSelections();
     juce::var getSelectionsAsVar() const;
     float getStartRegion() const { return startPosition; }
     float getEndRegion() const { return endPosition; }

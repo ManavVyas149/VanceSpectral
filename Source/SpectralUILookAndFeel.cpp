@@ -106,12 +106,68 @@ void SpectralUILookAndFeel::drawLinearSlider(juce::Graphics& g, int x, int y, in
                                               float sliderPos, float minSliderPos, float maxSliderPos,
                                               const juce::Slider::SliderStyle style, juce::Slider& slider)
 {
-    juce::ignoreUnused(minSliderPos, maxSliderPos, style);
-
     if (width <= 0 || height <= 0)
         return;
 
     auto bounds = juce::Rectangle<int>(x, y, width, height).toFloat();
+
+    if (style == juce::Slider::LinearVertical || slider.isVertical())
+    {
+        bool isEnabled = slider.isEnabled();
+
+        // 1. Readout at top (e.g., "0 st", "+3 st")
+        float val = (float)slider.getValue();
+        int stVal = (int)std::round(val);
+        juce::String valStr = (stVal > 0 ? "+" : "") + juce::String(stVal) + " st";
+
+        auto topArea = bounds.removeFromTop(12.0f);
+        g.setFont(getMonospaceFont(9.5f));
+        g.setColour(isEnabled ? (slider.isMouseOverOrDragging() ? accentColour : textMainColour) : textMutedColour);
+        g.drawText(valStr, topArea, juce::Justification::centred, true);
+
+        // 2. Track area in middle
+        bounds.reduce(2.0f, 2.0f);
+        float trackWidth = 5.0f;
+        float trackX = bounds.getCentreX() - trackWidth * 0.5f;
+        auto trackArea = juce::Rectangle<float>(trackX, bounds.getY(), trackWidth, bounds.getHeight());
+
+        // Dark track background
+        g.setColour(graphBgColour);
+        g.fillRoundedRectangle(trackArea, 2.5f);
+
+        // Hairline border
+        g.setColour(dividerColour);
+        g.drawRoundedRectangle(trackArea, 2.5f, 1.0f);
+
+        // Center 0 st baseline
+        float normZero = 0.5f;
+        if (maxSliderPos != minSliderPos)
+            normZero = juce::jlimit(0.0f, 1.0f, (float)((0.0 - slider.getMinimum()) / (slider.getMaximum() - slider.getMinimum())));
+
+        float zeroY = trackArea.getBottom() - normZero * trackArea.getHeight();
+
+        // Bipolar fill bar from zero baseline
+        if (std::abs(sliderPos - zeroY) > 0.5f && isEnabled)
+        {
+            float fillY = juce::jmin(sliderPos, zeroY);
+            float fillH = std::abs(sliderPos - zeroY);
+            auto fillRect = juce::Rectangle<float>(trackArea.getX(), fillY, trackWidth, fillH);
+            g.setColour(slider.isMouseOverOrDragging() ? accentColour : accentColour.withAlpha(0.85f));
+            g.fillRoundedRectangle(fillRect, 2.5f);
+        }
+
+        // Horizontal thumb handle
+        float handleWidth = 14.0f;
+        float handleHeight = 3.5f;
+        float handleX = bounds.getCentreX() - handleWidth * 0.5f;
+        float handleY = juce::jlimit(trackArea.getY(), trackArea.getBottom() - handleHeight, sliderPos - handleHeight * 0.5f);
+
+        g.setColour(isEnabled ? (slider.isMouseOverOrDragging() ? textMainColour : textMainColour.withAlpha(0.9f)) : textMutedColour.withAlpha(0.4f));
+        g.fillRoundedRectangle(handleX, handleY, handleWidth, handleHeight, 1.5f);
+        return;
+    }
+
+    juce::ignoreUnused(minSliderPos, maxSliderPos, style);
 
     // 1. Label 'VOLUME' on left edge
     auto labelArea = bounds.removeFromLeft(52.0f);

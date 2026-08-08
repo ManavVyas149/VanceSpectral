@@ -25,22 +25,45 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
   volumeSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
   addAndMakeVisible(volumeSlider);
 
+  addAndMakeVisible(polyButton);
+
+  polyButton.onClick = [this]() {
+    if (auto* param = audioProcessor.getAPVTS().getParameter("POLY_MODE")) {
+      bool next = !polyButton.getToggleState();
+      polyButton.setToggleState(next, juce::dontSendNotification);
+      param->setValueNotifyingHost(next ? 1.0f : 0.0f);
+      int pIdx = 0;
+      if (auto* pParam = audioProcessor.getAPVTS().getParameter("PITCH_MODE"))
+        pIdx = juce::jlimit(0, 2, (int)std::round(pParam->getValue() * 2.0f));
+      adsrPanel.updateTimbreEnabledState(pIdx, next);
+    }
+  };
+
   volumeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
       audioProcessor.getAPVTS(), "GAIN", volumeSlider);
 
   addAndMakeVisible(*presetOverlay);
   presetOverlay->setVisible(false);
 
-  // Sync segmented controls from APVTS initial values
-  if (auto* param = audioProcessor.getAPVTS().getParameter("PLAYBACK_MODE")) {
-    int idx = juce::jlimit(0, 4, (int)std::round(param->getValue() * 4.0f));
-    playbackControl.setSelectedIndex(idx, false);
-  }
+  auto syncUIFromAPVTS = [this]() {
+    int pIdx = 0;
+    bool isPoly = false;
+    if (auto* param = audioProcessor.getAPVTS().getParameter("PLAYBACK_MODE")) {
+      int idx = juce::jlimit(0, 4, (int)std::round(param->getValue() * 4.0f));
+      playbackControl.setSelectedIndex(idx, false);
+    }
+    if (auto* param = audioProcessor.getAPVTS().getParameter("PITCH_MODE")) {
+      pIdx = juce::jlimit(0, 2, (int)std::round(param->getValue() * 2.0f));
+      pitchControl.setSelectedIndex(pIdx, false);
+    }
+    if (auto* param = audioProcessor.getAPVTS().getParameter("POLY_MODE")) {
+      isPoly = (param->getValue() >= 0.5f);
+      polyButton.setToggleState(isPoly, juce::dontSendNotification);
+    }
+    adsrPanel.updateTimbreEnabledState(pIdx, isPoly);
+  };
 
-  if (auto* param = audioProcessor.getAPVTS().getParameter("PITCH_MODE")) {
-    int idx = juce::jlimit(0, 2, (int)std::round(param->getValue() * 2.0f));
-    pitchControl.setSelectedIndex(idx, false);
-  }
+  syncUIFromAPVTS();
 
   // Sync toolbar enable state
   toolbar.setEnabled(spectrogram && spectrogram->isFileLoaded());
@@ -61,17 +84,6 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
     presetOverlay->refreshSampleList();
     presetOverlay->setVisible(true);
     presetOverlay->toFront(true);
-  };
-
-  auto syncUIFromAPVTS = [this]() {
-    if (auto* param = audioProcessor.getAPVTS().getParameter("PLAYBACK_MODE")) {
-      int idx = juce::jlimit(0, 4, (int)std::round(param->getValue() * 4.0f));
-      playbackControl.setSelectedIndex(idx, false);
-    }
-    if (auto* param = audioProcessor.getAPVTS().getParameter("PITCH_MODE")) {
-      int idx = juce::jlimit(0, 2, (int)std::round(param->getValue() * 2.0f));
-      pitchControl.setSelectedIndex(idx, false);
-    }
   };
 
   // Callback when user loads a sample manually (independent of preset browser)
@@ -159,12 +171,23 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
       float normVal = juce::jlimit(0.0f, 1.0f, (float)index / 4.0f);
       param->setValueNotifyingHost(normVal);
     }
+    if (index == 4) {
+      triggerRandomConfigurationReroll();
+    }
+  };
+
+  playbackControl.onOptionClicked = [this](int index, bool isReclick) {
+    if (index == 4 && isReclick) {
+      triggerRandomConfigurationReroll();
+    }
   };
 
   pitchControl.onSelectionChanged = [this](int index) {
     if (auto* param = audioProcessor.getAPVTS().getParameter("PITCH_MODE")) {
       float normVal = juce::jlimit(0.0f, 1.0f, (float)index / 2.0f);
       param->setValueNotifyingHost(normVal);
+      bool isPoly = polyButton.getToggleState();
+      adsrPanel.updateTimbreEnabledState(index, isPoly);
     }
   };
 
@@ -234,9 +257,14 @@ void VancespectralAudioProcessorEditor::resized() {
   auto footerArea = area.removeFromBottom(24); // Reserve for footer strip
 
   // Compact master volume slider on far right of bottom footer bar (opposite branding text)
-  int volumeWidth = 200;
+  int volumeWidth = 180;
   auto volumeArea = footerArea.removeFromRight(volumeWidth);
   volumeSlider.setBounds(volumeArea);
+
+  footerArea.removeFromRight(8);
+
+  auto polyArea = footerArea.removeFromRight(64).reduced(0, 2);
+  polyButton.setBounds(polyArea);
 
   // Top Bar (Preset Browser) - 36px height
   auto topBarArea = area.removeFromTop(36);
@@ -364,4 +392,17 @@ bool VancespectralAudioProcessorEditor::keyStateChanged(bool isKeyDown) {
     }
   }
   return false;
+}
+
+void VancespectralAudioProcessorEditor::triggerRandomConfigurationReroll() {
+  audioProcessor.rerollRandomDirection();
+
+  if (auto* exciterParam = audioProcessor.getAPVTS().getParameter("EXCITER")) {
+    float randExciter = 0.15f + juce::Random::getSystemRandom().nextFloat() * 0.70f;
+    exciterParam->setValueNotifyingHost(randExciter);
+  }
+
+  if (spectrogram) {
+    spectrogram->generateRandomSelections();
+  }
 }

@@ -23,6 +23,8 @@ public:
     bool keyPressed(const juce::KeyPress& key) override;
     bool keyStateChanged(bool isKeyDown) override;
 
+    void triggerRandomConfigurationReroll();
+
 private:
     VancespectralAudioProcessor& audioProcessor;
     SpectralUILookAndFeel spectralLookAndFeel;
@@ -38,6 +40,37 @@ private:
 
     juce::Slider volumeSlider;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> volumeAttachment;
+
+    class PolyButton : public juce::Button
+    {
+    public:
+        PolyButton() : juce::Button("POLY") {}
+
+        void paintButton(juce::Graphics& g, bool isHighlighted, bool isDown) override
+        {
+            juce::ignoreUnused(isDown);
+            auto bounds = getLocalBounds().toFloat().reduced(1.0f);
+            bool active = getToggleState();
+
+            juce::Colour bg = active ? SpectralUILookAndFeel::accentColour
+                                     : (isHighlighted ? juce::Colour(0x2A, 0x2C, 0x38)
+                                                      : juce::Colour(0x22, 0x22, 0x2E));
+
+            g.setColour(bg);
+            g.fillRoundedRectangle(bounds, 3.0f);
+
+            juce::Colour borderCol = active ? SpectralUILookAndFeel::accentColour
+                                            : SpectralUILookAndFeel::dividerColour;
+            g.setColour(borderCol);
+            g.drawRoundedRectangle(bounds, 3.0f, 1.0f);
+
+            g.setFont(SpectralUILookAndFeel::getGeometricFont(10.0f, true));
+            g.setColour(active ? juce::Colours::black : SpectralUILookAndFeel::textMutedColour);
+            g.drawText(active ? "POLY" : "MONO", bounds.toNearestInt(), juce::Justification::centred, false);
+        }
+    };
+
+    PolyButton polyButton;
 
     PresetManager presetManager;
     std::unique_ptr<PresetBrowserOverlay> presetOverlay;

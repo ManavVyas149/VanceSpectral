@@ -50,9 +50,30 @@ juce::AudioProcessorValueTreeState::ParameterLayout VancespectralAudioProcessor:
     params.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID("PITCH_SEMITONES", 1), "Pitch Shift", juce::NormalisableRange<float>(-24.0f, 24.0f, 1.0f), 0.0f));
 
+    // Timbre / Formant Shift Parameter (-24 to +24 semitones, default 0 st)
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("TIMBRE_SEMITONES", 1), "Timbre Shift", juce::NormalisableRange<float>(-24.0f, 24.0f, 1.0f), 0.0f));
+
+    // Timbre Link Parameter (True = linked to pitch shift, False = decoupled timbre)
+    params.push_back(std::make_unique<juce::AudioParameterBool>(
+        juce::ParameterID("TIMBRE_LINK", 1), "Timbre Link", true));
+
+    // Timbre Drift Amount Parameter (0.0 to 1.0, default 0.0)
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("TIMBRE_DRIFT", 1), "Voice Drift", juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.0f));
+
     // Exciter Parameter (0.0 to 1.0, default 0.0)
     params.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID("EXCITER", 1), "Exciter", juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.0f));
+
+    // Polyphony Mode Parameter (2 states: Mono [0], Poly [1], default Mono)
+    params.push_back(std::make_unique<juce::AudioParameterChoice>(
+        juce::ParameterID("POLY_MODE", 1), "Polyphony Mode",
+        juce::StringArray{ "Mono", "Poly" }, 0));
+
+    // Glide Parameter (0.0s to 2.0s, default 0.0s)
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("GLIDE", 1), "Glide Time", juce::NormalisableRange<float>(0.0f, 2.0f, 0.001f, 0.5f), 0.0f));
 
     // Master Gain Parameter (-48.0 dB to +6.0 dB, default 0.0 dB)
     params.push_back(std::make_unique<juce::AudioParameterFloat>(
@@ -157,6 +178,9 @@ void VancespectralAudioProcessor::prepareToPlay(
 {
     juce::ignoreUnused(samplesPerBlock);
     sampleEngine.prepare(sampleRate);
+    masterGainSmoother.reset(sampleRate, 0.02); // 20ms gain smoothing
+    float masterGainDb = *apvts.getRawParameterValue("GAIN");
+    masterGainSmoother.setCurrentAndTargetValue(juce::Decibels::decibelsToGain(masterGainDb));
 }
 
 //==============================================================================
@@ -230,11 +254,22 @@ void VancespectralAudioProcessor::processBlock(
     int playMode = (int)*apvts.getRawParameterValue("PLAYBACK_MODE");
     int pitchMode = (int)*apvts.getRawParameterValue("PITCH_MODE");
     float pitchSemis = *apvts.getRawParameterValue("PITCH_SEMITONES");
+    float timbreSemis = *apvts.getRawParameterValue("TIMBRE_SEMITONES");
+    bool timbreLinked = *apvts.getRawParameterValue("TIMBRE_LINK") >= 0.5f;
+    float timbreDriftVal = *apvts.getRawParameterValue("TIMBRE_DRIFT");
     float exciterVal = *apvts.getRawParameterValue("EXCITER");
+    int polyModeVal = (int)*apvts.getRawParameterValue("POLY_MODE");
+    float glideValSec = *apvts.getRawParameterValue("GLIDE");
+
     sampleEngine.setPlaybackMode(playMode);
     sampleEngine.setPitchMode(pitchMode);
     sampleEngine.setPitchSemitones(pitchSemis);
+    sampleEngine.setTimbreSemitones(timbreSemis);
+    sampleEngine.setTimbreLink(timbreLinked);
+    sampleEngine.setTimbreDrift(timbreDriftVal);
     sampleEngine.setExciterAmount(exciterVal);
+    sampleEngine.setPolyMode(polyModeVal == 1);
+    sampleEngine.setGlideTime(glideValSec * 1000.0f);
 
     if (auto* ph = getPlayHead())
     {
@@ -249,7 +284,16 @@ void VancespectralAudioProcessor::processBlock(
 
     float masterGainDb = *apvts.getRawParameterValue("GAIN");
     float masterGainLinear = juce::Decibels::decibelsToGain(masterGainDb);
-    buffer.applyGain(masterGainLinear);
+    masterGainSmoother.setTargetValue(masterGainLinear);
+
+    if (masterGainSmoother.isSmoothing())
+    {
+        masterGainSmoother.applyGain(buffer, buffer.getNumSamples());
+    }
+    else
+    {
+        buffer.applyGain(masterGainSmoother.getCurrentValue());
+    }
 }
 
 //==============================================================================
@@ -365,13 +409,13 @@ void VancespectralAudioProcessor::setStateInformation(const void* data, int size
 
 void VancespectralAudioProcessor::resetParametersToDefault()
 {
-    const char* paramIDs[] = {
+    const char* idsToReset[] = {
         "AMP_ATTACK", "AMP_DECAY", "AMP_SUSTAIN", "AMP_RELEASE",
         "FILTER_ATTACK", "FILTER_DECAY", "FILTER_SUSTAIN", "FILTER_RELEASE",
-        "PLAYBACK_MODE", "PITCH_MODE", "PITCH_SEMITONES", "EXCITER", "GAIN"
+        "PLAYBACK_MODE", "PITCH_MODE", "PITCH_SEMITONES", "EXCITER", "POLY_MODE", "GLIDE", "GAIN"
     };
 
-    for (const auto& id : paramIDs)
+    for (const auto& id : idsToReset)
     {
         if (auto* param = apvts.getParameter(id))
         {
