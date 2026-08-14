@@ -33,13 +33,17 @@ public:
     void filesDropped(const juce::StringArray& files, int x, int y) override;
 
     void loadAudioFile(const juce::File& file, bool isPartOfPresetLoad = false);
+    void loadDirectAudioBuffer(const juce::AudioBuffer<float>& buffer, double sampleRate, const juce::String& fileName, bool isLooping);
     void restoreFromProcessorState();
     void restorePresetSnapshot(float startRegion, float endRegion, const juce::var& selectionsVar);
     void generateRandomSelections();
     juce::var getSelectionsAsVar() const;
     float getStartRegion() const { return startPosition; }
     float getEndRegion() const { return endPosition; }
+    bool isLoopEnabled() const { return loopEnabled; }
+    void setLoopEnabled(bool loop);
     juce::File getLoadedFile() const { return loadedFile; }
+    const juce::AudioBuffer<float>& getAudioBuffer() const { return audioBuffer; }
 
     std::function<void()> onManualSampleLoaded;
 

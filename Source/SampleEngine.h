@@ -41,7 +41,7 @@ class SampleEngine
 public:
     SampleEngine();
 
-    void loadSample(const juce::AudioBuffer<float>& buffer, double nativeSampleRate = 44100.0);
+    void loadSample(const juce::AudioBuffer<float>& buffer, double nativeSampleRate = 44100.0, int rootNote = 60);
     void prepare(double sampleRate);
 
     void process(juce::AudioBuffer<float>& output,
@@ -64,6 +64,9 @@ public:
     void setPitchMode(int modeIndex);
     void setPitchSemitones(float semitones);
     void setHostBpm(double bpm);
+
+    void setRootNote(int noteNumber);
+    int getRootNote() const { return rootNoteNumber.load(); }
 
     bool isPlaying() const;
     double getPlayPositionNormalized() const;
@@ -90,6 +93,13 @@ public:
 
     static constexpr int MAX_VOICES = 32;
 
+    struct WSOLAGrain
+    {
+        bool active = false;
+        double sourceStartPos = 0.0;
+        double samplePhase = 0.0;
+    };
+
     struct Voice
     {
         bool active = false;
@@ -115,6 +125,10 @@ public:
         int randomGrainCounter = 0;
         double pitchPhase = 0.0;
         int samplesProcessed = 0;
+
+        WSOLAGrain wsolaGrains[2];
+        int wsolaHopCounter = 0;
+        bool wsolaInitialized = false;
 
         EnvelopeData ampEnvelope{ EnvelopeCategory::AmplifierEnvelope };
         EnvelopeData filterEnvelope{ EnvelopeCategory::FilterEnvelope };
@@ -153,6 +167,10 @@ public:
             randomGrainCounter = 0;
             pitchPhase = 0.0;
             samplesProcessed = 0;
+            wsolaGrains[0] = {};
+            wsolaGrains[1] = {};
+            wsolaHopCounter = 0;
+            wsolaInitialized = false;
             filterStateL = 0.0f;
             filterStateR = 0.0f;
             ampEnvelope.reset();
@@ -207,6 +225,7 @@ private:
     std::atomic<PitchMode> pitchMode{ PitchMode::Stretch };
 
     // Pitch Tracking & Pitch Shifter States
+    std::atomic<int> rootNoteNumber{ 60 };
     std::atomic<int> currentNoteNumber{ 60 };
     std::atomic<float> pitchSemitones{ 0.0f };
     std::atomic<float> timbreSemitones{ 0.0f };

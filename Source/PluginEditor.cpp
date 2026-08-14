@@ -9,7 +9,7 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
   setWantsKeyboardFocus(true);
 
   spectrogram = std::make_unique<SpectrogramComponent>(audioProcessor);
-  presetOverlay = std::make_unique<PresetBrowserOverlay>(presetManager, audioProcessor.getAPVTS());
+  presetOverlay = std::make_unique<PresetBrowserOverlay>(presetManager, audioProcessor.getAPVTS(), &audioProcessor.getHistoryManager());
   presetOverlay->bindSpectrogramComponent(spectrogram.get());
 
   presetManager.createDefaultFactoryPresets(audioProcessor.getAPVTS());
@@ -80,22 +80,97 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
 
   // Wire preset bar callbacks
   presetBar.onBrowseClicked = [this]() {
+    presetOverlay->syncActivePresetFromProcessor(audioProcessor.getCurrentPresetName());
+    presetOverlay->refreshBankList();
     presetOverlay->refreshPresetList();
     presetOverlay->refreshSampleList();
+    presetOverlay->refreshHistoryList();
     presetOverlay->setVisible(true);
     presetOverlay->toFront(true);
+  };
+
+  presetBar.onSaveStateClicked = [this]() {
+    juce::String defaultName = "State " + juce::Time::getCurrentTime().formatted("%Y-%m-%d %H-%M");
+    if (spectrogram && spectrogram->isFileLoaded())
+      defaultName = spectrogram->getLoadedFile().getFileNameWithoutExtension() + " State";
+
+    auto* dialog = new juce::AlertWindow("SAVE FULL STATE", "Enter a name for this full session snapshot (sample + settings):", juce::AlertWindow::NoIcon);
+    dialog->addTextEditor("stateName", defaultName, "State Name");
+    dialog->addButton("Save State", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    dialog->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+
+    dialog->enterModalState(true, juce::ModalCallbackFunction::create([this, dialog](int button) {
+      if (button == 1)
+      {
+        juce::String name = dialog->getTextEditorContents("stateName").trim();
+        if (name.isNotEmpty())
+        {
+          auto executeSaveState = [this, name]() {
+            float startReg = spectrogram ? spectrogram->getStartRegion() : 0.0f;
+            float endReg = spectrogram ? spectrogram->getEndRegion() : 1.0f;
+            juce::var selectionsVar = spectrogram ? spectrogram->getSelectionsAsVar() : juce::var();
+            bool loopEnabled = spectrogram ? spectrogram->isLoopEnabled() : false;
+            const juce::AudioBuffer<float>* audioBuf = spectrogram ? &spectrogram->getAudioBuffer() : nullptr;
+            juce::String sampleFileName = spectrogram ? spectrogram->getLoadedFile().getFileName() : "";
+
+            if (presetManager.savePreset(name, "STATES", "User", sampleFileName, audioProcessor.getAPVTS(), startReg, endReg, selectionsVar, false, loopEnabled, audioBuf, 44100.0))
+            {
+              presetBar.setPresetName(name);
+              audioProcessor.setCurrentPresetName(name);
+              if (presetOverlay)
+              {
+                presetOverlay->syncActivePresetFromProcessor(name);
+                presetOverlay->refreshPresetList();
+              }
+              audioProcessor.checkpointHistoryState("State Saved: " + name, audioBuf, 44100.0);
+            }
+            else
+            {
+              auto* errDialog = new juce::AlertWindow("SAVE STATE FAILED", "Failed to write state file '" + name + ".vsts' to disk in User bank. Please check folder permissions.", juce::AlertWindow::WarningIcon);
+              errDialog->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
+              errDialog->enterModalState(true, nullptr, true);
+            }
+          };
+
+          juce::String cleanName = juce::File::createLegalFileName(name);
+          juce::File targetFile = presetManager.getPresetsFolder().getChildFile("User").getChildFile(cleanName + ".vsts");
+
+          if (targetFile.existsAsFile())
+          {
+            auto* confirmDialog = new juce::AlertWindow("STATE ALREADY EXISTS", "A full state named '" + name + "' already exists in the User bank. Overwrite existing file on disk?", juce::AlertWindow::QuestionIcon);
+            confirmDialog->addButton("Overwrite", 1, juce::KeyPress(juce::KeyPress::returnKey));
+            confirmDialog->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+
+            confirmDialog->enterModalState(true, juce::ModalCallbackFunction::create([executeSaveState](int buttonChoice) {
+              if (buttonChoice == 1)
+              {
+                executeSaveState();
+              }
+            }), true);
+          }
+          else
+          {
+            executeSaveState();
+          }
+        }
+      }
+    }), true);
   };
 
   // Callback when user loads a sample manually (independent of preset browser)
   spectrogram->onManualSampleLoaded = [this, syncUIFromAPVTS]() {
     syncUIFromAPVTS();
+    juce::String sampleName = "Custom / Unsaved";
     if (spectrogram && spectrogram->isFileLoaded())
-      presetBar.setPresetName(spectrogram->getLoadedFile().getFileNameWithoutExtension());
-    else
-      presetBar.setPresetName("Custom / Unsaved");
+      sampleName = spectrogram->getLoadedFile().getFileNameWithoutExtension();
+    presetBar.setPresetName(sampleName);
+    audioProcessor.setCurrentPresetName(sampleName);
 
     if (presetOverlay)
       presetOverlay->clearActivePresetSelection();
+
+    const juce::AudioBuffer<float>* audioBuf = spectrogram ? &spectrogram->getAudioBuffer() : nullptr;
+    audioProcessor.checkpointHistoryState("Sample Loaded: " + sampleName, audioBuf, 44100.0);
   };
 
   // Atomic preset load helper
@@ -104,24 +179,42 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
     float startReg = 0.0f;
     float endReg = 1.0f;
     juce::var selectionsVar;
+    bool loopEnabled = false;
+    juce::AudioBuffer<float> loadedBuf;
+    double loadedSr = 44100.0;
 
-    if (presetManager.loadPreset(presetFile, audioProcessor.getAPVTS(), sampleFileName, startReg, endReg, selectionsVar)) {
+    if (presetManager.loadPreset(presetFile, audioProcessor.getAPVTS(), sampleFileName, startReg, endReg, selectionsVar, loopEnabled, &loadedBuf, &loadedSr)) {
+      juce::String pName = presetFile.getFileNameWithoutExtension();
+      juce::String catName = "";
       juce::var parsed = juce::JSON::parse(presetFile.loadFileAsString());
       if (parsed.isObject()) {
-        presetBar.setPresetName(parsed.getProperty("name", presetFile.getFileNameWithoutExtension()).toString());
+        pName = parsed.getProperty("name", pName).toString();
+        catName = parsed.getProperty("category", "").toString();
       }
+      presetBar.setPresetName(pName);
+      audioProcessor.setCurrentPresetName(pName);
+      if (presetOverlay)
+        presetOverlay->syncActivePresetFromProcessor(pName);
+
       syncUIFromAPVTS();
 
-      if (sampleFileName.isNotEmpty() && spectrogram) {
+      if (loadedBuf.getNumSamples() > 0 && spectrogram) {
+        spectrogram->loadDirectAudioBuffer(loadedBuf, loadedSr, sampleFileName, loopEnabled);
+      } else if (sampleFileName.isNotEmpty() && spectrogram && catName.equalsIgnoreCase("STATES")) {
         auto sampleFile = presetManager.getSamplesFolder().getChildFile(sampleFileName);
         if (sampleFile.existsAsFile()) {
           spectrogram->loadAudioFile(sampleFile, true); // true = isPartOfPresetLoad!
         }
       }
+      // Note: For settings-only presets (FX category), loadedBuf is empty, so we do NOT reload sample audio!
 
       if (spectrogram) {
+        spectrogram->setLoopEnabled(loopEnabled);
         spectrogram->restorePresetSnapshot(startReg, endReg, selectionsVar);
       }
+
+      const juce::AudioBuffer<float>* audioBuf = spectrogram ? &spectrogram->getAudioBuffer() : nullptr;
+      audioProcessor.checkpointHistoryState("Preset Loaded: " + pName, audioBuf, 44100.0);
     }
   };
 
@@ -162,7 +255,14 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
   presetOverlay->onSampleSelected = [this](const juce::File &sampleFile) {
     if (sampleFile.existsAsFile() && spectrogram) {
       spectrogram->loadAudioFile(sampleFile, false); // false = manual sample load resets settings
+      const juce::AudioBuffer<float>* audioBuf = spectrogram ? &spectrogram->getAudioBuffer() : nullptr;
+      audioProcessor.checkpointHistoryState("Sample Loaded: " + sampleFile.getFileNameWithoutExtension(), audioBuf, 44100.0);
     }
+  };
+
+  presetOverlay->onHistoryEntryRestored = [this, syncUIFromAPVTS](const HistoryEntry& entry) {
+    syncUIFromAPVTS();
+    presetBar.setPresetName("History: " + entry.label);
   };
 
   // Fixed APVTS parameter sync for Playback & Pitch mode segmented controls
@@ -207,11 +307,30 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
     toolbar.setEnabled(spectrogram && spectrogram->isFileLoaded());
   }
 
+  startTimer(2000);
   setSize(1040, 640);
 }
 
 VancespectralAudioProcessorEditor::~VancespectralAudioProcessorEditor() {
+  stopTimer();
   setLookAndFeel(nullptr);
+}
+
+void VancespectralAudioProcessorEditor::timerCallback() {
+  juce::int64 now = juce::Time::currentTimeMillis();
+  if (lastAutoCheckpointTimeMs == 0)
+    lastAutoCheckpointTimeMs = now;
+
+  if (now - lastAutoCheckpointTimeMs > 120000) { // Every 2 minutes
+    if (spectrogram && spectrogram->isFileLoaded()) {
+      const juce::AudioBuffer<float>* audioBuf = &spectrogram->getAudioBuffer();
+      if (audioProcessor.checkpointHistoryState("Auto Snapshot", audioBuf, 44100.0)) {
+        lastAutoCheckpointTimeMs = now;
+        if (presetOverlay)
+          presetOverlay->refreshHistoryList();
+      }
+    }
+  }
 }
 
 void VancespectralAudioProcessorEditor::paint(juce::Graphics &g) {

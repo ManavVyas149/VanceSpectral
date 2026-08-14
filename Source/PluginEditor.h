@@ -12,7 +12,8 @@
 #include "PresetBrowserOverlay.h"
 
 class VancespectralAudioProcessorEditor : public juce::AudioProcessorEditor,
-                                          public juce::DragAndDropContainer
+                                          public juce::DragAndDropContainer,
+                                          public juce::Timer
 {
 public:
     VancespectralAudioProcessorEditor(VancespectralAudioProcessor&);
@@ -22,6 +23,7 @@ public:
     void resized() override;
     bool keyPressed(const juce::KeyPress& key) override;
     bool keyStateChanged(bool isKeyDown) override;
+    void timerCallback() override;
 
     void triggerRandomConfigurationReroll();
 
@@ -85,6 +87,7 @@ private:
     int currentOctaveOffset = 0;
     std::map<int, int> activeQwertyNoteKeys;
     static int getQwertySemitone(juce::juce_wchar c);
+    juce::int64 lastAutoCheckpointTimeMs = 0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(VancespectralAudioProcessorEditor)
 };

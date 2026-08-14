@@ -10,6 +10,7 @@
 
 #include <JuceHeader.h>
 #include "SampleEngine.h"
+#include "HistoryManager.h"
 
 //==============================================================================
 /**
@@ -54,12 +55,12 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
     
-    void setLoadedSample(const juce::File& file, const juce::AudioBuffer<float>& buffer, double nativeSampleRate)
+    void setLoadedSample(const juce::File& file, const juce::AudioBuffer<float>& buffer, double nativeSampleRate, int rootNote = 60)
     {
         loadedSampleFile = file;
         loadedSampleFileName = file.getFileName();
         sampleLoaded = true;
-        sampleEngine.loadSample(buffer, nativeSampleRate);
+        sampleEngine.loadSample(buffer, nativeSampleRate, rootNote);
     }
 
     juce::File getLoadedSampleFile() const { return loadedSampleFile; }
@@ -91,9 +92,9 @@ public:
     bool isPluginInitialized() const { return isInitialized; }
     void setPluginInitialized(bool init) { isInitialized = init; }
 
-    void loadSample(const juce::AudioBuffer<float>& buffer, double nativeSampleRate = 44100.0)
+    void loadSample(const juce::AudioBuffer<float>& buffer, double nativeSampleRate = 44100.0, int rootNote = 60)
     {
-        sampleEngine.loadSample(buffer, nativeSampleRate);
+        sampleEngine.loadSample(buffer, nativeSampleRate, rootNote);
     }
 
     void noteOn(int midiNoteNumber, float velocity = 1.0f)
@@ -178,6 +179,22 @@ public:
     }
 
     SampleEngine& getSampleEngine() { return sampleEngine; }
+    HistoryManager& getHistoryManager() { return historyManager; }
+
+    bool checkpointHistoryState(const juce::String& label, const juce::AudioBuffer<float>* audioBuffer = nullptr, double sampleRate = 44100.0)
+    {
+        return historyManager.pushHistoryState(
+            label,
+            loadedSampleFileName,
+            apvts,
+            startRegionNormalized,
+            endRegionNormalized,
+            loopEnabled,
+            selectionsVar,
+            audioBuffer != nullptr ? *audioBuffer : juce::AudioBuffer<float>(),
+            sampleRate
+        );
+    }
 
     void resetParametersToDefault();
 
@@ -186,6 +203,7 @@ public:
 
 private:
     SampleEngine sampleEngine;
+    HistoryManager historyManager;
     juce::AudioProcessorValueTreeState apvts;
     juce::LinearSmoothedValue<float> masterGainSmoother;
 

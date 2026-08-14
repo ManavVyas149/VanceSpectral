@@ -42,16 +42,25 @@ public:
                     float startRegion = 0.0f,
                     float endRegion = 1.0f,
                     const juce::var& selectionsVar = juce::var(),
-                    bool isFavorite = false);
+                    bool isFavorite = false,
+                    bool loopEnabled = false,
+                    const juce::AudioBuffer<float>* sampleAudioBuffer = nullptr,
+                    double sampleRate = 44100.0);
 
     bool loadPreset(const juce::File& presetFile,
                     juce::AudioProcessorValueTreeState& apvts,
                     juce::String& loadedSampleFileName,
                     float& loadedStartRegion,
                     float& loadedEndRegion,
-                    juce::var& loadedSelectionsVar);
+                    juce::var& loadedSelectionsVar,
+                    bool& loadedLoopEnabled,
+                    juce::AudioBuffer<float>* outAudioBuffer = nullptr,
+                    double* outSampleRate = nullptr);
 
     bool deletePreset(const juce::File& presetFile);
+
+    static juce::String audioBufferToBase64Wav(const juce::AudioBuffer<float>& buffer, double sampleRate = 44100.0);
+    static bool base64WavToAudioBuffer(const juce::String& base64Str, juce::AudioBuffer<float>& outBuffer, double& outSampleRate);
 
     juce::File findMatchingSample(const juce::File& sourceFile) const;
     juce::File importSample(const juce::File& sourceFile, bool overwriteExisting = false, const juce::File& sampleToReplace = {});

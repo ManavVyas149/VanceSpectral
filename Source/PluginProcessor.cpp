@@ -362,7 +362,13 @@ void VancespectralAudioProcessor::setStateInformation(const void* data, int size
             {
                 juce::AudioBuffer<float> buffer((int)reader->numChannels, (int)reader->lengthInSamples);
                 reader->read(&buffer, 0, (int)reader->lengthInSamples, 0, true, true);
-                setLoadedSample(sampleFile, buffer, reader->sampleRate);
+                int rootNote = 60;
+                if (reader->metadataValues.containsKey("sampleRootNote"))
+                    rootNote = reader->metadataValues.getValue("sampleRootNote", "60").getIntValue();
+                else if (reader->metadataValues.containsKey("RootNote"))
+                    rootNote = reader->metadataValues.getValue("RootNote", "60").getIntValue();
+
+                setLoadedSample(sampleFile, buffer, reader->sampleRate, rootNote);
             }
         }
 

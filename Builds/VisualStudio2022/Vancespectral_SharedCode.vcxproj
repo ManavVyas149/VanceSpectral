@@ -157,6 +157,7 @@
     <ClCompile Include="..\..\Source\PresetBrowserOverlay.cpp"/>
     <ClCompile Include="..\..\Source\EnvelopeData.cpp"/>
     <ClCompile Include="..\..\Source\PresetManager.cpp"/>
+    <ClCompile Include="..\..\Source\HistoryManager.cpp"/>
     <ClCompile Include="..\..\..\..\..\..\..\..\JUCE\modules\juce_audio_basics\audio_play_head\juce_AudioPlayHead.cpp">
       <ExcludedFromBuild>true</ExcludedFromBuild>
     </ClCompile>
@@ -3113,6 +3114,7 @@
     <ClInclude Include="..\..\Source\PresetBrowserOverlay.h"/>
     <ClInclude Include="..\..\Source\EnvelopeData.h"/>
     <ClInclude Include="..\..\Source\PresetManager.h"/>
+    <ClInclude Include="..\..\Source\HistoryManager.h"/>
     <ClInclude Include="..\..\..\..\..\..\..\..\JUCE\modules\juce_audio_basics\audio_play_head\juce_AudioPlayHead.h"/>
     <ClInclude Include="..\..\..\..\..\..\..\..\JUCE\modules\juce_audio_basics\buffers\juce_AudioChannelSet.h"/>
     <ClInclude Include="..\..\..\..\..\..\..\..\JUCE\modules\juce_audio_basics\buffers\juce_AudioDataConverters.h"/>

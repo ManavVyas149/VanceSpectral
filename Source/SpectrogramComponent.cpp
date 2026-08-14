@@ -91,6 +91,37 @@ void SpectrogramComponent::loadAudioFile(const juce::File &file, bool isPartOfPr
   repaint();
 }
 
+void SpectrogramComponent::loadDirectAudioBuffer(const juce::AudioBuffer<float>& buffer, double sampleRate, const juce::String& fileName, bool isLooping) {
+  if (buffer.getNumSamples() == 0)
+    return;
+
+  audioBuffer = buffer;
+  loadedFile = juce::File();
+  fileLoaded = true;
+
+  loopEnabled = isLooping;
+  loopButton.setToggleState(loopEnabled, juce::dontSendNotification);
+
+  processor.setLoadedSample(juce::File(), audioBuffer, sampleRate);
+  processor.setCurrentPresetName(fileName.isNotEmpty() ? fileName : "Custom / Unsaved");
+  processor.setRegion(startPosition, endPosition);
+  processor.setLoop(loopEnabled);
+  updateFrequencyFilterFromSelections();
+  generateSpectrogramImage();
+
+  if (onFileLoadedStateChanged)
+    onFileLoadedStateChanged(true);
+
+  repaint();
+}
+
+void SpectrogramComponent::setLoopEnabled(bool loop) {
+  loopEnabled = loop;
+  loopButton.setToggleState(loopEnabled, juce::dontSendNotification);
+  processor.setLoop(loopEnabled);
+  repaint();
+}
+
 void SpectrogramComponent::restoreFromProcessorState() {
   if (processor.isSampleLoaded()) {
     loadedFile = processor.getLoadedSampleFile();

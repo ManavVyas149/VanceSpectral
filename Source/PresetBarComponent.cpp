@@ -5,12 +5,21 @@ PresetBarComponent::PresetBarComponent()
     addAndMakeVisible(prevButton);
     addAndMakeVisible(nextButton);
 
+    saveStateButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0x22, 0x22, 0x2C));
+    saveStateButton.setColour(juce::TextButton::buttonOnColourId, SpectralUILookAndFeel::accentColour);
+    saveStateButton.setColour(juce::TextButton::textColourOffId, SpectralUILookAndFeel::accentColour);
+    addAndMakeVisible(saveStateButton);
+
     prevButton.onClick = [this]() {
         if (onPrevClicked) onPrevClicked();
     };
 
     nextButton.onClick = [this]() {
         if (onNextClicked) onNextClicked();
+    };
+
+    saveStateButton.onClick = [this]() {
+        if (onSaveStateClicked) onSaveStateClicked();
     };
 }
 
@@ -83,6 +92,9 @@ void PresetBarComponent::resized()
     float cx = bounds.getCentreX();
     prevButton.setBounds((int)(cx - 140.0f), bounds.getY(), 24, bounds.getHeight());
     nextButton.setBounds((int)(cx + 116.0f), bounds.getY(), 24, bounds.getHeight());
+
+    // Right side SAVE STATE button
+    saveStateButton.setBounds(getWidth() - 120, (int)(bounds.getY() + 1), 105, (int)(bounds.getHeight() - 2));
 }
 
 void PresetBarComponent::mouseDown(const juce::MouseEvent& e)

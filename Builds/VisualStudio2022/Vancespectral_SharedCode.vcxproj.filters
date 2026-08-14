@@ -871,6 +871,9 @@
     <ClCompile Include="..\..\Source\PresetManager.cpp">
       <Filter>Vancespectral\DSP</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Source\HistoryManager.cpp">
+      <Filter>Vancespectral\DSP</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\..\..\..\..\JUCE\modules\juce_audio_basics\audio_play_head\juce_AudioPlayHead.cpp">
       <Filter>JUCE Modules\juce_audio_basics\audio_play_head</Filter>
     </ClCompile>
@@ -4051,6 +4054,9 @@
       <Filter>Vancespectral\DSP</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Source\PresetManager.h">
+      <Filter>Vancespectral\DSP</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\HistoryManager.h">
       <Filter>Vancespectral\DSP</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\..\..\..\JUCE\modules\juce_audio_basics\audio_play_head\juce_AudioPlayHead.h">

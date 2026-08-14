@@ -56,6 +56,9 @@
       <FILE id="pMngrCpp" name="PresetManager.cpp" compile="1" resource="0"
             file="Source/PresetManager.cpp"/>
       <FILE id="pMngrH" name="PresetManager.h" compile="0" resource="0" file="Source/PresetManager.h"/>
+      <FILE id="histMngrCpp" name="HistoryManager.cpp" compile="1" resource="0"
+            file="Source/HistoryManager.cpp"/>
+      <FILE id="histMngrH" name="HistoryManager.h" compile="0" resource="0" file="Source/HistoryManager.h"/>
     </GROUP>
   </MAINGROUP>
   <MODULES>

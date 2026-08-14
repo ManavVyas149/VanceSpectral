@@ -22,6 +22,7 @@ public:
   std::function<void()> onPrevClicked;
   std::function<void()> onNextClicked;
   std::function<void()> onBrowseClicked;
+  std::function<void()> onSaveStateClicked;
 
 private:
   class ChevronButton : public juce::Button {
@@ -66,6 +67,7 @@ private:
 
   ChevronButton prevButton{false};
   ChevronButton nextButton{true};
+  juce::TextButton saveStateButton{ "SAVE STATE" };
 
   juce::Rectangle<float> clickTargetBounds;
 

@@ -18,12 +18,13 @@ void SampleEngine::prepare(double sr)
     updateFilteredSample();
 }
 
-void SampleEngine::loadSample(const juce::AudioBuffer<float>& buffer, double sampleNativeRate)
+void SampleEngine::loadSample(const juce::AudioBuffer<float>& buffer, double sampleNativeRate, int rootNote)
 {
     const juce::ScopedLock sl(lock);
 
     sample = buffer;
     nativeSampleRate = sampleNativeRate > 0.0 ? sampleNativeRate : 44100.0;
+    rootNoteNumber = juce::jlimit(0, 127, rootNote);
 
     regionStart = 0;
     regionEnd = sample.getNumSamples();
@@ -35,7 +36,12 @@ void SampleEngine::loadSample(const juce::AudioBuffer<float>& buffer, double sam
 
     updateFilteredSample();
 
-    DBG("Sample Loaded: " << sample.getNumSamples() << " samples at " << nativeSampleRate << " Hz");
+    DBG("Sample Loaded: " << sample.getNumSamples() << " samples at " << nativeSampleRate << " Hz, Root Note: " << rootNoteNumber.load());
+}
+
+void SampleEngine::setRootNote(int noteNumber)
+{
+    rootNoteNumber = juce::jlimit(0, 127, noteNumber);
 }
 
 void SampleEngine::updateFilteredSample()
@@ -279,7 +285,7 @@ void SampleEngine::initVoice(Voice& v, int noteNumber, float velocity)
     v.noteNumber = noteNumber;
     v.velocity = velocity;
     v.voiceAge = ++voiceAgeCounter;
-    v.targetPitchSemitones = (float)(noteNumber - 60);
+    v.targetPitchSemitones = (float)(noteNumber - rootNoteNumber.load());
     v.timbreDriftOffset = (juce::Random::getSystemRandom().nextFloat() * 2.0f - 1.0f);
     v.filterStateL = 0.0f;
     v.filterStateR = 0.0f;
@@ -329,7 +335,7 @@ void SampleEngine::noteOn(int midiNoteNumber, float velocity)
     currentNoteNumber = midiNoteNumber;
     playing = true;
 
-    float targetSemis = (float)(midiNoteNumber - 60);
+    float targetSemis = (float)(midiNoteNumber - rootNoteNumber.load());
     float glideMs = glideTimeMs.load();
     bool isPoly = polyMode.load();
     int fadeSamples = (int)(targetSampleRate.load() * 0.004);
@@ -693,8 +699,6 @@ void SampleEngine::process(juce::AudioBuffer<float>& output,
     auto pMode = playbackMode.load();
     auto pitMode = pitchMode.load();
     float semis = pitchSemitones.load();
-    float tSemis = timbreSemitones.load();
-    bool tLinked = timbreLink.load();
     float driftAmt = timbreDriftAmount.load();
     bool isPoly = polyMode.load();
 
@@ -720,59 +724,28 @@ void SampleEngine::process(juce::AudioBuffer<float>& output,
             v.currentPitchSemitones += glideAlpha * (v.targetPitchSemitones - v.currentPitchSemitones);
 
             // Compute pitch ratio for this specific voice's smoothed pitch
-            float totalSemis = (pitMode == PitchMode::Axial) ? semis : (v.currentPitchSemitones + semis);
-            float voicePitchRatio = std::pow(2.0f, totalSemis / 12.0f);
-
             float voiceDriftSemis = (isPoly && driftAmt > 0.0001f) ? (driftAmt * v.timbreDriftOffset * 4.0f) : 0.0f;
-
-            float effectiveFormantSemis = 0.0f;
-            if (pitMode == PitchMode::Axial)
-            {
-                effectiveFormantSemis = 0.0f;
-            }
-            else if (tLinked)
-            {
-                effectiveFormantSemis = totalSemis + voiceDriftSemis;
-            }
-            else
-            {
-                effectiveFormantSemis = tSemis + voiceDriftSemis;
-            }
-            float voiceFormantRatio = std::pow(2.0f, effectiveFormantSemis / 12.0f);
+            float noteSemis = (pitMode == PitchMode::Axial) ? 0.0f : v.currentPitchSemitones;
+            float totalSemis = noteSemis + semis + voiceDriftSemis;
+            float voicePitchRatio = std::pow(2.0f, totalSemis / 12.0f);
 
             double speedRatio = baseSpeedRatio;
             float activePitchRatio = 1.0f;
 
             if (pitMode == PitchMode::Resample)
             {
-                if (tLinked)
-                {
-                    speedRatio = baseSpeedRatio * (double)voicePitchRatio;
-                    activePitchRatio = 1.0f;
-                }
-                else
-                {
-                    speedRatio = baseSpeedRatio * (double)voiceFormantRatio;
-                    activePitchRatio = voicePitchRatio / juce::jmax(0.001f, voiceFormantRatio);
-                }
+                speedRatio = baseSpeedRatio * (double)voicePitchRatio;
+                activePitchRatio = 1.0f;
             }
             else if (pitMode == PitchMode::Stretch)
             {
-                if (tLinked)
-                {
-                    speedRatio = baseSpeedRatio;
-                    activePitchRatio = voicePitchRatio;
-                }
-                else
-                {
-                    speedRatio = baseSpeedRatio * (double)voiceFormantRatio;
-                    activePitchRatio = voicePitchRatio / juce::jmax(0.001f, voiceFormantRatio);
-                }
+                speedRatio = baseSpeedRatio;
+                activePitchRatio = voicePitchRatio;
             }
             else // Axial (Fixed)
             {
                 speedRatio = baseSpeedRatio;
-                activePitchRatio = 1.0f;
+                activePitchRatio = (std::abs(semis) > 0.001f || std::abs(voiceDriftSemis) > 0.001f) ? voicePitchRatio : 1.0f;
             }
 
             // Boundary & direction logic per voice
@@ -878,12 +851,24 @@ void SampleEngine::process(juce::AudioBuffer<float>& output,
 
                 double clampedPos = juce::jlimit(0.0, (double)(totalSamples - 1), samplePos);
                 int t0 = (int)std::floor(clampedPos);
-                int t1 = juce::jmin(totalSamples - 1, t0 + 1);
                 float fr = (float)(clampedPos - (double)t0);
 
-                float s0 = srcBuffer.getSample(ch, t0);
-                float s1 = srcBuffer.getSample(ch, t1);
-                return s0 + fr * (s1 - s0);
+                int tm1 = juce::jmax(0, t0 - 1);
+                int t1  = juce::jmin(totalSamples - 1, t0 + 1);
+                int t2  = juce::jmin(totalSamples - 1, t0 + 2);
+
+                float ym1 = srcBuffer.getSample(ch, tm1);
+                float y0  = srcBuffer.getSample(ch, t0);
+                float y1  = srcBuffer.getSample(ch, t1);
+                float y2  = srcBuffer.getSample(ch, t2);
+
+                // 4-point C1 Catmull-Rom cubic interpolation
+                float c0 = y0;
+                float c1 = 0.5f * (y1 - ym1);
+                float c2 = ym1 - 2.5f * y0 + 2.0f * y1 - 0.5f * y2;
+                float c3 = 0.5f * (y2 - ym1) + 1.5f * (y0 - y1);
+
+                return ((c3 * fr + c2) * fr + c1) * fr + c0;
             };
 
             auto readLoopCrossfadedSample = [&](int channelIdx, double pos) -> float {
@@ -996,28 +981,118 @@ void SampleEngine::process(juce::AudioBuffer<float>& output,
             float rawSampleL = 0.0f;
             float rawSampleR = 0.0f;
 
-            if (pitMode != PitchMode::Axial && std::abs(activePitchRatio - 1.0f) > 0.001f)
+            if (pitMode == PitchMode::Stretch && std::abs(activePitchRatio - 1.0f) > 0.0005f)
             {
-                int grainSize = (int)(targetSampleRate * 0.035);
-                if (grainSize < 64) grainSize = 64;
-                int halfGrain = grainSize / 2;
+                constexpr int WSOLA_GRAIN_LEN = 1024;
+                constexpr int WSOLA_HOP_LEN   = 512;
+                constexpr int WSOLA_SEARCH    = 128;
 
-                double normPhase1 = std::fmod(v.pitchPhase, (double)grainSize) / (double)grainSize;
-                double normPhase2 = std::fmod(v.pitchPhase + (double)halfGrain, (double)grainSize) / (double)grainSize;
+                if (!v.wsolaInitialized)
+                {
+                    v.wsolaGrains[0].active = true;
+                    v.wsolaGrains[0].sourceStartPos = v.currentSample;
+                    v.wsolaGrains[0].samplePhase = 0.0;
 
-                float win1 = 0.5f * (1.0f - std::cos(2.0f * juce::MathConstants<float>::pi * (float)normPhase1));
-                float win2 = 0.5f * (1.0f - std::cos(2.0f * juce::MathConstants<float>::pi * (float)normPhase2));
+                    v.wsolaGrains[1].active = false;
+                    v.wsolaGrains[1].sourceStartPos = v.currentSample;
+                    v.wsolaGrains[1].samplePhase = 0.0;
 
-                double shift1 = (normPhase1 - 0.5) * (double)grainSize * (1.0 - (double)activePitchRatio);
-                double shift2 = (normPhase2 - 0.5) * (double)grainSize * (1.0 - (double)activePitchRatio);
+                    v.wsolaHopCounter = 0;
+                    v.wsolaInitialized = true;
+                }
 
-                rawSampleL = win1 * readLoopCrossfadedSample(0, v.currentSample + shift1) + win2 * readLoopCrossfadedSample(0, v.currentSample + shift2);
-                rawSampleR = win1 * readLoopCrossfadedSample(1, v.currentSample + shift1) + win2 * readLoopCrossfadedSample(1, v.currentSample + shift2);
+                if (v.wsolaHopCounter >= WSOLA_HOP_LEN)
+                {
+                    v.wsolaHopCounter = 0;
 
-                v.pitchPhase += 1.0;
+                    int oldIdx = (v.wsolaGrains[0].samplePhase <= v.wsolaGrains[1].samplePhase) ? 1 : 0;
+                    int newIdx = 1 - oldIdx;
+
+                    double nominalTargetPos = v.currentSample;
+                    double bestOffset = 0.0;
+                    float maxCorr = -1.0e9f;
+
+                    double currentGrainReadPos = v.wsolaGrains[oldIdx].sourceStartPos + v.wsolaGrains[oldIdx].samplePhase * (double)activePitchRatio;
+
+                    for (int d = -WSOLA_SEARCH; d <= WSOLA_SEARCH; d += 4)
+                    {
+                        double candPos = nominalTargetPos + (double)d;
+                        float corr = 0.0f;
+                        float normA = 0.0f;
+                        float normB = 0.0f;
+
+                        for (int k = 0; k < 64; k += 4)
+                        {
+                            float sA = readLoopCrossfadedSample(0, currentGrainReadPos + k * activePitchRatio);
+                            float sB = readLoopCrossfadedSample(0, candPos + k * activePitchRatio);
+                            corr += sA * sB;
+                            normA += sA * sA;
+                            normB += sB * sB;
+                        }
+
+                        float denom = std::sqrt(normA * normB) + 1e-6f;
+                        float normCorr = corr / denom;
+
+                        if (normCorr > maxCorr)
+                        {
+                            maxCorr = normCorr;
+                            bestOffset = (double)d;
+                        }
+                    }
+
+                    v.wsolaGrains[newIdx].active = true;
+                    v.wsolaGrains[newIdx].sourceStartPos = nominalTargetPos + bestOffset;
+                    v.wsolaGrains[newIdx].samplePhase = 0.0;
+                }
+
+                v.wsolaHopCounter++;
+
+                float sumGrainL = 0.0f;
+                float sumGrainR = 0.0f;
+                float sumWeight = 0.0f;
+
+                for (int g = 0; g < 2; ++g)
+                {
+                    if (v.wsolaGrains[g].active)
+                    {
+                        double phase = v.wsolaGrains[g].samplePhase;
+                        if (phase < (double)WSOLA_GRAIN_LEN)
+                        {
+                            float normPhase = (float)(phase / (double)WSOLA_GRAIN_LEN);
+                            float w = 0.5f * (1.0f - std::cos(2.0f * juce::MathConstants<float>::pi * normPhase));
+
+                            double readPos = v.wsolaGrains[g].sourceStartPos + phase * (double)activePitchRatio;
+
+                            float sL = readLoopCrossfadedSample(0, readPos);
+                            float sR = readLoopCrossfadedSample(1, readPos);
+
+                            sumGrainL += sL * w;
+                            sumGrainR += sR * w;
+                            sumWeight += w;
+
+                            v.wsolaGrains[g].samplePhase += 1.0;
+                        }
+                        else
+                        {
+                            v.wsolaGrains[g].active = false;
+                        }
+                    }
+                }
+
+                if (sumWeight > 0.0001f)
+                {
+                    rawSampleL = sumGrainL / sumWeight;
+                    rawSampleR = sumGrainR / sumWeight;
+                }
+                else
+                {
+                    rawSampleL = readLoopCrossfadedSample(0, v.currentSample);
+                    rawSampleR = readLoopCrossfadedSample(1, v.currentSample);
+                }
             }
             else
             {
+                v.wsolaInitialized = false;
                 rawSampleL = readLoopCrossfadedSample(0, v.currentSample);
                 rawSampleR = readLoopCrossfadedSample(1, v.currentSample);
             }
