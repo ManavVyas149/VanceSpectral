@@ -68,10 +68,14 @@ public:
     bool deleteSample(const juce::File& sampleFile);
 
     void createDefaultFactoryPresets(juce::AudioProcessorValueTreeState& apvts);
+    void invalidateCache() const { isCacheValid = false; }
 
 private:
     juce::File presetsFolder;
     juce::File samplesFolder;
+
+    mutable juce::Array<PresetInfo> cachedPresets;
+    mutable bool isCacheValid = false;
 
     void ensureDirectoriesExist();
     void createFactoryPreset(const juce::String& name, const juce::String& category,

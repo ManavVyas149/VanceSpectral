@@ -5,6 +5,11 @@ PresetBarComponent::PresetBarComponent()
     addAndMakeVisible(prevButton);
     addAndMakeVisible(nextButton);
 
+    shuffleFxButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0x22, 0x22, 0x2C));
+    shuffleFxButton.setColour(juce::TextButton::buttonOnColourId, SpectralUILookAndFeel::accentColour);
+    shuffleFxButton.setColour(juce::TextButton::textColourOffId, SpectralUILookAndFeel::accentColour);
+    addAndMakeVisible(shuffleFxButton);
+
     saveStateButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0x22, 0x22, 0x2C));
     saveStateButton.setColour(juce::TextButton::buttonOnColourId, SpectralUILookAndFeel::accentColour);
     saveStateButton.setColour(juce::TextButton::textColourOffId, SpectralUILookAndFeel::accentColour);
@@ -16,6 +21,10 @@ PresetBarComponent::PresetBarComponent()
 
     nextButton.onClick = [this]() {
         if (onNextClicked) onNextClicked();
+    };
+
+    shuffleFxButton.onClick = [this]() {
+        if (onShuffleFxClicked) onShuffleFxClicked();
     };
 
     saveStateButton.onClick = [this]() {
@@ -49,10 +58,11 @@ void PresetBarComponent::paint(juce::Graphics& g)
     g.setColour(SpectralUILookAndFeel::dividerColour);
     g.drawHorizontalLine(getHeight() - 1, 0.0f, (float)getWidth());
 
-    // Left: Bank Name Label
+    // Left: Bank Name Label (positioned after SHUFFLE FX button)
     g.setFont(SpectralUILookAndFeel::getGeometricFont(10.0f, true));
     g.setColour(SpectralUILookAndFeel::textMutedColour);
-    g.drawText(bankName, bounds.removeFromLeft(90.0f).reduced(16.0f, 0.0f).toNearestInt(), juce::Justification::centredLeft, true);
+    auto bankRect = juce::Rectangle<float>(118.0f, 0.0f, 90.0f, (float)getHeight());
+    g.drawText(bankName, bankRect.toNearestInt(), juce::Justification::centredLeft, true);
 
     // Center Preset Display
     g.setFont(SpectralUILookAndFeel::getGeometricFont(13.0f, true));
@@ -88,8 +98,11 @@ void PresetBarComponent::resized()
 {
     auto bounds = getLocalBounds().reduced(12, 4);
 
+    // Left side SHUFFLE FX button
+    shuffleFxButton.setBounds(12, bounds.getY() + 1, 98, bounds.getHeight() - 2);
+
     // Center chevrons flanking the preset name area
-    float cx = bounds.getCentreX();
+    float cx = (float)bounds.getCentreX();
     prevButton.setBounds((int)(cx - 140.0f), bounds.getY(), 24, bounds.getHeight());
     nextButton.setBounds((int)(cx + 116.0f), bounds.getY(), 24, bounds.getHeight());
 

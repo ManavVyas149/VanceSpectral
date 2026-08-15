@@ -23,6 +23,7 @@ public:
   std::function<void()> onNextClicked;
   std::function<void()> onBrowseClicked;
   std::function<void()> onSaveStateClicked;
+  std::function<void()> onShuffleFxClicked;
 
 private:
   class ChevronButton : public juce::Button {
@@ -68,6 +69,7 @@ private:
   ChevronButton prevButton{false};
   ChevronButton nextButton{true};
   juce::TextButton saveStateButton{ "SAVE STATE" };
+  juce::TextButton shuffleFxButton{ juce::String::fromUTF8("\xe2\x87\x86 SHUFFLE FX") };
 
   juce::Rectangle<float> clickTargetBounds;
 

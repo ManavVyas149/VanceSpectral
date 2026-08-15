@@ -109,25 +109,7 @@ bool HistoryManager::pushHistoryState(const juce::String& label,
     juce::String snapshotName = "hist_" + juce::String(nowMs) + ".json";
     juce::File snapshotFile = historyFolder.getChildFile(snapshotName);
 
-    auto* obj = new juce::DynamicObject();
-    obj->setProperty("id", juce::Uuid().toString());
-    obj->setProperty("label", label.isEmpty() ? "Edit Snapshot" : label);
-    obj->setProperty("timestamp", (juce::int64)nowMs);
-    obj->setProperty("formattedTime", timeStr);
-    obj->setProperty("sampleFileName", sampleFileName);
-    obj->setProperty("startRegion", startRegion);
-    obj->setProperty("endRegion", endRegion);
-    obj->setProperty("loopEnabled", loopEnabled);
-    obj->setProperty("selections", selectionsVar);
-
-    if (sampleAudio.getNumSamples() > 0)
-    {
-        juce::String b64Wav = PresetManager::audioBufferToBase64Wav(sampleAudio, sampleRate);
-        if (b64Wav.isNotEmpty())
-            obj->setProperty("audioData", b64Wav);
-    }
-
-    auto* paramsObj = new juce::DynamicObject();
+    std::vector<std::pair<juce::String, float>> paramValues;
     const char* paramIDs[] = {
         "AMP_ATTACK", "AMP_DECAY", "AMP_SUSTAIN", "AMP_RELEASE",
         "FILTER_ATTACK", "FILTER_DECAY", "FILTER_SUSTAIN", "FILTER_RELEASE",
@@ -135,31 +117,56 @@ bool HistoryManager::pushHistoryState(const juce::String& label,
         "TIMBRE_SEMITONES", "TIMBRE_LINK", "TIMBRE_DRIFT",
         "EXCITER", "POLY_MODE", "GLIDE", "GAIN"
     };
-
     for (const auto& id : paramIDs)
     {
         if (auto* param = apvts.getParameter(id))
-            paramsObj->setProperty(id, param->getValue());
+            paramValues.push_back({ id, param->getValue() });
     }
 
-    obj->setProperty("parameters", paramsObj);
+    juce::AudioBuffer<float> audioCopy = sampleAudio;
 
-    juce::var snapshotVar(obj);
-    juce::String jsonStr = juce::JSON::toString(snapshotVar);
+    juce::Thread::launch([this, snapshotFile, label, nowMs, timeStr, sampleFileName, startRegion, endRegion, loopEnabled, selectionsVar, audioCopy, sampleRate, paramValues]() {
+        auto* obj = new juce::DynamicObject();
+        obj->setProperty("id", juce::Uuid().toString());
+        obj->setProperty("label", label.isEmpty() ? "Edit Snapshot" : label);
+        obj->setProperty("timestamp", (juce::int64)nowMs);
+        obj->setProperty("formattedTime", timeStr);
+        obj->setProperty("sampleFileName", sampleFileName);
+        obj->setProperty("startRegion", startRegion);
+        obj->setProperty("endRegion", endRegion);
+        obj->setProperty("loopEnabled", loopEnabled);
+        obj->setProperty("selections", selectionsVar);
 
-    juce::FileOutputStream stream(snapshotFile);
-    if (stream.openedOk())
-    {
-        stream.setPosition(0);
-        stream.truncate();
-        stream.writeText(jsonStr, false, false, nullptr);
-        stream.flush();
+        if (audioCopy.getNumSamples() > 0)
+        {
+            juce::String b64Wav = PresetManager::audioBufferToBase64Wav(audioCopy, sampleRate);
+            if (b64Wav.isNotEmpty())
+                obj->setProperty("audioData", b64Wav);
+        }
 
-        pruneOldest();
-        return true;
-    }
+        auto* paramsObj = new juce::DynamicObject();
+        for (const auto& [id, val] : paramValues)
+        {
+            paramsObj->setProperty(id, val);
+        }
+        obj->setProperty("parameters", paramsObj);
 
-    return false;
+        juce::var snapshotVar(obj);
+        juce::String jsonStr = juce::JSON::toString(snapshotVar);
+
+        juce::FileOutputStream stream(snapshotFile);
+        if (stream.openedOk())
+        {
+            stream.setPosition(0);
+            stream.truncate();
+            stream.writeText(jsonStr, false, false, nullptr);
+            stream.flush();
+
+            pruneOldest();
+        }
+    });
+
+    return true;
 }
 
 bool HistoryManager::restoreHistoryEntry(const HistoryEntry& entry,

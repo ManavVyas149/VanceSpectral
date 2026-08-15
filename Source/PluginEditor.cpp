@@ -89,6 +89,11 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
     presetOverlay->toFront(true);
   };
 
+  presetBar.onShuffleFxClicked = [this]() {
+    if (presetOverlay)
+      presetOverlay->executeShuffleFx();
+  };
+
   presetBar.onSaveStateClicked = [this]() {
     juce::String defaultName = "State " + juce::Time::getCurrentTime().formatted("%Y-%m-%d %H-%M");
     if (spectrogram && spectrogram->isFileLoaded())

@@ -145,9 +145,15 @@ void PresetManager::createFactoryPreset(const juce::String& name, const juce::St
 
 juce::Array<PresetInfo> PresetManager::getAllPresets() const
 {
-    juce::Array<PresetInfo> presets;
+    if (isCacheValid)
+        return cachedPresets;
+
+    cachedPresets.clear();
     if (!presetsFolder.exists())
-        return presets;
+    {
+        isCacheValid = true;
+        return cachedPresets;
+    }
 
     auto files = presetsFolder.findChildFiles(juce::File::TypesOfFileToFind::findFiles, true, "*.vsts;*.vsfx;*.json");
 
@@ -186,11 +192,12 @@ juce::Array<PresetInfo> PresetManager::getAllPresets() const
             info.isFactory = (bool)parsed.getProperty("isFactory", info.bank.equalsIgnoreCase("Factory"));
             info.lastUsed = (juce::int64)parsed.getProperty("lastUsed", (juce::int64)0);
 
-            presets.add(info);
+            cachedPresets.add(info);
         }
     }
 
-    return presets;
+    isCacheValid = true;
+    return cachedPresets;
 }
 
 juce::StringArray PresetManager::getAllBanks() const
@@ -416,7 +423,9 @@ bool PresetManager::toggleFavorite(const juce::File& presetFile)
     {
         bool curFav = (bool)parsed.getProperty("isFavorite", false);
         parsed.getDynamicObject()->setProperty("isFavorite", !curFav);
-        return presetFile.replaceWithText(juce::JSON::toString(parsed));
+        bool ok = presetFile.replaceWithText(juce::JSON::toString(parsed));
+        if (ok) invalidateCache();
+        return ok;
     }
     return false;
 }
@@ -573,6 +582,7 @@ bool PresetManager::savePreset(const juce::String& presetName,
         bool verified = (presetFile.existsAsFile() && presetFile.getSize() > 0);
         DBG("[VanceSpectral SaveInstrumentation] Write Result: " << (verified ? "SUCCESS" : "FAILED")
             << " | Written Bytes: " << presetFile.getSize());
+        if (verified) invalidateCache();
         return verified;
     }
 
@@ -663,7 +673,9 @@ bool PresetManager::deletePreset(const juce::File& presetFile)
             return false; // Locked factory preset!
     }
 
-    return presetFile.deleteFile();
+    bool deleted = presetFile.deleteFile();
+    if (deleted) invalidateCache();
+    return deleted;
 }
 
 juce::File PresetManager::findMatchingSample(const juce::File& sourceFile) const

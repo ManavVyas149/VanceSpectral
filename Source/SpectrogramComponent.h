@@ -115,6 +115,7 @@ private:
     std::unique_ptr<juce::AudioFormatReader> reader;
     juce::AudioBuffer<float> audioBuffer;
     bool fileLoaded = false;
+    bool isLoadingSample = false;
 
     juce::Image spectrogramImage;
 

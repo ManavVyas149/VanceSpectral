@@ -22,10 +22,20 @@ PresetBrowserOverlay::PresetBrowserOverlay(PresetManager& manager, juce::AudioPr
         juce::String selected = bankSelector.getText();
         if (selected.isNotEmpty())
         {
+            if (selected != activeBankFilter)
+            {
+                lastShuffledPresetFile = juce::File();
+                lastShuffledBank = selected;
+            }
             activeBankFilter = selected;
             filterPresets();
         }
     };
+
+    addAndMakeVisible(shuffleFxBtn);
+    shuffleFxBtn.setColour(juce::TextButton::buttonColourId, juce::Colour(0x24, 0x24, 0x30));
+    shuffleFxBtn.setColour(juce::TextButton::textColourOffId, SpectralUILookAndFeel::accentColour);
+    shuffleFxBtn.onClick = [this]() { executeShuffleFx(); };
 
     addAndMakeVisible(bankActionsBtn);
     bankActionsBtn.setColour(juce::TextButton::buttonColourId, juce::Colour(0x24, 0x24, 0x30));
@@ -615,6 +625,150 @@ void PresetBrowserOverlay::filterPresets()
 
     presetListBox.repaint();
     updateSelectedPresetDetails();
+    updateShuffleFxButtonState();
+}
+
+void PresetBrowserOverlay::updateShuffleFxButtonState()
+{
+    int fxPresetCount = 0;
+    for (const auto& p : allPresets)
+    {
+        bool isFx = !p.category.equalsIgnoreCase("STATES") && !p.file.hasFileExtension(".vsts");
+        bool matchesBank = (activeBankFilter == "ALL BANKS" || p.bank.equalsIgnoreCase(activeBankFilter));
+        if (isFx && matchesBank)
+        {
+            fxPresetCount++;
+        }
+    }
+
+    if (fxPresetCount == 0)
+    {
+        shuffleFxBtn.setEnabled(false);
+        shuffleFxBtn.setAlpha(0.4f);
+        shuffleFxBtn.setTooltip("No FX presets in this bank");
+    }
+    else
+    {
+        shuffleFxBtn.setEnabled(true);
+        shuffleFxBtn.setAlpha(1.0f);
+        shuffleFxBtn.setTooltip("Randomly load FX preset settings in current bank");
+    }
+}
+
+void PresetBrowserOverlay::executeShuffleFx()
+{
+    juce::Array<PresetInfo> candidates;
+    for (const auto& p : allPresets)
+    {
+        bool isFx = !p.category.equalsIgnoreCase("STATES") && !p.file.hasFileExtension(".vsts");
+        bool matchesBank = (activeBankFilter == "ALL BANKS" || p.bank.equalsIgnoreCase(activeBankFilter));
+        if (isFx && matchesBank)
+        {
+            candidates.add(p);
+        }
+    }
+
+    if (candidates.isEmpty())
+    {
+        statusLabel.setText("No FX presets in this bank", juce::dontSendNotification);
+        updateShuffleFxButtonState();
+        return;
+    }
+
+    PresetInfo chosenPreset;
+
+    if (candidates.size() == 1)
+    {
+        chosenPreset = candidates[0];
+    }
+    else
+    {
+        juce::Array<PresetInfo> pool;
+        for (const auto& p : candidates)
+        {
+            if (lastShuffledPresetFile.existsAsFile() && p.file == lastShuffledPresetFile)
+                continue;
+            pool.add(p);
+        }
+
+        if (pool.isEmpty())
+        {
+            pool = candidates;
+        }
+
+        int randIdx = juce::Random::getSystemRandom().nextInt(pool.size());
+        chosenPreset = pool[randIdx];
+    }
+
+    lastShuffledPresetFile = chosenPreset.file;
+    lastShuffledBank = activeBankFilter;
+
+    if (activeCategoryFilter != "ALL" && !chosenPreset.category.equalsIgnoreCase(activeCategoryFilter))
+    {
+        activeCategoryFilter = "ALL";
+        auto updateCatBtn = [this](juce::TextButton& b, const juce::String& c) {
+            bool active = (activeCategoryFilter == c);
+            b.setColour(juce::TextButton::buttonColourId, active ? SpectralUILookAndFeel::accentColour : juce::Colour(0x22, 0x22, 0x2A));
+            b.setColour(juce::TextButton::textColourOffId, active ? juce::Colours::black : juce::Colour(0xA0, 0x9E, 0x96));
+        };
+        updateCatBtn(filterAllBtn, "ALL");
+        updateCatBtn(filterSynthBtn, "SYNTH");
+        updateCatBtn(filterLeadBtn, "LEAD");
+        updateCatBtn(filterBassBtn, "BASS");
+        updateCatBtn(filterPadBtn, "PAD");
+        updateCatBtn(filterFxBtn, "FX");
+        updateCatBtn(filterStatesBtn, "STATES");
+        filterPresets();
+    }
+
+    int targetRow = -1;
+    for (int i = 0; i < filteredPresets.size(); ++i)
+    {
+        if (filteredPresets[i].file == chosenPreset.file)
+        {
+            targetRow = i;
+            break;
+        }
+    }
+
+    if (targetRow >= 0)
+    {
+        presetListBox.selectRow(targetRow);
+        selectedPresetIndex = targetRow;
+        presetListBox.scrollToEnsureRowIsOnscreen(targetRow);
+    }
+
+    activePresetFile = chosenPreset.file;
+    activeLoadedPresetName = chosenPreset.name;
+
+    juce::String sampleFile;
+    float startReg = 0.0f;
+    float endReg = 1.0f;
+    juce::var selectionsVar;
+    bool loopEnabled = false;
+    juce::AudioBuffer<float> loadedBuf;
+    double loadedSr = 44100.0;
+
+    if (presetManager.loadPreset(chosenPreset.file, apvts, sampleFile, startReg, endReg, selectionsVar, loopEnabled, &loadedBuf, &loadedSr))
+    {
+        if (spectrogram != nullptr)
+        {
+            spectrogram->setLoopEnabled(loopEnabled);
+            spectrogram->restorePresetSnapshot(startReg, endReg, selectionsVar);
+        }
+
+        if (onPresetSelected)
+            onPresetSelected(chosenPreset.file, sampleFile);
+
+        if (historyManager != nullptr)
+        {
+            historyManager->pushHistoryState("Shuffle FX: " + chosenPreset.name, currentSampleName, apvts, startReg, endReg, loopEnabled, selectionsVar, juce::AudioBuffer<float>(), 44100.0);
+            refreshHistoryList();
+        }
+
+        selectedPresetTitle.setText(chosenPreset.name, juce::dontSendNotification);
+        statusLabel.setText("Shuffled FX Preset: " + chosenPreset.name + " (Bank: " + chosenPreset.bank + ")", juce::dontSendNotification);
+    }
 }
 
 void PresetBrowserOverlay::clearActivePresetSelection()
@@ -1191,7 +1345,9 @@ void PresetBrowserOverlay::resized()
 
     // Bank Selector Row
     auto bankRow = col1.removeFromTop(30);
-    bankSelector.setBounds(bankRow.removeFromLeft(bankRow.getWidth() - 80));
+    shuffleFxBtn.setBounds(bankRow.removeFromLeft(96));
+    bankRow.removeFromLeft(6);
+    bankSelector.setBounds(bankRow.removeFromLeft(bankRow.getWidth() - 78));
     bankActionsBtn.setBounds(bankRow.removeFromRight(74));
     col1.removeFromTop(8);
 

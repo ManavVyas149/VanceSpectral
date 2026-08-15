@@ -37,58 +37,112 @@ void SpectrogramComponent::loadAudioFile(const juce::File &file, bool isPartOfPr
     return;
   }
 
-  reader.reset(formatManager.createReaderFor(file));
-
-  if (reader == nullptr || reader->lengthInSamples == 0 || reader->numChannels == 0) {
-    reader.reset();
-    auto* dialog = new juce::AlertWindow(
-        "Unsupported Sample Format",
-        "Could not decode audio from file: " + file.getFileName() + "\nPlease ensure it is a valid WAV, MP3, FLAC, AIFF, or OGG file.",
-        juce::AlertWindow::WarningIcon);
-    dialog->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
-    dialog->enterModalState(true, nullptr, true);
-    return;
-  }
-
-  audioBuffer.setSize((int)reader->numChannels, (int)reader->lengthInSamples);
-  reader->read(&audioBuffer, 0, (int)reader->lengthInSamples, 0, true, true);
-  double sampleRate = reader->sampleRate;
-  reader.reset();
-
-  loadedFile = file;
-  fileLoaded = true;
-
-  if (!isPartOfPresetLoad) {
-    // Rule #2: Loading a sample manually resets all settings to default
-    processor.resetParametersToDefault();
-
-    startPosition = 0.0f;
-    endPosition = 1.0f;
-
-    selections.clear();
-    activeSelectionIndex = -1;
-
-    processor.setCurrentPresetName("Custom / Unsaved");
-
-    if (onManualSampleLoaded)
-      onManualSampleLoaded();
-  }
-
-  // Import sample to Samples folder if loaded externally
-  PresetManager pm;
-  juce::File imported = pm.importSample(file);
-  juce::File fileToUse = imported.existsAsFile() ? imported : file;
-
-  processor.setLoadedSample(fileToUse, audioBuffer, sampleRate);
-  processor.setRegion(startPosition, endPosition);
-  processor.setLoop(loopEnabled);
-  updateFrequencyFilterFromSelections();
-  generateSpectrogramImage();
-
-  if (onFileLoadedStateChanged)
-    onFileLoadedStateChanged(true);
-
+  isLoadingSample = true;
   repaint();
+
+  juce::Thread::launch([this, file, isPartOfPresetLoad]() {
+    juce::AudioFormatManager localFmt;
+    localFmt.registerBasicFormats();
+
+    std::unique_ptr<juce::AudioFormatReader> localReader(localFmt.createReaderFor(file));
+    if (localReader == nullptr || localReader->lengthInSamples == 0 || localReader->numChannels == 0) {
+      juce::MessageManager::callAsync([this, file]() {
+        isLoadingSample = false;
+        repaint();
+        auto* dialog = new juce::AlertWindow(
+            "Unsupported Sample Format",
+            "Could not decode audio from file: " + file.getFileName() + "\nPlease ensure it is a valid WAV, MP3, FLAC, AIFF, or OGG file.",
+            juce::AlertWindow::WarningIcon);
+        dialog->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
+        dialog->enterModalState(true, nullptr, true);
+      });
+      return;
+    }
+
+    juce::AudioBuffer<float> tempBuffer((int)localReader->numChannels, (int)localReader->lengthInSamples);
+    localReader->read(&tempBuffer, 0, (int)localReader->lengthInSamples, 0, true, true);
+    double sr = localReader->sampleRate;
+    localReader.reset();
+
+    PresetManager pm;
+    juce::File imported = pm.importSample(file);
+    juce::File fileToUse = imported.existsAsFile() ? imported : file;
+
+    int imgWidth = juce::jmax(100, getWidth() > 50 ? getWidth() - 44 : 560);
+    int imgHeight = juce::jmax(100, getHeight() > 0 ? getHeight() : 350);
+    juce::Image tempImg(juce::Image::RGB, imgWidth, imgHeight, false);
+
+    const auto* samples = tempBuffer.getReadPointer(0);
+    int totalSamples = tempBuffer.getNumSamples();
+    int samplesPerPixel = juce::jmax(1, totalSamples / imgWidth);
+
+    {
+      juce::Image::BitmapData bitmapData(tempImg, juce::Image::BitmapData::writeOnly);
+      for (int x = 0; x < imgWidth; ++x) {
+        int startSample = x * samplesPerPixel;
+        if (startSample >= totalSamples) break;
+        int numToScan = juce::jmin(samplesPerPixel, totalSamples - startSample);
+        float lowEnergy = 0.0f;
+        float midEnergy = 0.0f;
+        float highEnergy = 0.0f;
+
+        for (int i = 0; i < numToScan - 1; ++i) {
+          float s = std::abs(samples[startSample + i]);
+          float diff = std::abs(samples[startSample + i + 1] - samples[startSample + i]);
+          lowEnergy += s;
+          midEnergy += diff * 1.5f;
+          highEnergy += diff * diff * 3.0f;
+        }
+
+        lowEnergy /= (float)numToScan;
+        midEnergy /= (float)numToScan;
+        highEnergy /= (float)numToScan;
+
+        for (int y = 0; y < imgHeight; ++y) {
+          float normY = 1.0f - ((float)y / (float)imgHeight);
+          float mag = 0.0f;
+          if (normY < 0.35f)
+            mag = lowEnergy * (1.0f - normY / 0.35f) + midEnergy * 0.3f;
+          else if (normY < 0.7f)
+            mag = midEnergy * (1.0f - std::abs(normY - 0.5f) / 0.2f);
+          else
+            mag = highEnergy * ((normY - 0.7f) / 0.3f) + midEnergy * 0.2f;
+
+          mag = juce::jlimit(0.0f, 1.0f, mag * 3.5f);
+          bitmapData.setPixelColour(x, y, getSpectrogramColor(mag));
+        }
+      }
+    }
+
+    juce::MessageManager::callAsync([this, file, fileToUse, tempBuffer, tempImg, sr, isPartOfPresetLoad]() mutable {
+      audioBuffer = tempBuffer;
+      spectrogramImage = tempImg;
+      loadedFile = file;
+      fileLoaded = true;
+      isLoadingSample = false;
+
+      if (!isPartOfPresetLoad) {
+        processor.resetParametersToDefault();
+        startPosition = 0.0f;
+        endPosition = 1.0f;
+        selections.clear();
+        activeSelectionIndex = -1;
+        processor.setCurrentPresetName("Custom / Unsaved");
+        if (onManualSampleLoaded)
+          onManualSampleLoaded();
+      }
+
+      processor.setLoadedSample(fileToUse, audioBuffer, sr);
+      processor.setRegion(startPosition, endPosition);
+      processor.setLoop(loopEnabled);
+      updateFrequencyFilterFromSelections();
+
+      if (onFileLoadedStateChanged)
+        onFileLoadedStateChanged(true);
+
+      repaint();
+    });
+  });
 }
 
 void SpectrogramComponent::loadDirectAudioBuffer(const juce::AudioBuffer<float>& buffer, double sampleRate, const juce::String& fileName, bool isLooping) {
@@ -888,7 +942,6 @@ void SpectrogramComponent::mouseDrag(const juce::MouseEvent &e) {
     if (b.getBottom() > 1.0f) b.setY(1.0f - b.getHeight());
 
     selections.getReference(activeSelectionIndex).normalizedBounds = b;
-    updateFrequencyFilterFromSelections();
     repaint();
     return;
   }
@@ -919,7 +972,6 @@ void SpectrogramComponent::mouseDrag(const juce::MouseEvent &e) {
 
     selections.getReference(activeSelectionIndex).normalizedBounds =
         juce::Rectangle<float>(left, top, right - left, bottom - top);
-    updateFrequencyFilterFromSelections();
     repaint();
     return;
   }
@@ -1106,6 +1158,15 @@ void SpectrogramComponent::paint(juce::Graphics &g) {
   }
 
   // Draw dragged selection in progress
+  if (isLoadingSample) {
+    g.setColour(juce::Colours::black.withAlpha(0.75f));
+    g.fillRoundedRectangle(graphBounds, 6.0f);
+    g.setColour(SpectralUILookAndFeel::accentColour);
+    g.drawRoundedRectangle(graphBounds.reduced(1.0f), 6.0f, 1.5f);
+    g.setFont(SpectralUILookAndFeel::getGeometricFont(13.0f, true));
+    g.drawText("ANALYZING & LOADING SAMPLE...", graphBounds.toNearestInt(), juce::Justification::centred, false);
+  }
+
   if (isDrawing && fileLoaded && currentTool != ToolType::None) {
     g.setColour(SpectralUILookAndFeel::accentColour.withAlpha(0.12f));
     if (currentTool == ToolType::RectangleSelect) {

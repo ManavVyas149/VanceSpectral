@@ -38,6 +38,9 @@ public:
     void clearActivePresetSelection();
     juce::File getActivePresetFile() const { return activePresetFile; }
 
+    void executeShuffleFx();
+    void updateShuffleFxButtonState();
+
 private:
     PresetManager& presetManager;
     juce::AudioProcessorValueTreeState& apvts;
@@ -49,6 +52,7 @@ private:
     // Column 1: Presets & Bank & Search
     juce::ComboBox bankSelector;
     juce::TextButton bankActionsBtn{ "BANK..." };
+    juce::TextButton shuffleFxBtn{ juce::String::fromUTF8("\xe2\x87\x86 SHUFFLE FX") };
 
     juce::TextEditor searchBox;
     juce::ComboBox sortSelector;
@@ -81,6 +85,9 @@ private:
     juce::String activeBankFilter = "ALL BANKS";
     bool onlyFavoritesFilter = false;
     int activeSortMode = 0; // 0: A-Z, 1: Favorites First, 2: Recently Used
+
+    juce::File lastShuffledPresetFile;
+    juce::String lastShuffledBank;
 
     // Column 2: Preset Details & Actions
     juce::Label statusLabel;
