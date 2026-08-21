@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT id="x1HegH" name="Vancespectral" projectType="audioplug" useAppConfig="0"
-              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" pluginFormats="buildAAX,buildAU,buildStandalone,buildVST3"
+              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" pluginFormats="buildAAX,buildAU,buildStandalone,buildVST3,buildCLAP"
               pluginCharacteristicsValue="pluginIsSynth,pluginWantsMidiIn" pluginIsSynth="1" pluginWantsMidiIn="1" pluginProducesMidiOut="0" pluginIsMidiEffect="0" pluginVst3Category="Instrument|Synth" pluginAUIsSynth="1"
               pluginName="VanceSpectral" cppLanguageStandard="20" pluginCode="VnSp">
   <MAINGROUP id="hPZGRE" name="Vancespectral">
