@@ -1,7 +1,7 @@
 #include "PluginEditor.h"
 #include "PluginProcessor.h"
 
-VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(VancespectralAudioProcessor &p)
+VancespectralAudioProcessorEditor::(VancespectralAudioProcessor &p)
     : AudioProcessorEditor(&p), audioProcessor(p),
       adsrPanel(p.getAPVTS()) {
   
