@@ -338,35 +338,43 @@ void VancespectralAudioProcessorEditor::timerCallback() {
 void VancespectralAudioProcessorEditor::paint(juce::Graphics &g) {
   auto bounds = getLocalBounds().toFloat();
 
-  // Background: Warm off-white / bone (#F0ECE1)
-  g.fillAll(SpectralUILookAndFeel::bgColour);
+  // 1. Draw outer cream chassis, PCB trace motif, corner screws, and 1px border
+  SpectralUILookAndFeel::drawChassisBackground(g, bounds);
 
-  // Footer strip at bottom
-  auto footerArea = bounds.removeFromBottom(24.0f);
+  // 2. Footer strip at bottom
+  auto footerArea = bounds.removeFromBottom(24.0f).reduced(16.0f, 0.0f);
   g.setColour(SpectralUILookAndFeel::dividerColour);
-  g.drawHorizontalLine((int)footerArea.getY(), 0.0f, (float)getWidth());
+  g.drawHorizontalLine((int)footerArea.getY(), 16.0f, (float)getWidth() - 16.0f);
 
-  // Restrained branding: small logo mark + wordmark
-  g.setFont(SpectralUILookAndFeel::getGeometricFont(10.0f, true));
+  // Branding text on left
+  g.setFont(SpectralUILookAndFeel::getMonospaceFont(9.5f));
   g.setColour(SpectralUILookAndFeel::textMutedColour);
 
-  // Logo mark (small thin square + dot)
-  float logoX = footerArea.getX() + 16.0f;
-  float logoY = footerArea.getCentreY() - 4.0f;
-  g.drawRect(logoX, logoY, 8.0f, 8.0f, 1.0f);
-  g.fillEllipse(logoX + 2.5f, logoY + 2.5f, 3.0f, 3.0f);
+  // Small square logo mark with "V"
+  float logoX = footerArea.getX() + 4.0f;
+  float logoY = footerArea.getCentreY() - 5.0f;
+  juce::Rectangle<float> logoRect(logoX, logoY, 10.0f, 10.0f);
+  g.setColour(SpectralUILookAndFeel::accentColour);
+  g.fillRoundedRectangle(logoRect, 2.0f);
+  g.setFont(SpectralUILookAndFeel::getGeometricFont(7.5f, true));
+  g.setColour(juce::Colours::black);
+  g.drawText("V", logoRect.toNearestInt(), juce::Justification::centred, false);
 
-  g.drawText("VANCE SPECTRAL - SPECTRAL FREQUENCY SAMPLER",
-             footerArea.reduced(32.0f, 0.0f).toNearestInt(), juce::Justification::left, true);
+  g.setFont(SpectralUILookAndFeel::getMonospaceFont(9.0f));
+  g.setColour(SpectralUILookAndFeel::textMutedColour);
+  g.drawText("VANCESPECTRAL // PRECISION BRUTALIST INSTRUMENT // MODEL-01",
+             footerArea.toNearestInt().withTrimmedLeft(20), juce::Justification::centredLeft, true);
 
-  // Draw Base Octave Readout Badge in bottom status bar (matching FL Studio / Ableton)
+  // Base Octave Readout Badge in bottom status bar
   int octaveNum = 3 + (currentOctaveOffset / 12);
   juce::String octaveText = "OCTAVE: C" + juce::String(octaveNum) + " [Z/X]";
-  auto octaveRect = footerArea.toNearestInt().withTrimmedLeft(410).withWidth(110).reduced(0, 3);
-  g.setColour(juce::Colour(0x22, 0x22, 0x2E));
+  auto octaveRect = footerArea.toNearestInt().withTrimmedLeft(460).withWidth(120).reduced(0, 3);
+  g.setColour(SpectralUILookAndFeel::panelBgColour);
   g.fillRoundedRectangle(octaveRect.toFloat(), 3.0f);
-  g.setColour(SpectralUILookAndFeel::accentColour);
-  g.setFont(SpectralUILookAndFeel::getMonospaceFont(9.5f));
+  g.setColour(SpectralUILookAndFeel::dividerColour);
+  g.drawRoundedRectangle(octaveRect.toFloat(), 3.0f, 1.0f);
+  g.setColour(SpectralUILookAndFeel::textMainColour);
+  g.setFont(SpectralUILookAndFeel::getMonospaceFont(9.0f, true));
   g.drawText(octaveText, octaveRect, juce::Justification::centred, false);
 }
 

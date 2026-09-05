@@ -57,18 +57,18 @@ private:
             bool active = getToggleState();
 
             juce::Colour bg = active ? SpectralUILookAndFeel::accentColour
-                                     : (isHighlighted ? juce::Colour(0x2A, 0x2C, 0x38)
-                                                      : juce::Colour(0x22, 0x22, 0x2E));
+                                     : (isHighlighted ? juce::Colour(0x2C, 0x2E, 0x3A)
+                                                      : juce::Colour(0x20, 0x22, 0x2A));
 
             g.setColour(bg);
             g.fillRoundedRectangle(bounds, 3.0f);
 
-            juce::Colour borderCol = active ? SpectralUILookAndFeel::accentColour
+            juce::Colour borderCol = active ? SpectralUILookAndFeel::accentBright
                                             : SpectralUILookAndFeel::dividerColour;
             g.setColour(borderCol);
             g.drawRoundedRectangle(bounds, 3.0f, 1.0f);
 
-            g.setFont(SpectralUILookAndFeel::getGeometricFont(10.0f, true));
+            g.setFont(SpectralUILookAndFeel::getMonospaceFont(9.5f));
             g.setColour(active ? juce::Colours::black : SpectralUILookAndFeel::textMutedColour);
             g.drawText(active ? "POLY" : "MONO", bounds.toNearestInt(), juce::Justification::centred, false);
         }

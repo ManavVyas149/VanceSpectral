@@ -5,12 +5,12 @@ PresetBarComponent::PresetBarComponent()
     addAndMakeVisible(prevButton);
     addAndMakeVisible(nextButton);
 
-    shuffleFxButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0x22, 0x22, 0x2C));
+    shuffleFxButton.setColour(juce::TextButton::buttonColourId, SpectralUILookAndFeel::panelBgColour);
     shuffleFxButton.setColour(juce::TextButton::buttonOnColourId, SpectralUILookAndFeel::accentColour);
     shuffleFxButton.setColour(juce::TextButton::textColourOffId, SpectralUILookAndFeel::accentColour);
     addAndMakeVisible(shuffleFxButton);
 
-    saveStateButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0x22, 0x22, 0x2C));
+    saveStateButton.setColour(juce::TextButton::buttonColourId, SpectralUILookAndFeel::panelBgColour);
     saveStateButton.setColour(juce::TextButton::buttonOnColourId, SpectralUILookAndFeel::accentColour);
     saveStateButton.setColour(juce::TextButton::textColourOffId, SpectralUILookAndFeel::accentColour);
     addAndMakeVisible(saveStateButton);
@@ -50,44 +50,39 @@ void PresetBarComponent::paint(juce::Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat();
 
-    // Top Bar background: matte panel background
-    g.setColour(SpectralUILookAndFeel::panelBgColour);
-    g.fillRoundedRectangle(bounds, 6.0f);
-
-    // Hairline border at bottom
-    g.setColour(SpectralUILookAndFeel::dividerColour);
-    g.drawHorizontalLine(getHeight() - 1, 0.0f, (float)getWidth());
+    // Top Bar Card Surface with subtle gloss sheen & hairline border
+    SpectralUILookAndFeel::drawPanelCard(g, bounds);
 
     // Left: Bank Name Label (positioned after SHUFFLE FX button)
-    g.setFont(SpectralUILookAndFeel::getGeometricFont(10.0f, true));
+    g.setFont(SpectralUILookAndFeel::getMonospaceFont(9.5f));
     g.setColour(SpectralUILookAndFeel::textMutedColour);
     auto bankRect = juce::Rectangle<float>(118.0f, 0.0f, 90.0f, (float)getHeight());
-    g.drawText(bankName, bankRect.toNearestInt(), juce::Justification::centredLeft, true);
+    g.drawText(bankName.toUpperCase(), bankRect.toNearestInt(), juce::Justification::centredLeft, true);
 
     // Center Preset Display
-    g.setFont(SpectralUILookAndFeel::getGeometricFont(13.0f, true));
+    g.setFont(SpectralUILookAndFeel::getMonospaceFont(12.5f));
     g.setColour(SpectralUILookAndFeel::textMainColour);
 
     float cx = bounds.getCentreX();
     float cy = bounds.getCentreY();
 
     juce::GlyphArrangement ga;
-    ga.addLineOfText(SpectralUILookAndFeel::getGeometricFont(13.0f, true), currentPresetName, 0.0f, 0.0f);
+    ga.addLineOfText(SpectralUILookAndFeel::getMonospaceFont(12.5f), currentPresetName, 0.0f, 0.0f);
     float textWidth = ga.getBoundingBox(0, -1, true).getWidth();
 
     // Draw Preset Name centered
     juce::Rectangle<float> nameRect(cx - textWidth * 0.5f - 10.0f, 0.0f, textWidth + 20.0f, (float)getHeight());
     g.drawText(currentPresetName, nameRect.toNearestInt(), juce::Justification::centred, false);
 
-    // Draw small dropdown caret (▼) to the right of preset name
+    // Draw small dropdown caret (▼) in burple to the right of preset name
     juce::Path caret;
     float caretX = nameRect.getRight() + 2.0f;
-    caret.startNewSubPath(caretX, cy - 2.0f);
-    caret.lineTo(caretX + 6.0f, cy - 2.0f);
-    caret.lineTo(caretX + 3.0f, cy + 2.0f);
+    caret.startNewSubPath(caretX, cy - 2.5f);
+    caret.lineTo(caretX + 6.0f, cy - 2.5f);
+    caret.lineTo(caretX + 3.0f, cy + 2.5f);
     caret.closeSubPath();
 
-    g.setColour(SpectralUILookAndFeel::textMutedColour);
+    g.setColour(SpectralUILookAndFeel::accentColour);
     g.fillPath(caret);
 
     // Store target click bounds for browser overlay trigger
@@ -96,10 +91,10 @@ void PresetBarComponent::paint(juce::Graphics& g)
 
 void PresetBarComponent::resized()
 {
-    auto bounds = getLocalBounds().reduced(12, 4);
+    auto bounds = getLocalBounds().reduced(10, 4);
 
     // Left side SHUFFLE FX button
-    shuffleFxButton.setBounds(12, bounds.getY() + 1, 98, bounds.getHeight() - 2);
+    shuffleFxButton.setBounds(10, bounds.getY() + 1, 100, bounds.getHeight() - 2);
 
     // Center chevrons flanking the preset name area
     float cx = (float)bounds.getCentreX();
@@ -107,7 +102,7 @@ void PresetBarComponent::resized()
     nextButton.setBounds((int)(cx + 116.0f), bounds.getY(), 24, bounds.getHeight());
 
     // Right side SAVE STATE button
-    saveStateButton.setBounds(getWidth() - 120, (int)(bounds.getY() + 1), 105, (int)(bounds.getHeight() - 2));
+    saveStateButton.setBounds(getWidth() - 118, (int)(bounds.getY() + 1), 108, (int)(bounds.getHeight() - 2));
 }
 
 void PresetBarComponent::mouseDown(const juce::MouseEvent& e)

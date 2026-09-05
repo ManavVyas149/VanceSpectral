@@ -122,8 +122,9 @@ void PresetManager::createFactoryPreset(const juce::String& name, const juce::St
     paramsObj->setProperty("POLY_MODE", 0.0f);
     paramsObj->setProperty("GLIDE", 0.0f);
     paramsObj->setProperty("GAIN", 0.0f);
-    paramsObj->setProperty("FX_GATE_ENABLE", 0.0f);
-    paramsObj->setProperty("FX_GATE_AMOUNT", 0.0f);
+    paramsObj->setProperty("FX_SIDECHAIN_ENABLE", 0.0f);
+    paramsObj->setProperty("FX_SIDECHAIN_MIX", 0.0f);
+    paramsObj->setProperty("FX_SIDECHAIN_RATE", 2.0f);
     paramsObj->setProperty("FX_CHORUS_ENABLE", 0.0f);
     paramsObj->setProperty("FX_CHORUS_AMOUNT", 0.0f);
     paramsObj->setProperty("FX_CHORUS_RATE", 1.0f);
@@ -568,7 +569,7 @@ bool PresetManager::savePreset(const juce::String& presetName,
         "AMP_ATTACK", "AMP_DECAY", "AMP_SUSTAIN", "AMP_RELEASE",
         "PLAYBACK_MODE", "PITCH_MODE", "PITCH_SEMITONES",
         "TIMBRE_DRIFT", "EXCITER", "POLY_MODE", "GLIDE", "GAIN",
-        "FX_GATE_ENABLE", "FX_GATE_AMOUNT",
+        "FX_SIDECHAIN_ENABLE", "FX_SIDECHAIN_MIX", "FX_SIDECHAIN_RATE",
         "FX_CHORUS_ENABLE", "FX_CHORUS_AMOUNT", "FX_CHORUS_RATE",
         "FX_PHASER_ENABLE", "FX_PHASER_AMOUNT", "FX_PHASER_RATE",
         "FX_DELAY_ENABLE", "FX_DELAY_AMOUNT", "FX_DELAY_TIME", "FX_DELAY_FEEDBACK",

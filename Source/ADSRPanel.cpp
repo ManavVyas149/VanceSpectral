@@ -5,7 +5,7 @@ ADSRPanel::ADSRPanel(juce::AudioProcessorValueTreeState &apvts) {
     addAndMakeVisible(slider);
 
     label.setText(name, juce::dontSendNotification);
-    label.setFont(SpectralUILookAndFeel::getGeometricFont(11.0f, false));
+    label.setFont(SpectralUILookAndFeel::getMonospaceFont(9.5f, false));
     label.setJustificationType(juce::Justification::centred);
     label.setColour(juce::Label::textColourId, SpectralUILookAndFeel::textMutedColour);
     addAndMakeVisible(label);
@@ -54,45 +54,39 @@ void ADSRPanel::updatePolyMode(bool isPoly) {
 void ADSRPanel::paint(juce::Graphics &g) {
   auto bounds = getLocalBounds().toFloat();
 
-  // Matte panel background
-  g.setColour(SpectralUILookAndFeel::panelBgColour);
-  g.fillRoundedRectangle(bounds, 6.0f);
-
-  // Hairline border
-  g.setColour(SpectralUILookAndFeel::dividerColour);
-  g.drawRoundedRectangle(bounds, 6.0f, 1.0f);
+  // Coated brutalist card panel background
+  SpectralUILookAndFeel::drawPanelCard(g, bounds);
 
   // Section title styling
-  g.setFont(SpectralUILookAndFeel::getGeometricFont(10.0f, true));
-  g.setColour(SpectralUILookAndFeel::textMutedColour);
+  g.setFont(SpectralUILookAndFeel::getMonospaceFont(9.5f, true));
+  g.setColour(SpectralUILookAndFeel::textMainColour);
 
   // AMP ENV section label
   if (!ampHeaderArea.isEmpty()) {
-    g.setColour(SpectralUILookAndFeel::textMutedColour);
     g.drawText("AMP ENV", ampHeaderArea, juce::Justification::left, true);
   }
 
   // Vertical divider line separating AMP ENV section from PITCH & DRIFT section
   if (pitchDividerX > 0) {
     g.setColour(SpectralUILookAndFeel::dividerColour);
-    g.drawVerticalLine(pitchDividerX, 12.0f, (float)getHeight() - 12.0f);
+    g.drawVerticalLine(pitchDividerX, 8.0f, (float)getHeight() - 8.0f);
   }
 
   // PITCH & DRIFT section label
   if (!pitchHeaderArea.isEmpty()) {
-    g.setColour(SpectralUILookAndFeel::textMutedColour);
+    g.setColour(SpectralUILookAndFeel::textMainColour);
     g.drawText("PITCH & DRIFT", pitchHeaderArea, juce::Justification::left, true);
   }
 
   // Vertical divider line separating PITCH & DRIFT section from EXCITER & GLIDE section
   if (exciterDividerX > 0) {
     g.setColour(SpectralUILookAndFeel::dividerColour);
-    g.drawVerticalLine(exciterDividerX, 12.0f, (float)getHeight() - 12.0f);
+    g.drawVerticalLine(exciterDividerX, 8.0f, (float)getHeight() - 8.0f);
   }
 
   // EXCITER & GLIDE section label
   if (!exciterHeaderArea.isEmpty()) {
-    g.setColour(SpectralUILookAndFeel::textMutedColour);
+    g.setColour(SpectralUILookAndFeel::textMainColour);
     g.drawText("EXCITER & GLIDE", exciterHeaderArea, juce::Justification::left, true);
   }
 }

@@ -62,11 +62,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout VancespectralAudioProcessor:
     params.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID("GAIN", 1), "Master Gain", juce::NormalisableRange<float>(-48.0f, 6.0f, 0.1f), 0.0f));
 
-    // Master Wet Effects (Gate, Chorus, Phaser, Delay, Drive)
+    // Master Wet Effects (Sidechain, Chorus, Phaser, Delay, Drive)
     params.push_back(std::make_unique<juce::AudioParameterBool>(
-        juce::ParameterID("FX_GATE_ENABLE", 1), "Gate Enable", false));
+        juce::ParameterID("FX_SIDECHAIN_ENABLE", 1), "Sidechain Enable", false));
     params.push_back(std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID("FX_GATE_AMOUNT", 1), "Gate Amount", juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.0f));
+        juce::ParameterID("FX_SIDECHAIN_MIX", 1), "Sidechain Mix", juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("FX_SIDECHAIN_RATE", 1), "Sidechain Rate", juce::NormalisableRange<float>(0.5f, 20.0f, 0.01f, 0.5f), 2.0f));
 
     params.push_back(std::make_unique<juce::AudioParameterBool>(
         juce::ParameterID("FX_CHORUS_ENABLE", 1), "Chorus Enable", false));
@@ -292,9 +294,10 @@ void VancespectralAudioProcessor::processBlock(
 
     sampleEngine.process(buffer, 0, buffer.getNumSamples());
 
-    // 5-Stage Master Effects Chain (Gate -> Chorus -> Phaser -> Delay -> Drive -> Exciter [inside sampleEngine] -> Volume)
-    effectsEngine.setGateEnabled(*apvts.getRawParameterValue("FX_GATE_ENABLE") >= 0.5f);
-    effectsEngine.setGateAmount(*apvts.getRawParameterValue("FX_GATE_AMOUNT"));
+    // 5-Stage Master Effects Chain (Sidechain -> Chorus -> Phaser -> Delay -> Drive -> Exciter [inside sampleEngine] -> Volume)
+    effectsEngine.setSidechainEnabled(*apvts.getRawParameterValue("FX_SIDECHAIN_ENABLE") >= 0.5f);
+    effectsEngine.setSidechainMix(*apvts.getRawParameterValue("FX_SIDECHAIN_MIX"));
+    effectsEngine.setSidechainRate(*apvts.getRawParameterValue("FX_SIDECHAIN_RATE"));
 
     effectsEngine.setChorusEnabled(*apvts.getRawParameterValue("FX_CHORUS_ENABLE") >= 0.5f);
     effectsEngine.setChorusAmount(*apvts.getRawParameterValue("FX_CHORUS_AMOUNT"));
@@ -451,7 +454,7 @@ void VancespectralAudioProcessor::resetParametersToDefault()
     const char* idsToReset[] = {
         "AMP_ATTACK", "AMP_DECAY", "AMP_SUSTAIN", "AMP_RELEASE",
         "PLAYBACK_MODE", "PITCH_MODE", "PITCH_SEMITONES", "TIMBRE_DRIFT", "EXCITER", "POLY_MODE", "GLIDE", "GAIN",
-        "FX_GATE_ENABLE", "FX_GATE_AMOUNT",
+        "FX_SIDECHAIN_ENABLE", "FX_SIDECHAIN_MIX", "FX_SIDECHAIN_RATE",
         "FX_CHORUS_ENABLE", "FX_CHORUS_AMOUNT", "FX_CHORUS_RATE",
         "FX_PHASER_ENABLE", "FX_PHASER_AMOUNT", "FX_PHASER_RATE",
         "FX_DELAY_ENABLE", "FX_DELAY_AMOUNT", "FX_DELAY_TIME", "FX_DELAY_FEEDBACK",

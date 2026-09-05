@@ -17,7 +17,7 @@
 //==============================================================================
 /**
     5-Stage Master Wet Effects Chain:
-    1. Gate: juce::dsp::NoiseGate with smoothed threshold
+    1. Sidechain: Internal rhythmic volume-ducking envelope pump (Rate & Mix)
     2. Chorus: juce::dsp::Chorus layered with Airwindows modulation character
     3. Phaser: juce::dsp::Phaser
     4. Delay: juce::dsp::DelayLine with feedback and wet/dry mix
@@ -36,8 +36,9 @@ public:
     void process(juce::AudioBuffer<float>& buffer);
 
     // Parameter Setters with smoothing
-    void setGateEnabled(bool enabled);
-    void setGateAmount(float amount01);
+    void setSidechainEnabled(bool enabled);
+    void setSidechainMix(float mix01);
+    void setSidechainRate(float rateHz);
 
     void setChorusEnabled(bool enabled);
     void setChorusAmount(float amount01);
@@ -60,8 +61,8 @@ private:
     double currentSampleRate{ 44100.0 };
     int maxExpectedBlockSize{ 512 };
 
-    // DSP Processors
-    juce::dsp::NoiseGate<float> noiseGate;
+    // DSP Processors & State
+    double sidechainPhase{ 0.0 };
     juce::dsp::Chorus<float> juceChorus;
     Airwindows::ChorusEnsemble airChorus;
     juce::dsp::Phaser<float> jucePhaser;
@@ -70,14 +71,15 @@ private:
     std::unique_ptr<juce::dsp::Oversampling<float>> oversampler;
 
     // Smoothed Bypass crossfaders (15ms fade for click-safety and true zero-CPU bypass)
-    juce::LinearSmoothedValue<float> gateBypassGain;
+    juce::LinearSmoothedValue<float> sidechainBypassGain;
     juce::LinearSmoothedValue<float> chorusBypassGain;
     juce::LinearSmoothedValue<float> phaserBypassGain;
     juce::LinearSmoothedValue<float> delayBypassGain;
     juce::LinearSmoothedValue<float> driveBypassGain;
 
     // Smoothed continuous parameter values
-    juce::LinearSmoothedValue<float> gateThresholdDb;
+    juce::LinearSmoothedValue<float> sidechainMix;
+    juce::LinearSmoothedValue<float> sidechainRate;
     juce::LinearSmoothedValue<float> chorusMix;
     juce::LinearSmoothedValue<float> chorusRate;
     juce::LinearSmoothedValue<float> phaserMix;

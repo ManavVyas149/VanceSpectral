@@ -30,12 +30,8 @@ void EffectsEngine::prepare(double sampleRate, int maxBlockSize)
     spec.maximumBlockSize = (juce::uint32)maxExpectedBlockSize;
     spec.numChannels = 2;
 
-    // 1. Gate
-    noiseGate.prepare(spec);
-    noiseGate.setThreshold(-100.0f);
-    noiseGate.setRatio(10.0f);
-    noiseGate.setAttack(2.0f);
-    noiseGate.setRelease(50.0f);
+    // 1. Sidechain
+    sidechainPhase = 0.0;
 
     // 2. Chorus
     juceChorus.prepare(spec);
@@ -67,21 +63,23 @@ void EffectsEngine::prepare(double sampleRate, int maxBlockSize)
     driveFilterR = 0.0f;
 
     // Smoothed bypass controllers (15ms crossfade ramp)
-    gateBypassGain.reset(currentSampleRate, 0.015);
+    sidechainBypassGain.reset(currentSampleRate, 0.015);
     chorusBypassGain.reset(currentSampleRate, 0.015);
     phaserBypassGain.reset(currentSampleRate, 0.015);
     delayBypassGain.reset(currentSampleRate, 0.015);
     driveBypassGain.reset(currentSampleRate, 0.015);
 
-    gateBypassGain.setCurrentAndTargetValue(0.0f);
+    sidechainBypassGain.setCurrentAndTargetValue(0.0f);
     chorusBypassGain.setCurrentAndTargetValue(0.0f);
     phaserBypassGain.setCurrentAndTargetValue(0.0f);
     delayBypassGain.setCurrentAndTargetValue(0.0f);
     driveBypassGain.setCurrentAndTargetValue(0.0f);
 
     // Continuous parameter smoothers (20ms smoothing to eliminate zipper noise)
-    gateThresholdDb.reset(currentSampleRate, 0.02);
-    gateThresholdDb.setCurrentAndTargetValue(-100.0f);
+    sidechainMix.reset(currentSampleRate, 0.02);
+    sidechainMix.setCurrentAndTargetValue(0.0f);
+    sidechainRate.reset(currentSampleRate, 0.02);
+    sidechainRate.setCurrentAndTargetValue(2.0f);
 
     chorusMix.reset(currentSampleRate, 0.02);
     chorusMix.setCurrentAndTargetValue(0.0f);
@@ -110,7 +108,7 @@ void EffectsEngine::prepare(double sampleRate, int maxBlockSize)
 
 void EffectsEngine::reset()
 {
-    noiseGate.reset();
+    sidechainPhase = 0.0;
     juceChorus.reset();
     airChorus.reset();
     jucePhaser.reset();
@@ -123,18 +121,19 @@ void EffectsEngine::reset()
     driveFilterR = 0.0f;
 }
 
-void EffectsEngine::setGateEnabled(bool enabled)
+void EffectsEngine::setSidechainEnabled(bool enabled)
 {
-    gateBypassGain.setTargetValue(enabled ? 1.0f : 0.0f);
+    sidechainBypassGain.setTargetValue(enabled ? 1.0f : 0.0f);
 }
 
-void EffectsEngine::setGateAmount(float amount01)
+void EffectsEngine::setSidechainMix(float mix01)
 {
-    // 0.0 = Gate fully open (-100 dB threshold, no gating)
-    // 1.0 = Aggressive gating (0 dB threshold)
-    float clamped = juce::jlimit(0.0f, 1.0f, amount01);
-    float threshold = -100.0f + (clamped * 100.0f);
-    gateThresholdDb.setTargetValue(threshold);
+    sidechainMix.setTargetValue(juce::jlimit(0.0f, 1.0f, mix01));
+}
+
+void EffectsEngine::setSidechainRate(float rateHz)
+{
+    sidechainRate.setTargetValue(juce::jlimit(0.5f, 20.0f, rateHz));
 }
 
 void EffectsEngine::setChorusEnabled(bool enabled)
@@ -216,33 +215,64 @@ void EffectsEngine::process(juce::AudioBuffer<float>& buffer)
         tempEffectBuffer.setSize(2, numSamples, false, false, true);
 
     // =========================================================================
-    // Stage 1: Gate (NoiseGate)
+    // Stage 1: Sidechain (Internal Rhythmic Volume-Ducking Pump)
     // =========================================================================
-    bool isGateActive = gateBypassGain.isSmoothing() || gateBypassGain.getCurrentValue() > 0.001f;
-    if (isGateActive)
+    bool isSidechainActive = sidechainBypassGain.isSmoothing() || sidechainBypassGain.getCurrentValue() > 0.001f;
+    if (isSidechainActive)
     {
-        noiseGate.setThreshold(gateThresholdDb.getNextValue());
+        float* left = buffer.getWritePointer(0);
+        float* right = buffer.getWritePointer(1);
 
-        // Copy dry signal into temp buffer
-        tempEffectBuffer.copyFrom(0, 0, buffer.getReadPointer(0), numSamples);
-        tempEffectBuffer.copyFrom(1, 0, buffer.getReadPointer(1), numSamples);
-
-        juce::dsp::AudioBlock<float> block(tempEffectBuffer);
-        juce::dsp::ProcessContextReplacing<float> context(block);
-        noiseGate.process(context);
-
-        // Crossfade dry & gated based on gateBypassGain
         for (int i = 0; i < numSamples; ++i)
         {
-            float g = gateBypassGain.getNextValue();
-            buffer.setSample(0, i, buffer.getSample(0, i) * (1.0f - g) + tempEffectBuffer.getSample(0, i) * g);
-            buffer.setSample(1, i, buffer.getSample(1, i) * (1.0f - g) + tempEffectBuffer.getSample(1, i) * g);
+            float bypassG = sidechainBypassGain.getNextValue();
+            float mixVal = sidechainMix.getNextValue();
+            float rateHz = sidechainRate.getNextValue();
+
+            // Advance phase accumulator continuously
+            double phaseInc = (double)rateHz / currentSampleRate;
+            sidechainPhase += phaseInc;
+            if (sidechainPhase >= 1.0)
+                sidechainPhase -= 1.0;
+
+            // Calculate ducking envelope E(phase) in [0.0, 1.0]
+            // At phase = 0.0 (downbeat start), fast smooth dip; smooth exponential recovery to 1.0
+            float env = 1.0f;
+            constexpr double attackWindow = 0.04; // 4% of cycle for fast click-free attack dip
+
+            if (sidechainPhase < attackWindow)
+            {
+                // Smooth cosine dip from 1.0 down to 0.0
+                double normAtt = sidechainPhase / attackWindow;
+                env = static_cast<float>(0.5 * (1.0 + std::cos(juce::MathConstants<double>::pi * normAtt)));
+            }
+            else
+            {
+                // Smooth exponential recovery from 0.0 back to 1.0
+                double normRec = (sidechainPhase - attackWindow) / (1.0 - attackWindow);
+                // Shaped curve: (1 - exp(-4 * normRec)) / (1 - exp(-4))
+                constexpr double expFactor = 4.0;
+                double denominator = 1.0 - std::exp(-expFactor);
+                env = static_cast<float>((1.0 - std::exp(-expFactor * normRec)) / denominator);
+            }
+
+            // Effective gain for ducking with wet/dry mix
+            // mix = 0.0 -> gain = 1.0 (bit-identical dry)
+            // mix = 1.0 -> gain = env (full ducking)
+            float duckGain = 1.0f - (mixVal * (1.0f - env));
+
+            // Crossfade with bypass gain
+            float finalGain = (1.0f - bypassG) + (bypassG * duckGain);
+
+            left[i] *= finalGain;
+            right[i] *= finalGain;
         }
     }
     else
     {
-        gateBypassGain.skip(numSamples);
-        gateThresholdDb.skip(numSamples);
+        sidechainBypassGain.skip(numSamples);
+        sidechainMix.skip(numSamples);
+        sidechainRate.skip(numSamples);
     }
 
     // =========================================================================

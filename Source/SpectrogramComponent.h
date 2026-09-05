@@ -74,22 +74,22 @@ private:
             auto bounds = getLocalBounds().toFloat().reduced(1.0f);
             bool active = getToggleState();
 
-            // Active fill amber, inactive dark matte
+            // Active fill burple, inactive light card
             juce::Colour bg = active ? SpectralUILookAndFeel::accentColour
-                                     : (isHighlighted ? juce::Colour::fromRGB(0x2A, 0x2C, 0x38)
+                                     : (isHighlighted ? SpectralUILookAndFeel::dividerColour.withAlpha(0.4f)
                                                       : SpectralUILookAndFeel::panelBgColour);
             
             g.setColour(bg);
-            g.fillRoundedRectangle(bounds, 4.0f);
+            g.fillRoundedRectangle(bounds, 3.0f);
 
-            juce::Colour borderCol = active ? SpectralUILookAndFeel::accentColour
+            juce::Colour borderCol = active ? SpectralUILookAndFeel::accentBright
                                             : SpectralUILookAndFeel::dividerColour;
             g.setColour(borderCol);
-            g.drawRoundedRectangle(bounds, 4.0f, 1.0f);
+            g.drawRoundedRectangle(bounds, 3.0f, 1.0f);
 
-            g.setFont(SpectralUILookAndFeel::getGeometricFont(10.0f, true));
+            g.setFont(SpectralUILookAndFeel::getMonospaceFont(9.5f, true));
             g.setColour(active ? juce::Colours::black : SpectralUILookAndFeel::textMainColour);
-            g.drawText(active ? "LOOP ON" : "LOOP", bounds.toNearestInt(), juce::Justification::centred, false);
+            g.drawText(active ? "[LOOP ON]" : "[LOOP]", bounds.toNearestInt(), juce::Justification::centred, false);
         }
     };
 

@@ -12,6 +12,8 @@
 
 #include <JuceHeader.h>
 #include "SpectralUILookAndFeel.h"
+#include <vector>
+#include <functional>
 
 class EffectsPanel : public juce::Component
 {
@@ -22,103 +24,64 @@ public:
     void paint(juce::Graphics& g) override;
     void resized() override;
 
-private:
-    class HoverValueSlider : public juce::Slider
+    class EffectModuleComponent : public juce::Component
     {
     public:
-        HoverValueSlider(const juce::String& unitSuffix = "") : unit(unitSuffix)
-        {
-            setSliderStyle(juce::Slider::RotaryVerticalDrag);
-            setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-        }
+        EffectModuleComponent(const juce::String& name,
+                              const std::vector<juce::Colour>& segmentColours,
+                              juce::Colour glowColour);
+        ~EffectModuleComponent() override = default;
 
-        void mouseEnter(const juce::MouseEvent& e) override
-        {
-            juce::Slider::mouseEnter(e);
-            updateTooltipValue();
-        }
+        void paint(juce::Graphics& g) override;
+        void mouseDown(const juce::MouseEvent& e) override;
+        void mouseDrag(const juce::MouseEvent& e) override;
+        void mouseUp(const juce::MouseEvent& e) override;
+        void mouseEnter(const juce::MouseEvent& e) override;
+        void mouseExit(const juce::MouseEvent& e) override;
+        void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override;
 
-        void mouseDrag(const juce::MouseEvent& e) override
-        {
-            juce::Slider::mouseDrag(e);
-            updateTooltipValue();
-        }
+        // Underlying standard JUCE controls for APVTS attachments
+        juce::TextButton toggleButton;
+        juce::Slider primarySlider;
+        juce::Slider secondarySlider;
+
+        std::function<void(EffectModuleComponent*)> onHoverChanged;
+        std::function<void(float)> onValueChanged;
+
+        bool isEffectEnabled() const { return toggleButton.getToggleState(); }
+        float getAmount() const { return (float)primarySlider.getValue(); }
+        const juce::String& getEffectName() const { return effectName; }
 
     private:
-        void updateTooltipValue()
-        {
-            double val = getValue();
-            juce::String valStr;
-            if (unit == "ms" || unit == "s")
-            {
-                if (val < 1.0 && unit == "s")
-                    valStr = juce::String((int)(val * 1000.0)) + " ms";
-                else if (unit == "ms")
-                    valStr = juce::String((int)val) + " ms";
-                else
-                    valStr = juce::String(val, 2) + " s";
-            }
-            else if (unit == "%")
-            {
-                valStr = juce::String((int)(val * 100.0)) + " %";
-            }
-            else if (unit == "Hz")
-            {
-                valStr = juce::String(val, 2) + " Hz";
-            }
-            else
-            {
-                valStr = juce::String(val, 2);
-            }
-            setTooltip(valStr);
-        }
+        juce::String effectName;
+        std::vector<juce::Colour> colors;
+        juce::Colour glow;
+        bool isHovered = false;
+        float dragStartValue = 0.0f;
+        juce::Point<float> mouseDownPos;
+        bool wasDragged = false;
 
-        juce::String unit;
+        JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EffectModuleComponent)
     };
 
-    // 1. GATE
-    juce::TextButton gateToggle{ "GATE" };
-    HoverValueSlider gateAmountSlider{ "%" };
-    juce::Label gateAmountLabel;
+private:
+    void updateDisplayedPercentage();
+    void drawDigitalDisplay(juce::Graphics& g, juce::Rectangle<float> area);
 
-    // 2. CHORUS
-    juce::TextButton chorusToggle{ "CHORUS" };
-    HoverValueSlider chorusAmountSlider{ "%" };
-    juce::Label chorusAmountLabel;
-    HoverValueSlider chorusRateSlider{ "Hz" };
-    juce::Label chorusRateLabel;
-
-    // 3. PHASER
-    juce::TextButton phaserToggle{ "PHASER" };
-    HoverValueSlider phaserAmountSlider{ "%" };
-    juce::Label phaserAmountLabel;
-    HoverValueSlider phaserRateSlider{ "Hz" };
-    juce::Label phaserRateLabel;
-
-    // 4. DELAY
-    juce::TextButton delayToggle{ "DELAY" };
-    HoverValueSlider delayAmountSlider{ "%" };
-    juce::Label delayAmountLabel;
-    HoverValueSlider delayTimeSlider{ "ms" };
-    juce::Label delayTimeLabel;
-
-    // 5. DRIVE
-    juce::TextButton driveToggle{ "DRIVE" };
-    HoverValueSlider driveAmountSlider{ "%" };
-    juce::Label driveAmountLabel;
-    HoverValueSlider driveToneSlider{ "%" };
-    juce::Label driveToneLabel;
+    // 5 Effect Modules
+    EffectModuleComponent driveModule;
+    EffectModuleComponent phaserModule;
+    EffectModuleComponent delayModule;
+    EffectModuleComponent chorusModule;
+    EffectModuleComponent gateModule;
 
     // Attachments
     using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
     using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
 
-    std::unique_ptr<ButtonAttachment> gateToggleAttachment;
-    std::unique_ptr<SliderAttachment> gateAmountAttachment;
-
-    std::unique_ptr<ButtonAttachment> chorusToggleAttachment;
-    std::unique_ptr<SliderAttachment> chorusAmountAttachment;
-    std::unique_ptr<SliderAttachment> chorusRateAttachment;
+    std::unique_ptr<ButtonAttachment> driveToggleAttachment;
+    std::unique_ptr<SliderAttachment> driveAmountAttachment;
+    std::unique_ptr<SliderAttachment> driveToneAttachment;
 
     std::unique_ptr<ButtonAttachment> phaserToggleAttachment;
     std::unique_ptr<SliderAttachment> phaserAmountAttachment;
@@ -128,13 +91,21 @@ private:
     std::unique_ptr<SliderAttachment> delayAmountAttachment;
     std::unique_ptr<SliderAttachment> delayTimeAttachment;
 
-    std::unique_ptr<ButtonAttachment> driveToggleAttachment;
-    std::unique_ptr<SliderAttachment> driveAmountAttachment;
-    std::unique_ptr<SliderAttachment> driveToneAttachment;
+    std::unique_ptr<ButtonAttachment> chorusToggleAttachment;
+    std::unique_ptr<SliderAttachment> chorusAmountAttachment;
+    std::unique_ptr<SliderAttachment> chorusRateAttachment;
 
-    // Layout coordinates
-    juce::Rectangle<int> headerArea;
-    int dividerXs[4]{ 0, 0, 0, 0 };
+    std::unique_ptr<ButtonAttachment> sidechainToggleAttachment;
+    std::unique_ptr<SliderAttachment> sidechainMixAttachment;
+    std::unique_ptr<SliderAttachment> sidechainRateAttachment;
+
+    // State for Digital Display
+    int displayedPercentage = 33;
+    EffectModuleComponent* focusedModule = nullptr;
+
+    // Coordinates
+    float dividerX = 0.0f;
+    juce::Rectangle<float> digitalDisplayArea;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EffectsPanel)
 };

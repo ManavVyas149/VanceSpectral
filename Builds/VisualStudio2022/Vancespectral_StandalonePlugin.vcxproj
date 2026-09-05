@@ -89,7 +89,7 @@
       <LargeAddressAware>true</LargeAddressAware>
       <AdditionalDependencies>VanceSpectral.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/LIBPATH:"../../ThirdParty/SoundTouch/lib" /LIBPATH:"../../ThirdParty/libsamplerate/lib" %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalLibraryDirectories>C:\Users\Ansh Srivastava\OneDrive\Documents\GitHub\VanceSpectral\ThirdParty\libsamplerate\lib;C:\Users\Ansh Srivastava\OneDrive\Documents\GitHub\VanceSpectral\ThirdParty\SoundTouch\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\Users\Ansh Srivastava\OneDrive\Documents\GitHub\VanceSpectral\ThirdParty\SoundTouch\lib;C:\Users\Ansh Srivastava\OneDrive\Documents\GitHub\VanceSpectral\ThirdParty\libsamplerate\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -140,7 +140,7 @@
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <AdditionalDependencies>VanceSpectral.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/LIBPATH:"../../ThirdParty/SoundTouch/lib" /LIBPATH:"../../ThirdParty/libsamplerate/lib" %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalLibraryDirectories>C:\Users\Ansh Srivastava\OneDrive\Documents\GitHub\VanceSpectral\ThirdParty\libsamplerate\lib;C:\Users\Ansh Srivastava\OneDrive\Documents\GitHub\VanceSpectral\ThirdParty\SoundTouch\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\Users\Ansh Srivastava\OneDrive\Documents\GitHub\VanceSpectral\ThirdParty\SoundTouch\lib;C:\Users\Ansh Srivastava\OneDrive\Documents\GitHub\VanceSpectral\ThirdParty\libsamplerate\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>

@@ -420,20 +420,20 @@ SpectrogramComponent::getSpectrogramColor(float magnitudeNormalized) {
     return SpectralUILookAndFeel::graphBgColour;
   } else if (magnitudeNormalized < 0.35f) {
     float t = (magnitudeNormalized - 0.05f) / 0.30f;
-    return juce::Colour::fromRGB(0x0A, 0x0A, 0x0C)
-        .interpolatedWith(juce::Colour::fromRGB(0x16, 0x20, 0x2C), t);
+    return juce::Colour::fromRGB(0x0C, 0x0D, 0x12)
+        .interpolatedWith(juce::Colour::fromRGB(0x24, 0x18, 0x30), t);
   } else if (magnitudeNormalized < 0.65f) {
     float t = (magnitudeNormalized - 0.35f) / 0.30f;
-    return juce::Colour::fromRGB(0x16, 0x20, 0x2C)
-        .interpolatedWith(juce::Colour::fromRGB(0x2D, 0x3E, 0x50), t);
+    return juce::Colour::fromRGB(0x24, 0x18, 0x30)
+        .interpolatedWith(juce::Colour::fromRGB(0x60, 0x28, 0x72), t);
   } else if (magnitudeNormalized < 0.88f) {
     float t = (magnitudeNormalized - 0.65f) / 0.23f;
-    return juce::Colour::fromRGB(0x2D, 0x3E, 0x50)
-        .interpolatedWith(juce::Colour::fromRGB(0x78, 0x5A, 0x42), t);
+    return juce::Colour::fromRGB(0x60, 0x28, 0x72)
+        .interpolatedWith(juce::Colour::fromRGB(0xB8, 0x4D, 0xC4), t);
   } else {
     float t = (magnitudeNormalized - 0.88f) / 0.12f;
-    return juce::Colour::fromRGB(0x78, 0x5A, 0x42)
-        .interpolatedWith(juce::Colour::fromRGB(0xD9, 0x8B, 0x4F), t);
+    return juce::Colour::fromRGB(0xB8, 0x4D, 0xC4)
+        .interpolatedWith(juce::Colour::fromRGB(0xF2, 0xB8, 0xFF), t);
   }
 }
 
@@ -561,9 +561,9 @@ void SpectrogramComponent::drawWaveform(juce::Graphics &g,
 
   int samplesPerPixel = juce::jmax(1, numSamples / (int)width);
 
-  // Center zero-crossing hairline in translucent Ice Cyan
-  juce::Colour cyanColour = juce::Colour::fromRGB(0x38, 0xBD, 0xF8); // #38BDF8 Sky Cyan
-  g.setColour(cyanColour.withAlpha(0.20f));
+  // Center zero-crossing hairline in translucent violet accent
+  juce::Colour waveCol = SpectralUILookAndFeel::accentColour;
+  g.setColour(waveCol.withAlpha(0.20f));
   g.drawHorizontalLine((int)centreY, bounds.getX(), bounds.getRight());
 
   juce::Path waveformEnvelope;
@@ -610,14 +610,14 @@ void SpectrogramComponent::drawWaveform(juce::Graphics &g,
   }
   waveformEnvelope.closeSubPath();
 
-  // Translucent Ice Cyan waveform fill (~12% alpha)
-  g.setColour(cyanColour.withAlpha(0.12f));
+  // Translucent burple waveform fill (~14% alpha)
+  g.setColour(waveCol.withAlpha(0.14f));
   g.fillPath(waveformEnvelope);
 
-  // Crisp top & bottom Ice Cyan waveform outlines (~85% alpha)
-  g.setColour(cyanColour.withAlpha(0.85f));
+  // Crisp top & bottom burple/bright waveform outlines (~90% alpha)
+  g.setColour(SpectralUILookAndFeel::accentBright.withAlpha(0.90f));
   g.strokePath(waveformTop, juce::PathStrokeType(1.2f));
-  g.setColour(cyanColour.withAlpha(0.65f));
+  g.setColour(waveCol.withAlpha(0.70f));
   g.strokePath(waveformBottom, juce::PathStrokeType(1.2f));
 }
 

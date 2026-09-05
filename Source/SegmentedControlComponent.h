@@ -35,22 +35,22 @@ private:
             auto bounds = getLocalBounds().toFloat();
             bool isActive = (parent.getSelectedIndex() == optionIndex);
 
-            // Active pill background or accent underline
+            // Active pill background or accent outline
             if (isActive)
             {
-                g.setColour(SpectralUILookAndFeel::accentColour.withAlpha(0.12f));
-                g.fillRoundedRectangle(bounds.reduced(1.0f, 2.0f), 4.0f);
+                g.setColour(SpectralUILookAndFeel::accentColour.withAlpha(0.20f));
+                g.fillRoundedRectangle(bounds.reduced(1.0f, 2.0f), 3.0f);
 
                 g.setColour(SpectralUILookAndFeel::accentColour);
-                g.drawRoundedRectangle(bounds.reduced(1.0f, 2.0f), 4.0f, 1.0f);
+                g.drawRoundedRectangle(bounds.reduced(1.0f, 2.0f), 3.0f, 1.2f);
             }
             else if (isHighlighted)
             {
-                g.setColour(juce::Colour::fromRGB(0x2A, 0x2C, 0x38));
-                g.fillRoundedRectangle(bounds.reduced(1.0f, 2.0f), 4.0f);
+                g.setColour(SpectralUILookAndFeel::dividerColour.withAlpha(0.35f));
+                g.fillRoundedRectangle(bounds.reduced(1.0f, 2.0f), 3.0f);
             }
 
-            g.setFont(SpectralUILookAndFeel::getGeometricFont(11.0f, isActive));
+            g.setFont(SpectralUILookAndFeel::getMonospaceFont(10.0f, isActive));
             g.setColour(isActive ? SpectralUILookAndFeel::accentColour
                                  : (isHighlighted ? SpectralUILookAndFeel::textMainColour
                                                   : SpectralUILookAndFeel::textMutedColour));

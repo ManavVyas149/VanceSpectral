@@ -179,13 +179,14 @@ void ToolbarComponent::setSelectedTool(ToolType newTool) {
 void ToolbarComponent::paint(juce::Graphics &g) {
   auto bounds = getLocalBounds().toFloat();
 
-  g.setColour(SpectralUILookAndFeel::panelBgColour.withAlpha(
-      isEnabled() ? 1.0f : 0.45f));
-  g.fillRoundedRectangle(bounds, 6.0f);
-
-  g.setColour(SpectralUILookAndFeel::dividerColour.withAlpha(
-      isEnabled() ? 1.0f : 0.3f));
-  g.drawRoundedRectangle(bounds, 6.0f, 1.0f);
+  if (isEnabled()) {
+    SpectralUILookAndFeel::drawPanelCard(g, bounds);
+  } else {
+    g.setColour(SpectralUILookAndFeel::panelBgColour.withAlpha(0.5f));
+    g.fillRoundedRectangle(bounds, 6.0f);
+    g.setColour(SpectralUILookAndFeel::dividerColour.withAlpha(0.4f));
+    g.drawRoundedRectangle(bounds, 6.0f, 1.0f);
+  }
 }
 
 void ToolbarComponent::resized() {

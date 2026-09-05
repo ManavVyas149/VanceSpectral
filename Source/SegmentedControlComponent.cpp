@@ -34,19 +34,7 @@ void SegmentedControlComponent::setSelectedIndex(int newIndex, bool sendNotifica
 void SegmentedControlComponent::paint(juce::Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat();
-
-    // Panel background
-    g.setColour(SpectralUILookAndFeel::panelBgColour);
-    g.fillRoundedRectangle(bounds, 6.0f);
-
-    // Hairline border
-    g.setColour(SpectralUILookAndFeel::dividerColour);
-    g.drawRoundedRectangle(bounds, 6.0f, 1.0f);
-
-    // Quiet section label top-left
-    g.setFont(SpectralUILookAndFeel::getGeometricFont(10.0f, true));
-    g.setColour(SpectralUILookAndFeel::textMutedColour);
-    g.drawText(labelText.toUpperCase(), bounds.removeFromTop(18.0f).reduced(8.0f, 0.0f).toNearestInt(), juce::Justification::left, true);
+    SpectralUILookAndFeel::drawPanelCard(g, bounds, labelText.toUpperCase());
 }
 
 void SegmentedControlComponent::resized()
