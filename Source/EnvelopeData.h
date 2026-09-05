@@ -4,8 +4,7 @@
 
 enum class EnvelopeCategory
 {
-    AmplifierEnvelope,
-    FilterEnvelope
+    AmplifierEnvelope
 };
 
 class EnvelopeData

@@ -11,6 +11,8 @@
 #include <JuceHeader.h>
 #include "SampleEngine.h"
 #include "HistoryManager.h"
+#include "AudioResampler.h"
+#include "EffectsEngine.h"
 
 //==============================================================================
 /**
@@ -60,9 +62,13 @@ public:
         loadedSampleFile = file;
         loadedSampleFileName = file.getFileName();
         sampleLoaded = true;
-        sampleEngine.loadSample(buffer, nativeSampleRate, rootNote);
+
+        double currentSr = getSampleRate() > 0.0 ? getSampleRate() : 44100.0;
+        juce::AudioBuffer<float> resampled = AudioResampler::resampleIfNeeded(buffer, nativeSampleRate, currentSr);
+        sampleEngine.loadSample(resampled, currentSr, rootNote);
     }
 
+    const juce::AudioBuffer<float>& getLoadedSampleBuffer() const { return sampleEngine.getLoadedSample(); }
     juce::File getLoadedSampleFile() const { return loadedSampleFile; }
     juce::String getLoadedSampleFileName() const { return loadedSampleFileName; }
     bool isSampleLoaded() const { return sampleLoaded; }
@@ -179,6 +185,7 @@ public:
     }
 
     SampleEngine& getSampleEngine() { return sampleEngine; }
+    EffectsEngine& getEffectsEngine() { return effectsEngine; }
     HistoryManager& getHistoryManager() { return historyManager; }
 
     bool checkpointHistoryState(const juce::String& label, const juce::AudioBuffer<float>* audioBuffer = nullptr, double sampleRate = 44100.0)
@@ -203,6 +210,7 @@ public:
 
 private:
     SampleEngine sampleEngine;
+    EffectsEngine effectsEngine;
     HistoryManager historyManager;
     juce::AudioProcessorValueTreeState apvts;
     juce::LinearSmoothedValue<float> masterGainSmoother;

@@ -33,9 +33,18 @@ VanceSpectral/
 │
 ├── JuceLibraryCode/
 │
+├── ThirdParty/
+│   └── SoundTouch/
+│
 ├── Builds/
 │   └── VisualStudio2022/
 │
 ├── VanceSpectral.jucer
+├── THIRD_PARTY_LICENSES.md
 ├── .gitignore
 └── README.md
+```
+
+## Third-Party Dependencies
+
+- **[SoundTouch Audio Processing Library](https://codeberg.org/soundtouch/soundtouch)**: Used for time-stretching and pitch-shifting processing. Integrated statically under `ThirdParty/SoundTouch`. See [`THIRD_PARTY_LICENSES.md`](file:///c:/Users/Ansh%20Srivastava/OneDrive/Documents/GitHub/VanceSpectral/THIRD_PARTY_LICENSES.md) and [`ThirdParty/SoundTouch/INTEGRATION_NOTES.md`](file:///c:/Users/Ansh%20Srivastava/OneDrive/Documents/GitHub/VanceSpectral/ThirdParty/SoundTouch/INTEGRATION_NOTES.md) for licensing and integration details.

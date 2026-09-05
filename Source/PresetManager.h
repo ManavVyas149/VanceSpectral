@@ -79,6 +79,5 @@ private:
 
     void ensureDirectoriesExist();
     void createFactoryPreset(const juce::String& name, const juce::String& category,
-                             float ampA, float ampD, float ampS, float ampR,
-                             float filtA, float filtD, float filtS, float filtR);
+                             float ampA, float ampD, float ampS, float ampR);
 };

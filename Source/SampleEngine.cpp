@@ -12,7 +12,14 @@ void SampleEngine::prepare(double sr)
     for (auto& v : voices)
     {
         v.ampEnvelope.prepareToPlay(targetSampleRate);
-        v.filterEnvelope.prepareToPlay(targetSampleRate);
+        v.soundTouch.setSampleRate((uint)targetSampleRate.load());
+        v.soundTouch.setChannels(2);
+        v.soundTouch.setSetting(SETTING_USE_AA_FILTER, 1);
+        v.soundTouch.setSetting(SETTING_AA_FILTER_LENGTH, 32);
+        v.soundTouch.setSetting(SETTING_USE_QUICKSEEK, 0);
+        v.soundTouch.setSetting(SETTING_SEQUENCE_MS, 40);
+        v.soundTouch.setSetting(SETTING_SEEKWINDOW_MS, 15);
+        v.soundTouch.setSetting(SETTING_OVERLAP_MS, 8);
     }
 
     updateFilteredSample();
@@ -44,28 +51,105 @@ void SampleEngine::setRootNote(int noteNumber)
     rootNoteNumber = juce::jlimit(0, 127, noteNumber);
 }
 
-void SampleEngine::updateFilteredSample()
+int SampleEngine::findNearestZeroCrossing(const juce::AudioBuffer<float>& buffer, int targetSample, int searchWindowSamples)
 {
-    // Pre-filter the source sample buffer using active frequency regions/bands FIRST
-    // This produces filteredSample, which becomes the source material for all pitch-shifted voices
-    filteredSample = sample;
+    int totalSamples = buffer.getNumSamples();
+    if (totalSamples <= 1)
+        return juce::jlimit(0, juce::jmax(0, totalSamples - 1), targetSample);
 
-    int totalSamples = sample.getNumSamples();
-    int numCh = sample.getNumChannels();
+    int numCh = buffer.getNumChannels();
+    int clampedTarget = juce::jlimit(0, totalSamples - 1, targetSample);
+
+    int windowStart = juce::jmax(0, clampedTarget - searchWindowSamples);
+    int windowEnd   = juce::jmin(totalSamples - 2, clampedTarget + searchWindowSamples);
+
+    int bestZeroCrossing = -1;
+    int minDistance = INT_MAX;
+
+    for (int i = windowStart; i <= windowEnd; ++i)
+    {
+        float s0L = buffer.getSample(0, i);
+        float s1L = buffer.getSample(0, i + 1);
+        float s0R = (numCh > 1) ? buffer.getSample(1, i) : s0L;
+        float s1R = (numCh > 1) ? buffer.getSample(1, i + 1) : s1L;
+
+        bool hasZeroCrossL = (s0L * s1L <= 0.0f);
+        bool hasZeroCrossR = (s0R * s1R <= 0.0f);
+
+        if (hasZeroCrossL || hasZeroCrossR)
+        {
+            int dist = std::abs(i - clampedTarget);
+            if (dist < minDistance)
+            {
+                minDistance = dist;
+                bestZeroCrossing = (std::abs(s0L) + std::abs(s0R) <= std::abs(s1L) + std::abs(s1R)) ? i : (i + 1);
+            }
+        }
+    }
+
+    if (bestZeroCrossing >= 0)
+        return bestZeroCrossing;
+
+    // Fallback: find nearest local minimum in absolute amplitude within the search window
+    float minAbsAmp = FLT_MAX;
+    int bestLocalMin = clampedTarget;
+    int searchEnd = juce::jmin(totalSamples - 1, clampedTarget + searchWindowSamples);
+    for (int i = windowStart; i <= searchEnd; ++i)
+    {
+        float absL = std::abs(buffer.getSample(0, i));
+        float absR = (numCh > 1) ? std::abs(buffer.getSample(1, i)) : absL;
+        float totalAbs = absL + absR;
+
+        int dist = std::abs(i - clampedTarget);
+        if (totalAbs < minAbsAmp || (std::abs(totalAbs - minAbsAmp) < 1e-6f && dist < std::abs(bestLocalMin - clampedTarget)))
+        {
+            minAbsAmp = totalAbs;
+            bestLocalMin = i;
+        }
+    }
+
+    return bestLocalMin;
+}
+
+juce::AudioBuffer<float> SampleEngine::computeFilteredBuffer(
+    const juce::AudioBuffer<float>& inSample,
+    double sr,
+    const juce::Array<SpectralRegion>& regions,
+    bool freqEnabled,
+    const juce::Array<FrequencyBand>& bands)
+{
+    juce::ScopedNoDenormals noDenormals;
+    int totalSamples = inSample.getNumSamples();
+    int numCh = inSample.getNumChannels();
 
     if (totalSamples == 0 || numCh == 0)
-        return;
+        return inSample;
 
-    double sr = nativeSampleRate.load() > 0.0 ? nativeSampleRate.load() : 44100.0;
+    juce::AudioBuffer<float> outBuffer = inSample;
     float nyquist = (float)(sr * 0.49);
 
-    if (!spectralRegions.isEmpty())
+    if (!regions.isEmpty())
     {
+        int searchWindow = (int)(sr * 0.008);      // +/- 8ms zero-crossing search window
+        int targetFadeSamples = (int)(sr * 0.005); // 5ms equal-power backup crossfade
+
         juce::OwnedArray<RegionFilterPair> filters;
-        for (const auto& r : spectralRegions)
+        for (const auto& r : regions)
         {
             auto* pair = filters.add(std::make_unique<RegionFilterPair>());
             pair->region = r;
+
+            int rawStart = (int)(r.startNorm * (float)totalSamples);
+            int rawEnd   = (int)(r.endNorm * (float)totalSamples);
+            int snappedStart = findNearestZeroCrossing(inSample, rawStart, searchWindow);
+            int snappedEnd   = findNearestZeroCrossing(inSample, rawEnd, searchWindow);
+
+            snappedStart = juce::jlimit(0, totalSamples - 1, snappedStart);
+            snappedEnd   = juce::jlimit(snappedStart + 1, totalSamples, snappedEnd);
+
+            pair->snappedStartSample = snappedStart;
+            pair->snappedEndSample = snappedEnd;
+
             float minF = juce::jlimit(20.0f, nyquist - 20.0f, r.minFreq);
             float maxF = juce::jlimit(minF + 10.0f, nyquist, r.maxFreq);
 
@@ -83,12 +167,10 @@ void SampleEngine::updateFilteredSample()
             pair->lpR2.setCoefficients(lpCoeffs);
         }
 
-        int targetFadeSamples = (int)(sr * 0.010); // 10ms equal-power crossfade
-
         for (int i = 0; i < totalSamples; ++i)
         {
-            float inL = sample.getSample(0, i);
-            float inR = (numCh > 1) ? sample.getSample(1, i) : inL;
+            float inL = inSample.getSample(0, i);
+            float inR = (numCh > 1) ? inSample.getSample(1, i) : inL;
 
             float sumL = 0.0f;
             float sumR = 0.0f;
@@ -96,8 +178,8 @@ void SampleEngine::updateFilteredSample()
 
             for (auto* rfp : filters)
             {
-                int rStartSample = (int)(rfp->region.startNorm * (float)totalSamples);
-                int rEndSample = (int)(rfp->region.endNorm * (float)totalSamples);
+                int rStartSample = rfp->snappedStartSample;
+                int rEndSample = rfp->snappedEndSample;
                 int rLength = rEndSample - rStartSample;
 
                 int effectiveFade = juce::jmax(1, juce::jmin(targetFadeSamples, rLength / 2));
@@ -128,7 +210,7 @@ void SampleEngine::updateFilteredSample()
                         bR = rfp->lpR2.processSingleSampleRaw(bR);
                     }
 
-                    // Equal-power region boundary fading
+                    // Equal-power region boundary fading with zero-crossing safety net
                     float regionGain = 1.0f;
                     if (i < rStartSample + effectiveFade)
                     {
@@ -152,14 +234,14 @@ void SampleEngine::updateFilteredSample()
             float finalL = sumL + inL * gapGain;
             float finalR = sumR + inR * gapGain;
 
-            filteredSample.setSample(0, i, finalL);
-            if (numCh > 1) filteredSample.setSample(1, i, finalR);
+            outBuffer.setSample(0, i, finalL);
+            if (numCh > 1) outBuffer.setSample(1, i, finalR);
         }
     }
-    else if (freqFilterEnabled && !filterBands.isEmpty())
+    else if (freqEnabled && !bands.isEmpty())
     {
         juce::OwnedArray<BandFilter> filters;
-        for (const auto& band : filterBands)
+        for (const auto& band : bands)
         {
             auto* filterPair = filters.add(std::make_unique<BandFilter>());
             float minF = juce::jlimit(20.0f, nyquist - 20.0f, band.minFreq);
@@ -181,8 +263,8 @@ void SampleEngine::updateFilteredSample()
 
         for (int i = 0; i < totalSamples; ++i)
         {
-            float inL = sample.getSample(0, i);
-            float inR = (numCh > 1) ? sample.getSample(1, i) : inL;
+            float inL = inSample.getSample(0, i);
+            float inR = (numCh > 1) ? inSample.getSample(1, i) : inL;
 
             float sumL = 0.0f;
             float sumR = 0.0f;
@@ -201,9 +283,36 @@ void SampleEngine::updateFilteredSample()
                 sumL += bL;
                 sumR += bR;
             }
-            filteredSample.setSample(0, i, sumL);
-            if (numCh > 1) filteredSample.setSample(1, i, sumR);
+            outBuffer.setSample(0, i, sumL);
+            if (numCh > 1) outBuffer.setSample(1, i, sumR);
         }
+    }
+
+    return outBuffer;
+}
+
+void SampleEngine::updateFilteredSample()
+{
+    juce::AudioBuffer<float> inBuf;
+    double sr;
+    juce::Array<SpectralRegion> regs;
+    bool freqEn;
+    juce::Array<FrequencyBand> bnds;
+
+    {
+        const juce::ScopedLock sl(lock);
+        inBuf = sample;
+        sr = nativeSampleRate.load() > 0.0 ? nativeSampleRate.load() : 44100.0;
+        regs = spectralRegions;
+        freqEn = freqFilterEnabled.load();
+        bnds = filterBands;
+    }
+
+    auto computed = computeFilteredBuffer(inBuf, sr, regs, freqEn, bnds);
+
+    {
+        const juce::ScopedLock sl(lock);
+        filteredSample = std::move(computed);
     }
 }
 
@@ -240,22 +349,12 @@ void SampleEngine::setPlaybackMode(int modeIndex)
 
 void SampleEngine::setPitchMode(int modeIndex)
 {
-    pitchMode = static_cast<PitchMode>(juce::jlimit(0, 2, modeIndex));
+    pitchMode = static_cast<PitchMode>(juce::jlimit(0, 1, modeIndex));
 }
 
 void SampleEngine::setPitchSemitones(float semitones)
 {
     pitchSemitones = semitones;
-}
-
-void SampleEngine::setTimbreSemitones(float semitones)
-{
-    timbreSemitones = juce::jlimit(-24.0f, 24.0f, semitones);
-}
-
-void SampleEngine::setTimbreLink(bool linked)
-{
-    timbreLink = linked;
 }
 
 void SampleEngine::setTimbreDrift(float amount)
@@ -287,8 +386,6 @@ void SampleEngine::initVoice(Voice& v, int noteNumber, float velocity)
     v.voiceAge = ++voiceAgeCounter;
     v.targetPitchSemitones = (float)(noteNumber - rootNoteNumber.load());
     v.timbreDriftOffset = (juce::Random::getSystemRandom().nextFloat() * 2.0f - 1.0f);
-    v.filterStateL = 0.0f;
-    v.filterStateR = 0.0f;
 
     auto pMode = playbackMode.load();
     int rEnd = regionEnd.load();
@@ -309,11 +406,14 @@ void SampleEngine::initVoice(Voice& v, int noteNumber, float velocity)
     }
 
     v.randomGrainCounter = 0;
-    v.pitchPhase = 0.0;
     v.samplesProcessed = 0;
 
+    v.soundTouch.clear();
+    v.lastAppliedPitchSemitones = -999.0f;
+    v.lastAppliedRate = -999.0;
+    v.lastAppliedPitchMode = PitchMode::Stretch;
+
     v.ampEnvelope.noteOn();
-    v.filterEnvelope.noteOn();
 }
 
 void SampleEngine::play()
@@ -443,6 +543,20 @@ void SampleEngine::noteOn(int midiNoteNumber, float velocity)
 
         if (targetVoice == nullptr)
         {
+            // Pick fading voice closest to silence (minimal quickFadeOutSamplesLeft)
+            int minLeft = INT_MAX;
+            for (auto& v : voices)
+            {
+                if (v.isQuickFadingOut && v.quickFadeOutSamplesLeft < minLeft)
+                {
+                    minLeft = v.quickFadeOutSamplesLeft;
+                    targetVoice = &v;
+                }
+            }
+        }
+
+        if (targetVoice == nullptr)
+        {
             targetVoice = &voices[0];
         }
 
@@ -468,7 +582,6 @@ void SampleEngine::noteOff(int midiNoteNumber)
             {
                 v.releasing = true;
                 v.ampEnvelope.noteOff();
-                v.filterEnvelope.noteOff();
             }
         }
     }
@@ -481,7 +594,6 @@ void SampleEngine::noteOff(int midiNoteNumber)
             {
                 v.releasing = true;
                 v.ampEnvelope.noteOff();
-                v.filterEnvelope.noteOff();
             }
         }
     }
@@ -605,14 +717,40 @@ void SampleEngine::setRegion(float startNormalized, float endNormalized)
     if (sample.getNumSamples() == 0)
         return;
 
-    int rStart = (int)(startNormalized * (float)sample.getNumSamples());
-    int rEnd = (int)(endNormalized * (float)sample.getNumSamples());
+    int rawStart = (int)(startNormalized * (float)sample.getNumSamples());
+    int rawEnd = (int)(endNormalized * (float)sample.getNumSamples());
+
+    double sr = nativeSampleRate.load() > 0.0 ? nativeSampleRate.load() : 44100.0;
+    int searchWindow = (int)(sr * 0.008); // +/- 8ms search window for zero-crossing
+
+    int rStart = findNearestZeroCrossing(sample, rawStart, searchWindow);
+    int rEnd = findNearestZeroCrossing(sample, rawEnd, searchWindow);
 
     rStart = juce::jlimit(0, sample.getNumSamples() - 1, rStart);
     rEnd = juce::jlimit(rStart + 1, sample.getNumSamples(), rEnd);
 
+    int prevStart = regionStart.load();
+    int prevEnd = regionEnd.load();
+
     regionStart = rStart;
     regionEnd = rEnd;
+
+    // If active voices are currently playing and boundaries change significantly mid-playback,
+    // trigger a short quick-fade to prevent phase tearing during live boundary drags
+    if (std::abs(rStart - prevStart) > searchWindow * 2 || std::abs(rEnd - prevEnd) > searchWindow * 2)
+    {
+        int fadeSamples = (int)(targetSampleRate.load() * 0.006);
+        for (auto& v : voices)
+        {
+            if (v.active && !v.isQuickFadingOut)
+            {
+                if (v.currentSample < (double)rStart || v.currentSample > (double)rEnd)
+                {
+                    v.startQuickFadeOut(fadeSamples);
+                }
+            }
+        }
+    }
 }
 
 void SampleEngine::updateAmpADSR(float attack, float decay, float sustain, float release)
@@ -622,12 +760,6 @@ void SampleEngine::updateAmpADSR(float attack, float decay, float sustain, float
         v.ampEnvelope.updateADSR(attack, decay, sustain, release);
 }
 
-void SampleEngine::updateFilterADSR(float attack, float decay, float sustain, float release)
-{
-    const juce::ScopedLock sl(lock);
-    for (auto& v : voices)
-        v.filterEnvelope.updateADSR(attack, decay, sustain, release);
-}
 
 void SampleEngine::setExciterAmount(float amount)
 {
@@ -644,32 +776,73 @@ void SampleEngine::setFrequencyFilter(bool enabled, float minFreq, float maxFreq
 
 void SampleEngine::setFrequencyFilterBands(const juce::Array<FrequencyBand>& bands)
 {
-    const juce::ScopedLock sl(lock);
-    filterBands = bands;
-    freqFilterEnabled = !filterBands.isEmpty();
-    updateFilteredSample();
+    juce::AudioBuffer<float> inBuf;
+    double sr;
+    juce::Array<SpectralRegion> regs;
+
+    {
+        const juce::ScopedLock sl(lock);
+        inBuf = sample;
+        sr = nativeSampleRate.load() > 0.0 ? nativeSampleRate.load() : 44100.0;
+        regs = spectralRegions;
+    }
+
+    bool freqEn = !bands.isEmpty();
+    auto computed = computeFilteredBuffer(inBuf, sr, regs, freqEn, bands);
+
+    {
+        const juce::ScopedLock sl(lock);
+        filterBands = bands;
+        freqFilterEnabled = freqEn;
+        filteredSample = std::move(computed);
+
+        int fadeSamples = (int)(targetSampleRate.load() * 0.006);
+        for (auto& v : voices)
+        {
+            if (v.active && !v.isQuickFadingOut)
+                v.startQuickFadeOut(fadeSamples);
+        }
+    }
 }
 
 void SampleEngine::setSpectralRegions(const juce::Array<SpectralRegion>& regions)
 {
-    const juce::ScopedLock sl(lock);
-    spectralRegions = regions;
+    juce::AudioBuffer<float> inBuf;
+    double sr;
+    bool freqEn;
+    juce::Array<FrequencyBand> bnds;
 
-    // Quick fade-out active voices mid-playback to prevent clicks during live region updates/rerolls
-    int fadeSamples = (int)(targetSampleRate.load() * 0.004);
-    for (auto& v : voices)
     {
-        if (v.active && !v.isQuickFadingOut)
-            v.startQuickFadeOut(fadeSamples);
+        const juce::ScopedLock sl(lock);
+        inBuf = sample;
+        sr = nativeSampleRate.load() > 0.0 ? nativeSampleRate.load() : 44100.0;
+        freqEn = freqFilterEnabled.load();
+        bnds = filterBands;
     }
 
-    updateFilteredSample();
+    auto computed = computeFilteredBuffer(inBuf, sr, regions, freqEn, bnds);
+
+    {
+        const juce::ScopedLock sl(lock);
+        spectralRegions = regions;
+        filteredSample = std::move(computed);
+
+        // Quick fade-out active voices mid-playback to prevent clicks during live region updates/rerolls
+        int fadeSamples = (int)(targetSampleRate.load() * 0.006);
+        for (auto& v : voices)
+        {
+            if (v.active && !v.isQuickFadingOut)
+                v.startQuickFadeOut(fadeSamples);
+        }
+    }
 }
 
 void SampleEngine::process(juce::AudioBuffer<float>& output,
                             int startSample,
                             int numSamples)
 {
+    juce::ScopedNoDenormals noDenormals;
+
     const juce::ScopedTryLock sl(lock);
     if (!sl.isLocked())
         return;
@@ -678,14 +851,14 @@ void SampleEngine::process(juce::AudioBuffer<float>& output,
     int activeCount = 0;
     for (const auto& v : voices)
     {
-        if (v.active || v.ampEnvelope.isActive())
+        if (v.active || v.ampEnvelope.isActive() || v.isQuickFadingOut)
             activeCount++;
     }
 
     if (activeCount == 0)
         return;
 
-    const auto& srcBuffer = (filteredSample.getNumSamples() > 0) ? filteredSample : sample;
+    const auto& srcBuffer = filteredSample.getNumSamples() > 0 ? filteredSample : sample;
     int totalSamples = srcBuffer.getNumSamples();
     int numSampleChannels = srcBuffer.getNumChannels();
 
@@ -695,6 +868,9 @@ void SampleEngine::process(juce::AudioBuffer<float>& output,
     double baseSpeedRatio = (nativeSampleRate > 0.0 && targetSampleRate > 0.0) ? (nativeSampleRate / targetSampleRate) : 1.0;
     int rEnd = regionEnd.load();
     int rStart = regionStart.load();
+    int rLen = rEnd - rStart;
+    if (rLen <= 0) return;
+
     bool isLooping = looping.load();
     auto pMode = playbackMode.load();
     auto pitMode = pitchMode.load();
@@ -702,58 +878,209 @@ void SampleEngine::process(juce::AudioBuffer<float>& output,
     float driftAmt = timbreDriftAmount.load();
     bool isPoly = polyMode.load();
 
-    // Voice-count aware gain compensation for polyphony
     float targetPolyGainScale = 1.0f / std::sqrt(juce::jmax(1.0f, (float)activeCount));
 
     float glideSec = glideTimeMs.load() * 0.001f;
-    float glideAlpha = (glideSec > 0.0005f) ? (1.0f - std::exp(-1.0f / (glideSec * (float)targetSampleRate.load()))) : 1.0f;
 
-    for (int i = 0; i < numSamples; ++i)
-    {
-        globalSampleCounter++;
-        smoothedPolyGainScale += 0.005f * (targetPolyGainScale - smoothedPolyGainScale);
-        float sumL = 0.0f;
-        float sumR = 0.0f;
+    auto getSampleAtPos = [&](int channelIdx, double samplePos) -> float {
+        if (totalSamples == 0 || numSampleChannels == 0 || std::isnan(samplePos) || std::isinf(samplePos)) return 0.0f;
+        int ch = juce::jlimit(0, numSampleChannels - 1, channelIdx);
 
-        for (auto& v : voices)
+        double clampedPos = juce::jlimit(0.0, (double)(totalSamples - 1), samplePos);
+        int t0 = (int)std::floor(clampedPos);
+        float fr = (float)(clampedPos - (double)t0);
+
+        int tm1 = juce::jmax(0, t0 - 1);
+        int t1  = juce::jmin(totalSamples - 1, t0 + 1);
+        int t2  = juce::jmin(totalSamples - 1, t0 + 2);
+
+        float ym1 = srcBuffer.getSample(ch, tm1);
+        float y0  = srcBuffer.getSample(ch, t0);
+        float y1  = srcBuffer.getSample(ch, t1);
+        float y2  = srcBuffer.getSample(ch, t2);
+
+        float c0 = y0;
+        float c1 = 0.5f * (y1 - ym1);
+        float c2 = ym1 - 2.5f * y0 + 2.0f * y1 - 0.5f * y2;
+        float c3 = 0.5f * (y2 - ym1) + 1.5f * (y0 - y1);
+
+        return ((c3 * fr + c2) * fr + c1) * fr + c0;
+    };
+
+    auto readLoopCrossfadedSample = [&](Voice& v, int channelIdx, double pos, PlaybackMode effMode) -> float {
+        if (!isLooping || rLen <= 0)
+            return getSampleAtPos(channelIdx, pos);
+
+        int targetLoopFade = (int)(targetSampleRate.load() * 0.010);
+        int loopFade = juce::jmax(1, juce::jmin(targetLoopFade, rLen / 2));
+
+        if (effMode == PlaybackMode::Forward)
         {
-            if (!v.active && !v.ampEnvelope.isActive() && !v.isQuickFadingOut)
-                continue;
-
-            // Sample-accurate exponential pitch interpolation towards target note
-            v.currentPitchSemitones += glideAlpha * (v.targetPitchSemitones - v.currentPitchSemitones);
-
-            // Compute pitch ratio for this specific voice's smoothed pitch
-            float voiceDriftSemis = (isPoly && driftAmt > 0.0001f) ? (driftAmt * v.timbreDriftOffset * 4.0f) : 0.0f;
-            float noteSemis = (pitMode == PitchMode::Axial) ? 0.0f : v.currentPitchSemitones;
-            float totalSemis = noteSemis + semis + voiceDriftSemis;
-            float voicePitchRatio = std::pow(2.0f, totalSemis / 12.0f);
-
-            double speedRatio = baseSpeedRatio;
-            float activePitchRatio = 1.0f;
-
-            if (pitMode == PitchMode::Resample)
+            double fadeStartPos = (double)(rEnd - loopFade);
+            if (pos >= fadeStartPos && pos < (double)rEnd)
             {
-                speedRatio = baseSpeedRatio * (double)voicePitchRatio;
-                activePitchRatio = 1.0f;
+                double t = (pos - fadeStartPos) / (double)loopFade;
+                float gTail = (float)std::cos(t * juce::MathConstants<double>::halfPi);
+                float gHead = (float)std::sin(t * juce::MathConstants<double>::halfPi);
+                double posHead = (double)rStart + (pos - fadeStartPos);
+
+                float sTail = getSampleAtPos(channelIdx, pos);
+                float sHead = getSampleAtPos(channelIdx, posHead);
+                return sTail * gTail + sHead * gHead;
             }
-            else if (pitMode == PitchMode::Stretch)
+        }
+        else if (effMode == PlaybackMode::Backward)
+        {
+            double fadeEndPos = (double)(rStart + loopFade);
+            if (pos <= fadeEndPos && pos > (double)rStart)
             {
-                speedRatio = baseSpeedRatio;
-                activePitchRatio = voicePitchRatio;
-            }
-            else // Axial (Fixed)
-            {
-                speedRatio = baseSpeedRatio;
-                activePitchRatio = (std::abs(semis) > 0.001f || std::abs(voiceDriftSemis) > 0.001f) ? voicePitchRatio : 1.0f;
-            }
+                double t = (fadeEndPos - pos) / (double)loopFade;
+                float gHead = (float)std::cos(t * juce::MathConstants<double>::halfPi);
+                float gTail = (float)std::sin(t * juce::MathConstants<double>::halfPi);
+                double posTail = (double)rEnd - (fadeEndPos - pos);
 
-            // Boundary & direction logic per voice
-            PlaybackMode effMode = (pMode == PlaybackMode::Random) ? v.effectivePlaybackMode : pMode;
-            int rLen = rEnd - rStart;
-
-            if (v.active)
+                float sHead = getSampleAtPos(channelIdx, pos);
+                float sTail = getSampleAtPos(channelIdx, posTail);
+                return sHead * gHead + sTail * gTail;
+            }
+        }
+        else if (effMode == PlaybackMode::ForwBackw)
+        {
+            if (v.playDirectionForward)
             {
+                double fadeStartPos = (double)(rEnd - loopFade);
+                if (pos >= fadeStartPos && pos < (double)rEnd)
+                {
+                    double t = (pos - fadeStartPos) / (double)loopFade;
+                    float gFwd = (float)std::cos(t * juce::MathConstants<double>::halfPi);
+                    float gBwd = (float)std::sin(t * juce::MathConstants<double>::halfPi);
+                    double posBwd = (double)rEnd - (pos - fadeStartPos);
+
+                    float sFwd = getSampleAtPos(channelIdx, pos);
+                    float sBwd = getSampleAtPos(channelIdx, posBwd);
+                    return sFwd * gFwd + sBwd * gBwd;
+                }
+            }
+            else if (isLooping)
+            {
+                double fadeEndPos = (double)(rStart + loopFade);
+                if (pos <= fadeEndPos && pos > (double)rStart)
+                {
+                    double t = (fadeEndPos - pos) / (double)loopFade;
+                    float gBwd = (float)std::cos(t * juce::MathConstants<double>::halfPi);
+                    float gFwd = (float)std::sin(t * juce::MathConstants<double>::halfPi);
+                    double posFwd = (double)rStart + (fadeEndPos - pos);
+
+                    float sBwd = getSampleAtPos(channelIdx, pos);
+                    float sFwd = getSampleAtPos(channelIdx, posFwd);
+                    return sBwd * gBwd + sFwd * gFwd;
+                }
+            }
+        }
+        else if (effMode == PlaybackMode::BackForw)
+        {
+            if (!v.playDirectionForward)
+            {
+                double fadeEndPos = (double)(rStart + loopFade);
+                if (pos <= fadeEndPos && pos > (double)rStart)
+                {
+                    double t = (fadeEndPos - pos) / (double)loopFade;
+                    float gBwd = (float)std::cos(t * juce::MathConstants<double>::halfPi);
+                    float gFwd = (float)std::sin(t * juce::MathConstants<double>::halfPi);
+                    double posFwd = (double)rStart + (fadeEndPos - pos);
+
+                    float sBwd = getSampleAtPos(channelIdx, pos);
+                    float sFwd = getSampleAtPos(channelIdx, posFwd);
+                    return sBwd * gBwd + sFwd * gFwd;
+                }
+            }
+            else if (isLooping)
+            {
+                double fadeStartPos = (double)(rEnd - loopFade);
+                if (pos >= fadeStartPos && pos < (double)rEnd)
+                {
+                    double t = (pos - fadeStartPos) / (double)loopFade;
+                    float gFwd = (float)std::cos(t * juce::MathConstants<double>::halfPi);
+                    float gBwd = (float)std::sin(t * juce::MathConstants<double>::halfPi);
+                    double posBwd = (double)rEnd - (pos - fadeStartPos);
+
+                    float sFwd = getSampleAtPos(channelIdx, pos);
+                    float sBwd = getSampleAtPos(channelIdx, posBwd);
+                    return sFwd * gFwd + sBwd * gBwd;
+                }
+            }
+        }
+
+        return getSampleAtPos(channelIdx, pos);
+    };
+
+    // Temporary accumulation buffers for this block
+    constexpr int MAX_BLOCK_SIZE = 4096;
+    int curBlockSize = juce::jmin(numSamples, MAX_BLOCK_SIZE);
+    float blockOutL[MAX_BLOCK_SIZE];
+    float blockOutR[MAX_BLOCK_SIZE];
+    std::fill(blockOutL, blockOutL + curBlockSize, 0.0f);
+    std::fill(blockOutR, blockOutR + curBlockSize, 0.0f);
+
+    float voiceOutInterleaved[MAX_BLOCK_SIZE * 2];
+    float feedInterleaved[512 * 2];
+
+    int fadeSamples = (int)(targetSampleRate.load() * 0.004); // 4ms micro-fade
+    if (fadeSamples < 1) fadeSamples = 1;
+
+    float glideAlpha = (glideSec > 0.0005f) ? (1.0f - std::exp(-(float)curBlockSize / (glideSec * (float)targetSampleRate.load()))) : 1.0f;
+
+    for (auto& v : voices)
+    {
+        if (!v.active && !v.ampEnvelope.isActive() && !v.isQuickFadingOut)
+            continue;
+
+        // Sample-accurate exponential pitch interpolation towards target note
+        v.currentPitchSemitones += glideAlpha * (v.targetPitchSemitones - v.currentPitchSemitones);
+
+        // Compute pitch ratio for this specific voice's smoothed pitch
+        float voiceDriftSemis = (isPoly && driftAmt > 0.0001f) ? (driftAmt * v.timbreDriftOffset * 0.15f) : 0.0f;
+        float noteSemis = v.currentPitchSemitones;
+        float totalSemis = noteSemis + semis + voiceDriftSemis;
+
+        // Configure SoundTouch parameters
+        if (pitMode == PitchMode::Resample)
+        {
+            double rateRatio = std::pow(2.0, (double)totalSemis / 12.0) * baseSpeedRatio;
+            if (std::abs(rateRatio - v.lastAppliedRate) > 1e-5 || v.lastAppliedPitchMode != PitchMode::Resample)
+            {
+                v.soundTouch.setRate(rateRatio);
+                v.soundTouch.setPitch(1.0);
+                v.soundTouch.setTempo(1.0);
+                v.lastAppliedRate = rateRatio;
+                v.lastAppliedPitchMode = PitchMode::Resample;
+            }
+        }
+        else // PitchMode::Stretch
+        {
+            if (std::abs(totalSemis - v.lastAppliedPitchSemitones) > 1e-4f || std::abs(baseSpeedRatio - v.lastAppliedRate) > 1e-5 || v.lastAppliedPitchMode != PitchMode::Stretch)
+            {
+                v.soundTouch.setPitchSemiTones((double)totalSemis);
+                v.soundTouch.setRate(baseSpeedRatio);
+                v.soundTouch.setTempo(1.0);
+                v.lastAppliedPitchSemitones = totalSemis;
+                v.lastAppliedRate = baseSpeedRatio;
+                v.lastAppliedPitchMode = PitchMode::Stretch;
+            }
+        }
+
+        PlaybackMode effMode = (pMode == PlaybackMode::Random) ? v.effectivePlaybackMode : pMode;
+
+        // Feed SoundTouch pipeline from source buffer until it has enough samples for this block
+        while (v.soundTouch.numSamples() < (uint)curBlockSize && v.active)
+        {
+            int samplesToFeed = 256;
+            int samplesFed = 0;
+            bool hitEnd = false;
+
+            for (int s = 0; s < samplesToFeed; ++s)
+            {
+                // Boundary check
                 if (effMode == PlaybackMode::Forward)
                 {
                     if (v.currentSample >= (double)rEnd)
@@ -765,10 +1092,8 @@ void SampleEngine::process(juce::AudioBuffer<float>& output,
                         }
                         else
                         {
-                            int fadeSamples = (int)(targetSampleRate.load() * 0.004);
-                            v.startQuickFadeOut(fadeSamples);
-                            v.ampEnvelope.noteOff();
-                            v.filterEnvelope.noteOff();
+                            hitEnd = true;
+                            break;
                         }
                     }
                 }
@@ -783,10 +1108,8 @@ void SampleEngine::process(juce::AudioBuffer<float>& output,
                         }
                         else
                         {
-                            int fadeSamples = (int)(targetSampleRate.load() * 0.004);
-                            v.startQuickFadeOut(fadeSamples);
-                            v.ampEnvelope.noteOff();
-                            v.filterEnvelope.noteOff();
+                            hitEnd = true;
+                            break;
                         }
                     }
                 }
@@ -808,10 +1131,8 @@ void SampleEngine::process(juce::AudioBuffer<float>& output,
                         }
                         else
                         {
-                            int fadeSamples = (int)(targetSampleRate.load() * 0.004);
-                            v.startQuickFadeOut(fadeSamples);
-                            v.ampEnvelope.noteOff();
-                            v.filterEnvelope.noteOff();
+                            hitEnd = true;
+                            break;
                         }
                     }
                 }
@@ -833,310 +1154,74 @@ void SampleEngine::process(juce::AudioBuffer<float>& output,
                         }
                         else
                         {
-                            int fadeSamples = (int)(targetSampleRate.load() * 0.004);
-                            v.startQuickFadeOut(fadeSamples);
-                            v.ampEnvelope.noteOff();
-                            v.filterEnvelope.noteOff();
+                            hitEnd = true;
+                            break;
                         }
                     }
                 }
+
+                feedInterleaved[2 * s]     = readLoopCrossfadedSample(v, 0, v.currentSample, effMode);
+                feedInterleaved[2 * s + 1] = readLoopCrossfadedSample(v, 1, v.currentSample, effMode);
+
+                if (effMode == PlaybackMode::Backward || (!v.playDirectionForward && (effMode == PlaybackMode::ForwBackw || effMode == PlaybackMode::BackForw)))
+                    v.currentSample -= 1.0;
+                else
+                    v.currentSample += 1.0;
+
+                samplesFed++;
             }
+
+            if (samplesFed > 0)
+            {
+                v.soundTouch.putSamples(feedInterleaved, (uint)samplesFed);
+            }
+
+            if (hitEnd)
+            {
+                v.soundTouch.flush();
+                break;
+            }
+        }
+
+        uint received = v.soundTouch.receiveSamples(voiceOutInterleaved, (uint)curBlockSize);
+        if (received < (uint)curBlockSize)
+        {
+            // Smoothly micro-fade out the tail of the received audio before zeroing remaining frames
+            if (received > 0)
+            {
+                int tailFade = juce::jmin((int)received, 64);
+                int fadeStart = (int)received - tailFade;
+                for (int i = 0; i < tailFade; ++i)
+                {
+                    float factor = 0.5f * (1.0f + std::cos(juce::MathConstants<float>::pi * (float)i / (float)tailFade));
+                    voiceOutInterleaved[2 * (fadeStart + i)]     *= factor;
+                    voiceOutInterleaved[2 * (fadeStart + i) + 1] *= factor;
+                }
+            }
+
+            std::fill(voiceOutInterleaved + received * 2, voiceOutInterleaved + curBlockSize * 2, 0.0f);
+            if (received == 0 && !isLooping)
+            {
+                v.active = false;
+                v.soundTouch.clear();
+            }
+        }
+
+        // Apply Envelope, Anti-Click and Quick Fade Out across the block
+        for (int i = 0; i < curBlockSize; ++i)
+        {
+            float rawL = voiceOutInterleaved[2 * i];
+            float rawR = voiceOutInterleaved[2 * i + 1];
 
             float ampVal = v.ampEnvelope.getNextSample() * v.velocity;
-            float filterVal = v.filterEnvelope.getNextSample();
-
-            auto getSampleAtPos = [&](int channelIdx, double samplePos) -> float {
-                if (totalSamples == 0 || numSampleChannels == 0 || std::isnan(samplePos) || std::isinf(samplePos)) return 0.0f;
-                int ch = juce::jlimit(0, numSampleChannels - 1, channelIdx);
-
-                double clampedPos = juce::jlimit(0.0, (double)(totalSamples - 1), samplePos);
-                int t0 = (int)std::floor(clampedPos);
-                float fr = (float)(clampedPos - (double)t0);
-
-                int tm1 = juce::jmax(0, t0 - 1);
-                int t1  = juce::jmin(totalSamples - 1, t0 + 1);
-                int t2  = juce::jmin(totalSamples - 1, t0 + 2);
-
-                float ym1 = srcBuffer.getSample(ch, tm1);
-                float y0  = srcBuffer.getSample(ch, t0);
-                float y1  = srcBuffer.getSample(ch, t1);
-                float y2  = srcBuffer.getSample(ch, t2);
-
-                // 4-point C1 Catmull-Rom cubic interpolation
-                float c0 = y0;
-                float c1 = 0.5f * (y1 - ym1);
-                float c2 = ym1 - 2.5f * y0 + 2.0f * y1 - 0.5f * y2;
-                float c3 = 0.5f * (y2 - ym1) + 1.5f * (y0 - y1);
-
-                return ((c3 * fr + c2) * fr + c1) * fr + c0;
-            };
-
-            auto readLoopCrossfadedSample = [&](int channelIdx, double pos) -> float {
-                if (!isLooping || rLen <= 0)
-                    return getSampleAtPos(channelIdx, pos);
-
-                int targetLoopFade = (int)(targetSampleRate.load() * 0.010);
-                int loopFade = juce::jmax(1, juce::jmin(targetLoopFade, rLen / 2));
-
-                if (effMode == PlaybackMode::Forward)
-                {
-                    double fadeStartPos = (double)(rEnd - loopFade);
-                    if (pos >= fadeStartPos && pos < (double)rEnd)
-                    {
-                        double t = (pos - fadeStartPos) / (double)loopFade;
-                        float gTail = (float)std::cos(t * juce::MathConstants<double>::halfPi);
-                        float gHead = (float)std::sin(t * juce::MathConstants<double>::halfPi);
-                        double posHead = (double)rStart + (pos - fadeStartPos);
-
-                        float sTail = getSampleAtPos(channelIdx, pos);
-                        float sHead = getSampleAtPos(channelIdx, posHead);
-                        return sTail * gTail + sHead * gHead;
-                    }
-                }
-                else if (effMode == PlaybackMode::Backward)
-                {
-                    double fadeEndPos = (double)(rStart + loopFade);
-                    if (pos <= fadeEndPos && pos > (double)rStart)
-                    {
-                        double t = (fadeEndPos - pos) / (double)loopFade;
-                        float gHead = (float)std::cos(t * juce::MathConstants<double>::halfPi);
-                        float gTail = (float)std::sin(t * juce::MathConstants<double>::halfPi);
-                        double posTail = (double)rEnd - (fadeEndPos - pos);
-
-                        float sHead = getSampleAtPos(channelIdx, pos);
-                        float sTail = getSampleAtPos(channelIdx, posTail);
-                        return sHead * gHead + sTail * gTail;
-                    }
-                }
-                else if (effMode == PlaybackMode::ForwBackw)
-                {
-                    if (v.playDirectionForward)
-                    {
-                        double fadeStartPos = (double)(rEnd - loopFade);
-                        if (pos >= fadeStartPos && pos < (double)rEnd)
-                        {
-                            double t = (pos - fadeStartPos) / (double)loopFade;
-                            float gFwd = (float)std::cos(t * juce::MathConstants<double>::halfPi);
-                            float gBwd = (float)std::sin(t * juce::MathConstants<double>::halfPi);
-                            double posBwd = (double)rEnd - (pos - fadeStartPos);
-
-                            float sFwd = getSampleAtPos(channelIdx, pos);
-                            float sBwd = getSampleAtPos(channelIdx, posBwd);
-                            return sFwd * gFwd + sBwd * gBwd;
-                        }
-                    }
-                    else if (isLooping)
-                    {
-                        double fadeEndPos = (double)(rStart + loopFade);
-                        if (pos <= fadeEndPos && pos > (double)rStart)
-                        {
-                            double t = (fadeEndPos - pos) / (double)loopFade;
-                            float gBwd = (float)std::cos(t * juce::MathConstants<double>::halfPi);
-                            float gFwd = (float)std::sin(t * juce::MathConstants<double>::halfPi);
-                            double posFwd = (double)rStart + (fadeEndPos - pos);
-
-                            float sBwd = getSampleAtPos(channelIdx, pos);
-                            float sFwd = getSampleAtPos(channelIdx, posFwd);
-                            return sBwd * gBwd + sFwd * gFwd;
-                        }
-                    }
-                }
-                else if (effMode == PlaybackMode::BackForw)
-                {
-                    if (!v.playDirectionForward)
-                    {
-                        double fadeEndPos = (double)(rStart + loopFade);
-                        if (pos <= fadeEndPos && pos > (double)rStart)
-                        {
-                            double t = (fadeEndPos - pos) / (double)loopFade;
-                            float gBwd = (float)std::cos(t * juce::MathConstants<double>::halfPi);
-                            float gFwd = (float)std::sin(t * juce::MathConstants<double>::halfPi);
-                            double posFwd = (double)rStart + (fadeEndPos - pos);
-
-                            float sBwd = getSampleAtPos(channelIdx, pos);
-                            float sFwd = getSampleAtPos(channelIdx, posFwd);
-                            return sBwd * gBwd + sFwd * gFwd;
-                        }
-                    }
-                    else if (isLooping)
-                    {
-                        double fadeStartPos = (double)(rEnd - loopFade);
-                        if (pos >= fadeStartPos && pos < (double)rEnd)
-                        {
-                            double t = (pos - fadeStartPos) / (double)loopFade;
-                            float gFwd = (float)std::cos(t * juce::MathConstants<double>::halfPi);
-                            float gBwd = (float)std::sin(t * juce::MathConstants<double>::halfPi);
-                            double posBwd = (double)rEnd - (pos - fadeStartPos);
-
-                            float sFwd = getSampleAtPos(channelIdx, pos);
-                            float sBwd = getSampleAtPos(channelIdx, posBwd);
-                            return sFwd * gFwd + sBwd * gBwd;
-                        }
-                    }
-                }
-
-                return getSampleAtPos(channelIdx, pos);
-            };
-
-            float rawSampleL = 0.0f;
-            float rawSampleR = 0.0f;
-
-            if (pitMode == PitchMode::Stretch && std::abs(activePitchRatio - 1.0f) > 0.0005f)
-            {
-                constexpr int WSOLA_GRAIN_LEN = 1024;
-                constexpr int WSOLA_HOP_LEN   = 512;
-                constexpr int WSOLA_SEARCH    = 128;
-
-                if (!v.wsolaInitialized)
-                {
-                    v.wsolaGrains[0].active = true;
-                    v.wsolaGrains[0].sourceStartPos = v.currentSample;
-                    v.wsolaGrains[0].samplePhase = 0.0;
-
-                    v.wsolaGrains[1].active = false;
-                    v.wsolaGrains[1].sourceStartPos = v.currentSample;
-                    v.wsolaGrains[1].samplePhase = 0.0;
-
-                    v.wsolaHopCounter = 0;
-                    v.wsolaInitialized = true;
-                }
-
-                if (v.wsolaHopCounter >= WSOLA_HOP_LEN)
-                {
-                    v.wsolaHopCounter = 0;
-
-                    int oldIdx = (v.wsolaGrains[0].samplePhase <= v.wsolaGrains[1].samplePhase) ? 1 : 0;
-                    int newIdx = 1 - oldIdx;
-
-                    double nominalTargetPos = v.currentSample;
-                    double bestOffset = 0.0;
-                    float maxCorr = -1.0e9f;
-
-                    double currentGrainReadPos = v.wsolaGrains[oldIdx].sourceStartPos + v.wsolaGrains[oldIdx].samplePhase * (double)activePitchRatio;
-
-                    for (int d = -WSOLA_SEARCH; d <= WSOLA_SEARCH; d += 4)
-                    {
-                        double candPos = nominalTargetPos + (double)d;
-                        float corr = 0.0f;
-                        float normA = 0.0f;
-                        float normB = 0.0f;
-
-                        for (int k = 0; k < 64; k += 4)
-                        {
-                            float sA = readLoopCrossfadedSample(0, currentGrainReadPos + k * activePitchRatio);
-                            float sB = readLoopCrossfadedSample(0, candPos + k * activePitchRatio);
-                            corr += sA * sB;
-                            normA += sA * sA;
-                            normB += sB * sB;
-                        }
-
-                        float denom = std::sqrt(normA * normB) + 1e-6f;
-                        float normCorr = corr / denom;
-
-                        if (normCorr > maxCorr)
-                        {
-                            maxCorr = normCorr;
-                            bestOffset = (double)d;
-                        }
-                    }
-
-                    v.wsolaGrains[newIdx].active = true;
-                    v.wsolaGrains[newIdx].sourceStartPos = nominalTargetPos + bestOffset;
-                    v.wsolaGrains[newIdx].samplePhase = 0.0;
-                }
-
-                v.wsolaHopCounter++;
-
-                float sumGrainL = 0.0f;
-                float sumGrainR = 0.0f;
-                float sumWeight = 0.0f;
-
-                for (int g = 0; g < 2; ++g)
-                {
-                    if (v.wsolaGrains[g].active)
-                    {
-                        double phase = v.wsolaGrains[g].samplePhase;
-                        if (phase < (double)WSOLA_GRAIN_LEN)
-                        {
-                            float normPhase = (float)(phase / (double)WSOLA_GRAIN_LEN);
-                            float w = 0.5f * (1.0f - std::cos(2.0f * juce::MathConstants<float>::pi * normPhase));
-
-                            double readPos = v.wsolaGrains[g].sourceStartPos + phase * (double)activePitchRatio;
-
-                            float sL = readLoopCrossfadedSample(0, readPos);
-                            float sR = readLoopCrossfadedSample(1, readPos);
-
-                            sumGrainL += sL * w;
-                            sumGrainR += sR * w;
-                            sumWeight += w;
-
-                            v.wsolaGrains[g].samplePhase += 1.0;
-                        }
-                        else
-                        {
-                            v.wsolaGrains[g].active = false;
-                        }
-                    }
-                }
-
-                if (sumWeight > 0.0001f)
-                {
-                    rawSampleL = sumGrainL / sumWeight;
-                    rawSampleR = sumGrainR / sumWeight;
-                }
-                else
-                {
-                    rawSampleL = readLoopCrossfadedSample(0, v.currentSample);
-                    rawSampleR = readLoopCrossfadedSample(1, v.currentSample);
-                }
-            }
-            else
-            {
-                v.wsolaInitialized = false;
-                rawSampleL = readLoopCrossfadedSample(0, v.currentSample);
-                rawSampleR = readLoopCrossfadedSample(1, v.currentSample);
-            }
-
-            float cutoff = 20.0f + filterVal * 18000.0f;
-            float alpha = juce::jlimit(0.01f, 0.99f, 1.0f - std::exp(-2.0f * juce::MathConstants<float>::pi * cutoff / (float)targetSampleRate));
-
-            v.filterStateL += alpha * (rawSampleL - v.filterStateL);
-            v.filterStateR += alpha * (rawSampleR - v.filterStateR);
-
-            int fadeSamples = (int)(targetSampleRate.load() * 0.004); // 4ms subtle anti-click fade
-            if (fadeSamples < 1) fadeSamples = 1;
-
             float antiClickGain = 1.0f;
 
-            // Subtle anti-click fade-in at very start of voice playback (0..4ms)
             if (v.samplesProcessed < fadeSamples)
             {
                 antiClickGain *= (float)v.samplesProcessed / (float)fadeSamples;
             }
             v.samplesProcessed++;
 
-            // Subtle anti-click fade-out at end of region boundary (when not looping)
-            if (!isLooping)
-            {
-                if (effMode == PlaybackMode::Forward || (v.playDirectionForward && (effMode == PlaybackMode::ForwBackw || effMode == PlaybackMode::BackForw)))
-                {
-                    double remaining = (double)rEnd - v.currentSample;
-                    if (remaining >= 0.0 && remaining < (double)fadeSamples)
-                    {
-                        antiClickGain *= (float)juce::jlimit(0.0, 1.0, remaining / (double)fadeSamples);
-                    }
-                }
-                else if (effMode == PlaybackMode::Backward || (!v.playDirectionForward && (effMode == PlaybackMode::ForwBackw || effMode == PlaybackMode::BackForw)))
-                {
-                    double remaining = v.currentSample - (double)rStart;
-                    if (remaining >= 0.0 && remaining < (double)fadeSamples)
-                    {
-                        antiClickGain *= (float)juce::jlimit(0.0, 1.0, remaining / (double)fadeSamples);
-                    }
-                }
-            }
-
-            // Quick fade-out when voice is cut short or stolen
             if (v.isQuickFadingOut)
             {
                 if (v.quickFadeOutTotalSamples > 0)
@@ -1150,30 +1235,30 @@ void SampleEngine::process(juce::AudioBuffer<float>& output,
                     v.active = false;
                     v.isQuickFadingOut = false;
                     v.ampEnvelope.reset();
-                    v.filterEnvelope.reset();
+                    v.soundTouch.clear();
                 }
             }
 
-            sumL += v.filterStateL * ampVal * antiClickGain;
-            sumR += v.filterStateR * ampVal * antiClickGain;
-
-            if (v.active)
-            {
-                if (effMode == PlaybackMode::Backward || (!v.playDirectionForward && (effMode == PlaybackMode::ForwBackw || effMode == PlaybackMode::BackForw)))
-                    v.currentSample -= speedRatio;
-                else
-                    v.currentSample += speedRatio;
-            }
+            blockOutL[i] += rawL * ampVal * antiClickGain;
+            blockOutR[i] += rawR * ampVal * antiClickGain;
 
             if (!v.ampEnvelope.isActive() && v.releasing && !v.isQuickFadingOut)
+            {
                 v.active = false;
+                v.soundTouch.clear();
+            }
         }
+    }
 
-        // Apply gain compensation scaling across polyphonic voices
-        sumL *= smoothedPolyGainScale;
-        sumR *= smoothedPolyGainScale;
+    // Polyphonic master gain compensation, exciter, and soft limiting
+    for (int i = 0; i < curBlockSize; ++i)
+    {
+        globalSampleCounter++;
+        smoothedPolyGainScale += 0.005f * (targetPolyGainScale - smoothedPolyGainScale);
 
-        // Apply SCORCH-style Exciter processing at the full polyphonic bus level
+        float sumL = blockOutL[i] * smoothedPolyGainScale;
+        float sumR = blockOutR[i] * smoothedPolyGainScale;
+
         if (exciterAmount > 0.001f)
         {
             auto applyExciter = [](float x, float amt) -> float {
@@ -1191,7 +1276,6 @@ void SampleEngine::process(juce::AudioBuffer<float>& output,
             sumR = applyExciter(sumR, exciterAmount);
         }
 
-        // Soft limiting to prevent master bus clipping on dense chords
         sumL = std::tanh(sumL);
         sumR = std::tanh(sumR);
 

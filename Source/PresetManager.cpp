@@ -85,18 +85,17 @@ void PresetManager::ensureDirectoriesExist()
     auto existingFiles = presetsFolder.findChildFiles(juce::File::TypesOfFileToFind::findFiles, true, "*.vsts;*.vsfx;*.json");
     if (existingFiles.isEmpty())
     {
-        createFactoryPreset("Cold Synth", "Synth", 0.05f, 0.20f, 0.8f, 0.40f, 0.02f, 0.30f, 0.5f, 0.35f);
-        createFactoryPreset("Spectral Lead", "Lead", 0.01f, 0.15f, 0.9f, 0.25f, 0.01f, 0.20f, 0.7f, 0.20f);
-        createFactoryPreset("Cyber Bass", "Bass", 0.005f, 0.30f, 0.6f, 0.20f, 0.005f, 0.40f, 0.4f, 0.15f);
-        createFactoryPreset("Neon Pad", "Pad", 0.80f, 1.20f, 0.85f, 1.50f, 0.60f, 1.00f, 0.75f, 1.20f);
-        createFactoryPreset("Vibe Synth", "Synth", 0.08f, 0.25f, 0.75f, 0.50f, 0.04f, 0.35f, 0.6f, 0.40f);
-        createFactoryPreset("Glitch Pulse", "FX", 0.001f, 0.08f, 0.3f, 0.10f, 0.001f, 0.10f, 0.2f, 0.08f);
+        createFactoryPreset("Cold Synth", "Synth", 0.05f, 0.20f, 0.8f, 0.40f);
+        createFactoryPreset("Spectral Lead", "Lead", 0.01f, 0.15f, 0.9f, 0.25f);
+        createFactoryPreset("Cyber Bass", "Bass", 0.005f, 0.30f, 0.6f, 0.20f);
+        createFactoryPreset("Neon Pad", "Pad", 0.80f, 1.20f, 0.85f, 1.50f);
+        createFactoryPreset("Vibe Synth", "Synth", 0.08f, 0.25f, 0.75f, 0.50f);
+        createFactoryPreset("Glitch Pulse", "FX", 0.001f, 0.08f, 0.3f, 0.10f);
     }
 }
 
 void PresetManager::createFactoryPreset(const juce::String& name, const juce::String& category,
-                                          float ampA, float ampD, float ampS, float ampR,
-                                          float filtA, float filtD, float filtS, float filtR)
+                                          float ampA, float ampD, float ampS, float ampR)
 {
     auto factoryFolder = presetsFolder.getChildFile("Factory");
     factoryFolder.createDirectory();
@@ -116,10 +115,6 @@ void PresetManager::createFactoryPreset(const juce::String& name, const juce::St
     paramsObj->setProperty("AMP_DECAY", ampD);
     paramsObj->setProperty("AMP_SUSTAIN", ampS);
     paramsObj->setProperty("AMP_RELEASE", ampR);
-    paramsObj->setProperty("FILTER_ATTACK", filtA);
-    paramsObj->setProperty("FILTER_DECAY", filtD);
-    paramsObj->setProperty("FILTER_SUSTAIN", filtS);
-    paramsObj->setProperty("FILTER_RELEASE", filtR);
     paramsObj->setProperty("PLAYBACK_MODE", 0.0f);
     paramsObj->setProperty("PITCH_MODE", 0.0f);
     paramsObj->setProperty("PITCH_SEMITONES", 0.0f);
@@ -127,6 +122,21 @@ void PresetManager::createFactoryPreset(const juce::String& name, const juce::St
     paramsObj->setProperty("POLY_MODE", 0.0f);
     paramsObj->setProperty("GLIDE", 0.0f);
     paramsObj->setProperty("GAIN", 0.0f);
+    paramsObj->setProperty("FX_GATE_ENABLE", 0.0f);
+    paramsObj->setProperty("FX_GATE_AMOUNT", 0.0f);
+    paramsObj->setProperty("FX_CHORUS_ENABLE", 0.0f);
+    paramsObj->setProperty("FX_CHORUS_AMOUNT", 0.0f);
+    paramsObj->setProperty("FX_CHORUS_RATE", 1.0f);
+    paramsObj->setProperty("FX_PHASER_ENABLE", 0.0f);
+    paramsObj->setProperty("FX_PHASER_AMOUNT", 0.0f);
+    paramsObj->setProperty("FX_PHASER_RATE", 0.5f);
+    paramsObj->setProperty("FX_DELAY_ENABLE", 0.0f);
+    paramsObj->setProperty("FX_DELAY_AMOUNT", 0.0f);
+    paramsObj->setProperty("FX_DELAY_TIME", 250.0f);
+    paramsObj->setProperty("FX_DELAY_FEEDBACK", 0.35f);
+    paramsObj->setProperty("FX_DRIVE_ENABLE", 0.0f);
+    paramsObj->setProperty("FX_DRIVE_AMOUNT", 0.0f);
+    paramsObj->setProperty("FX_DRIVE_TONE", 0.5f);
 
     obj->setProperty("parameters", paramsObj);
 
@@ -435,15 +445,22 @@ juce::String PresetManager::audioBufferToBase64Wav(const juce::AudioBuffer<float
     if (buffer.getNumSamples() == 0 || buffer.getNumChannels() == 0)
         return {};
 
-    auto* stream = new juce::MemoryOutputStream();
+    auto stream = std::make_unique<juce::MemoryOutputStream>();
+    auto* rawStream = stream.get();
+    std::unique_ptr<juce::OutputStream> outStream(std::move(stream));
     juce::WavAudioFormat wavFormat;
-    std::unique_ptr<juce::AudioFormatWriter> writer(wavFormat.createWriterFor(stream, sampleRate, (unsigned int)buffer.getNumChannels(), 16, {}, 0));
+    std::unique_ptr<juce::AudioFormatWriter> writer(wavFormat.createWriterFor(
+        outStream,
+        juce::AudioFormatWriterOptions()
+            .withSampleRate(sampleRate)
+            .withNumChannels((unsigned int)buffer.getNumChannels())
+            .withBitsPerSample(16)));
 
     if (writer != nullptr)
     {
         writer->writeFromAudioSampleBuffer(buffer, 0, buffer.getNumSamples());
         writer->flush();
-        juce::String base64 = juce::Base64::toBase64(stream->getData(), stream->getDataSize());
+        juce::String base64 = juce::Base64::toBase64(rawStream->getData(), rawStream->getDataSize());
         writer.reset();
         return base64;
     }
@@ -549,10 +566,13 @@ bool PresetManager::savePreset(const juce::String& presetName,
 
     const char* paramIDs[] = {
         "AMP_ATTACK", "AMP_DECAY", "AMP_SUSTAIN", "AMP_RELEASE",
-        "FILTER_ATTACK", "FILTER_DECAY", "FILTER_SUSTAIN", "FILTER_RELEASE",
         "PLAYBACK_MODE", "PITCH_MODE", "PITCH_SEMITONES",
-        "TIMBRE_SEMITONES", "TIMBRE_LINK", "TIMBRE_DRIFT",
-        "EXCITER", "POLY_MODE", "GLIDE", "GAIN"
+        "TIMBRE_DRIFT", "EXCITER", "POLY_MODE", "GLIDE", "GAIN",
+        "FX_GATE_ENABLE", "FX_GATE_AMOUNT",
+        "FX_CHORUS_ENABLE", "FX_CHORUS_AMOUNT", "FX_CHORUS_RATE",
+        "FX_PHASER_ENABLE", "FX_PHASER_AMOUNT", "FX_PHASER_RATE",
+        "FX_DELAY_ENABLE", "FX_DELAY_AMOUNT", "FX_DELAY_TIME", "FX_DELAY_FEEDBACK",
+        "FX_DRIVE_ENABLE", "FX_DRIVE_AMOUNT", "FX_DRIVE_TONE"
     };
 
     for (const auto& id : paramIDs)
