@@ -51,8 +51,8 @@ void EffectsEngine::prepare(double sampleRate, int maxBlockSize)
     jucePhaser.setMix(0.0f);
 
     // 4. Delay
-    delayLine.prepare(spec);
     delayLine.setMaximumDelayInSamples((int)(currentSampleRate * 2.0)); // 2 seconds max
+    delayLine.prepare(spec);
     delayFeedbackL = 0.0f;
     delayFeedbackR = 0.0f;
 
@@ -291,7 +291,7 @@ void EffectsEngine::process(juce::AudioBuffer<float>& buffer)
         tempEffectBuffer.copyFrom(1, 0, buffer.getReadPointer(1), numSamples);
 
         // 1. Process JUCE chorus
-        juce::dsp::AudioBlock<float> block(tempEffectBuffer);
+        juce::dsp::AudioBlock<float> block(tempEffectBuffer.getArrayOfWritePointers(), 2, 0, numSamples);
         juce::dsp::ProcessContextReplacing<float> context(block);
         juceChorus.process(context);
 
@@ -330,7 +330,7 @@ void EffectsEngine::process(juce::AudioBuffer<float>& buffer)
         tempEffectBuffer.copyFrom(0, 0, buffer.getReadPointer(0), numSamples);
         tempEffectBuffer.copyFrom(1, 0, buffer.getReadPointer(1), numSamples);
 
-        juce::dsp::AudioBlock<float> block(tempEffectBuffer);
+        juce::dsp::AudioBlock<float> block(tempEffectBuffer.getArrayOfWritePointers(), 2, 0, numSamples);
         juce::dsp::ProcessContextReplacing<float> context(block);
         jucePhaser.process(context);
 
@@ -404,7 +404,7 @@ void EffectsEngine::process(juce::AudioBuffer<float>& buffer)
         tempEffectBuffer.copyFrom(0, 0, buffer.getReadPointer(0), numSamples);
         tempEffectBuffer.copyFrom(1, 0, buffer.getReadPointer(1), numSamples);
 
-        juce::dsp::AudioBlock<float> baseBlock(tempEffectBuffer);
+        juce::dsp::AudioBlock<float> baseBlock(tempEffectBuffer.getArrayOfWritePointers(), 2, 0, numSamples);
         juce::dsp::AudioBlock<float> oversampledBlock = oversampler->processSamplesUp(baseBlock);
 
         float dAmt = driveAmount.getNextValue();

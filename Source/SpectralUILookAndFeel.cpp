@@ -286,10 +286,12 @@ void SpectralUILookAndFeel::drawLinearSlider(juce::Graphics& g, int x, int y, in
         return;
 
     auto bounds = juce::Rectangle<int>(x, y, width, height).toFloat();
+    bool isEnabled = slider.isEnabled();
 
     if (style == juce::Slider::LinearVertical || slider.isVertical())
     {
-        bool isEnabled = slider.isEnabled();
+        if (bounds.getHeight() < 12.0f)
+            return;
 
         // 1. Numeric Readout at top in monospace
         float val = (float)slider.getValue();
@@ -303,6 +305,9 @@ void SpectralUILookAndFeel::drawLinearSlider(juce::Graphics& g, int x, int y, in
 
         // 2. Track area in middle
         bounds.reduce(2.0f, 2.0f);
+        if (bounds.getHeight() <= 2.0f)
+            return;
+
         float trackWidth = 5.0f;
         float trackX = bounds.getCentreX() - trackWidth * 0.5f;
         auto trackArea = juce::Rectangle<float>(trackX, bounds.getY(), trackWidth, bounds.getHeight());
@@ -333,10 +338,12 @@ void SpectralUILookAndFeel::drawLinearSlider(juce::Graphics& g, int x, int y, in
         }
 
         // Horizontal thumb handle
-        float handleWidth = 14.0f;
+        float handleWidth = juce::jmin(14.0f, bounds.getWidth());
         float handleHeight = 3.5f;
         float handleX = bounds.getCentreX() - handleWidth * 0.5f;
-        float handleY = juce::jlimit(trackArea.getY(), trackArea.getBottom() - handleHeight, sliderPos - handleHeight * 0.5f);
+        float minHandleY = trackArea.getY();
+        float maxHandleY = juce::jmax(minHandleY, trackArea.getBottom() - handleHeight);
+        float handleY = juce::jlimit(minHandleY, maxHandleY, sliderPos - handleHeight * 0.5f);
 
         g.setColour(isEnabled ? (slider.isMouseOverOrDragging() ? accentBright : textMainColour) : textMutedColour.withAlpha(0.4f));
         g.fillRoundedRectangle(handleX, handleY, handleWidth, handleHeight, 1.5f);
@@ -345,59 +352,113 @@ void SpectralUILookAndFeel::drawLinearSlider(juce::Graphics& g, int x, int y, in
 
     juce::ignoreUnused(minSliderPos, maxSliderPos, style);
 
-    // Horizontal Volume Fader (Bottom Bar)
-    // 1. Label 'VOLUME' on left edge
-    auto labelArea = bounds.removeFromLeft(52.0f);
-    g.setFont(getMonospaceFont(9.5f));
-    g.setColour(textMutedColour);
-    g.drawText("VOLUME", labelArea, juce::Justification::left, true);
+    // Horizontal Sliders
+    bool isVolumeSlider = (slider.getName() == "VOLUME" ||
+                           (slider.getTextBoxPosition() == juce::Slider::NoTextBox && bounds.getWidth() >= 140.0f));
 
-    // 2. Numeric dB readout on right edge
-    auto readoutArea = bounds.removeFromRight(50.0f);
-    float val = (float)slider.getValue();
-    juce::String valStr;
-    if (val <= -47.5f)
-        valStr = "-inf";
-    else if (val > 0.0f)
-        valStr = "+" + juce::String(val, 1) + " dB";
-    else
-        valStr = juce::String(val, 1) + " dB";
-
-    g.setFont(getMonospaceFont(9.5f));
-    g.setColour(slider.isMouseOverOrDragging() ? accentColour : textMainColour);
-    g.drawText(valStr, readoutArea, juce::Justification::right, true);
-
-    // 3. Track area in center
-    bounds.reduce(6.0f, 0.0f);
-    float trackHeight = 5.0f;
-    float trackY = bounds.getCentreY() - trackHeight * 0.5f;
-    auto trackArea = juce::Rectangle<float>(bounds.getX(), trackY, bounds.getWidth(), trackHeight);
-
-    // Dark track background
-    g.setColour(graphBgColour);
-    g.fillRoundedRectangle(trackArea, 2.5f);
-
-    // Hairline border
-    g.setColour(dividerColour);
-    g.drawRoundedRectangle(trackArea, 2.5f, 1.0f);
-
-    // Burple horizontal progress fill
-    float fillWidth = juce::jlimit(0.0f, trackArea.getWidth(), sliderPos - trackArea.getX());
-    if (fillWidth > 0.0f)
+    if (isVolumeSlider)
     {
-        auto fillRect = trackArea.withWidth(fillWidth);
-        g.setColour(slider.isMouseOverOrDragging() ? accentBright : accentColour);
-        g.fillRoundedRectangle(fillRect, 2.5f);
+        // Horizontal Volume Fader (Bottom Bar)
+        // 1. Label 'VOLUME' on left edge
+        if (bounds.getWidth() > 110.0f)
+        {
+            auto labelArea = bounds.removeFromLeft(52.0f);
+            g.setFont(getMonospaceFont(9.5f));
+            g.setColour(textMutedColour);
+            g.drawText("VOLUME", labelArea, juce::Justification::left, true);
+
+            // 2. Numeric dB readout on right edge
+            auto readoutArea = bounds.removeFromRight(50.0f);
+            float val = (float)slider.getValue();
+            juce::String valStr;
+            if (val <= -47.5f)
+                valStr = "-inf";
+            else if (val > 0.0f)
+                valStr = "+" + juce::String(val, 1) + " dB";
+            else
+                valStr = juce::String(val, 1) + " dB";
+
+            g.setFont(getMonospaceFont(9.5f));
+            g.setColour(slider.isMouseOverOrDragging() ? accentColour : textMainColour);
+            g.drawText(valStr, readoutArea, juce::Justification::right, true);
+        }
+
+        // 3. Track area in center
+        bounds.reduce(4.0f, 0.0f);
+        if (bounds.getWidth() <= 4.0f)
+            return;
+
+        float trackHeight = 5.0f;
+        float trackY = bounds.getCentreY() - trackHeight * 0.5f;
+        auto trackArea = juce::Rectangle<float>(bounds.getX(), trackY, bounds.getWidth(), trackHeight);
+
+        // Dark track background
+        g.setColour(graphBgColour);
+        g.fillRoundedRectangle(trackArea, 2.5f);
+
+        // Hairline border
+        g.setColour(dividerColour);
+        g.drawRoundedRectangle(trackArea, 2.5f, 1.0f);
+
+        // Horizontal progress fill
+        float fillWidth = juce::jlimit(0.0f, trackArea.getWidth(), sliderPos - trackArea.getX());
+        if (fillWidth > 0.0f && isEnabled)
+        {
+            auto fillRect = trackArea.withWidth(fillWidth);
+            g.setColour(slider.isMouseOverOrDragging() ? accentBright : accentColour);
+            g.fillRoundedRectangle(fillRect, 2.5f);
+        }
+
+        // Precision vertical thumb tick
+        float handleWidth = 3.5f;
+        float handleHeight = trackHeight + 6.0f;
+        float minHandleX = trackArea.getX();
+        float maxHandleX = juce::jmax(minHandleX, trackArea.getRight() - handleWidth);
+        float handleX = juce::jlimit(minHandleX, maxHandleX, sliderPos - handleWidth * 0.5f);
+        float handleY = bounds.getCentreY() - handleHeight * 0.5f;
+
+        g.setColour(isEnabled ? (slider.isMouseOverOrDragging() ? accentBright : textMainColour) : textMutedColour.withAlpha(0.4f));
+        g.fillRoundedRectangle(handleX, handleY, handleWidth, handleHeight, 1.5f);
     }
+    else
+    {
+        // Standard Linear Horizontal Slider (e.g. popovers, parameters, dialogs)
+        bounds.reduce(2.0f, 0.0f);
+        if (bounds.getWidth() <= 4.0f)
+            return;
 
-    // Precision vertical thumb tick
-    float handleWidth = 3.5f;
-    float handleHeight = trackHeight + 6.0f;
-    float handleX = juce::jlimit(trackArea.getX(), trackArea.getRight() - handleWidth, sliderPos - handleWidth * 0.5f);
-    float handleY = bounds.getCentreY() - handleHeight * 0.5f;
+        float trackHeight = 4.0f;
+        float trackY = bounds.getCentreY() - trackHeight * 0.5f;
+        auto trackArea = juce::Rectangle<float>(bounds.getX(), trackY, bounds.getWidth(), trackHeight);
 
-    g.setColour(slider.isMouseOverOrDragging() ? accentBright : textMainColour);
-    g.fillRoundedRectangle(handleX, handleY, handleWidth, handleHeight, 1.5f);
+        // Dark track background
+        g.setColour(graphBgColour);
+        g.fillRoundedRectangle(trackArea, 2.0f);
+
+        // Hairline border
+        g.setColour(dividerColour);
+        g.drawRoundedRectangle(trackArea, 2.0f, 0.8f);
+
+        // Progress fill
+        float fillWidth = juce::jlimit(0.0f, trackArea.getWidth(), sliderPos - trackArea.getX());
+        if (fillWidth > 0.0f && isEnabled)
+        {
+            auto fillRect = trackArea.withWidth(fillWidth);
+            g.setColour(slider.isMouseOverOrDragging() ? accentBright : accentColour);
+            g.fillRoundedRectangle(fillRect, 2.0f);
+        }
+
+        // Vertical thumb tick
+        float handleWidth = 3.0f;
+        float handleHeight = trackHeight + 6.0f;
+        float minHandleX = trackArea.getX();
+        float maxHandleX = juce::jmax(minHandleX, trackArea.getRight() - handleWidth);
+        float handleX = juce::jlimit(minHandleX, maxHandleX, sliderPos - handleWidth * 0.5f);
+        float handleY = bounds.getCentreY() - handleHeight * 0.5f;
+
+        g.setColour(isEnabled ? (slider.isMouseOverOrDragging() ? accentBright : textMainColour) : textMutedColour.withAlpha(0.4f));
+        g.fillRoundedRectangle(handleX, handleY, handleWidth, handleHeight, 1.0f);
+    }
 }
 
 void SpectralUILookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& button,

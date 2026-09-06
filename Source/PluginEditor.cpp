@@ -4,7 +4,7 @@
 VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(VancespectralAudioProcessor &p)
     : AudioProcessorEditor(&p), audioProcessor(p),
       adsrPanel(p.getAPVTS()),
-      effectsPanel(p.getAPVTS()) {
+      effectsPanel(p.getAPVTS(), [&p]() { return p.getHostBpm(); }) {
   
   setLookAndFeel(&spectralLookAndFeel);
   setWantsKeyboardFocus(true);
@@ -25,6 +25,7 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
 
   volumeSlider.setSliderStyle(juce::Slider::LinearHorizontal);
   volumeSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+  volumeSlider.setName("VOLUME");
   addAndMakeVisible(volumeSlider);
 
   addAndMakeVisible(polyButton);

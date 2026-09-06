@@ -74,6 +74,7 @@ public:
     void setPitchMode(int modeIndex);
     void setPitchSemitones(float semitones);
     void setHostBpm(double bpm);
+    double getHostBpm() const { return hostBpm.load(); }
 
     void setRootNote(int noteNumber);
     int getRootNote() const { return rootNoteNumber.load(); }

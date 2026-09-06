@@ -11,387 +11,739 @@
 #include "EffectsPanel.h"
 
 //==============================================================================
-// EffectModuleComponent Implementation
+// Note Division Utilities
 //==============================================================================
-EffectsPanel::EffectModuleComponent::EffectModuleComponent(
-    const juce::String& name,
-    const std::vector<juce::Colour>& segmentColours,
-    juce::Colour glowColour)
-    : effectName(name), colors(segmentColours), glow(glowColour)
+const juce::StringArray& EffectsPanel::getNoteDivisionNames()
 {
-    toggleButton.setClickingTogglesState(true);
-    toggleButton.onClick = [this]() {
-        if (onHoverChanged) onHoverChanged(this);
-        repaint();
+    static const juce::StringArray names{
+        "1/16", "1/8T", "1/8", "1/8D", "1/4", "1/4D", "1/2"
     };
-
-    primarySlider.setSliderStyle(juce::Slider::LinearVertical);
-    primarySlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-    primarySlider.setRange(0.0, 1.0, 0.01);
-    primarySlider.onValueChange = [this]() {
-        if (onValueChanged) onValueChanged((float)primarySlider.getValue());
-        repaint();
-    };
-
-    secondarySlider.setSliderStyle(juce::Slider::LinearVertical);
-    secondarySlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-
-    // Keep child components logically present but handled via direct module interaction
-    addChildComponent(toggleButton);
-    addChildComponent(primarySlider);
-    addChildComponent(secondarySlider);
+    return names;
 }
 
-void EffectsPanel::EffectModuleComponent::paint(juce::Graphics& g)
+double EffectsPanel::getNoteDivisionFactor(int index)
 {
-    auto bounds = getLocalBounds().toFloat();
-    bool enabled = toggleButton.getToggleState();
+    switch (index)
+    {
+        case 0: return 0.25;         // 1/16
+        case 1: return 1.0 / 3.0;    // 1/8 Triplet
+        case 2: return 0.5;          // 1/8 (Default)
+        case 3: return 0.75;         // 1/8 Dotted
+        case 4: return 1.0;          // 1/4
+        case 5: return 1.5;          // 1/4 Dotted
+        case 6: return 2.0;          // 1/2
+        default: return 0.5;
+    }
+}
 
-    // 1. LED Bar Area (Top portion)
-    float barWidth = bounds.getWidth() - 4.0f;
-    float barHeight = 12.0f;
-    float barX = bounds.getX() + 2.0f;
-    float barY = bounds.getY() + 2.0f;
+//==============================================================================
+// EffectZoneComponent Implementation
+//==============================================================================
+EffectsPanel::EffectZoneComponent::EffectZoneComponent(
+    const EffectZoneConfig& cfg,
+    juce::AudioProcessorValueTreeState& apvtsRef,
+    std::function<double()> bpmProviderFn,
+    std::function<void(int)> onSelectReqFn,
+    std::function<void(int, const juce::String&)> onParamAdjustedFn)
+    : config(cfg),
+      apvts(apvtsRef),
+      bpmProvider(bpmProviderFn),
+      onSelectRequest(onSelectReqFn),
+      onParameterAdjusted(onParamAdjustedFn)
+{
+    setRepaintsOnMouseActivity(true);
+}
 
-    juce::Rectangle<float> ledBarRect(barX, barY, barWidth, barHeight);
+void EffectsPanel::EffectZoneComponent::setSelected(bool selected)
+{
+    if (isExpanded != selected)
+    {
+        isExpanded = selected;
+        repaint();
+    }
+}
 
-    // Ambient glow emission when enabled
+void EffectsPanel::EffectZoneComponent::updateReadout(const juce::String& text)
+{
+    readoutText = text;
+    readoutAlpha = 1.0f;
+    readoutHoldFrames = 90; // ~1.5s hold at 60 Hz
+    repaint();
+}
+
+void EffectsPanel::EffectZoneComponent::tickAnimation()
+{
+    bool needsRepaint = false;
+
+    // Smooth expansion interpolation
+    float targetExp = isExpanded ? 1.0f : 0.0f;
+    if (std::abs(expansionProgress - targetExp) > 0.005f)
+    {
+        expansionProgress += (targetExp - expansionProgress) * 0.25f;
+        needsRepaint = true;
+    }
+    else
+    {
+        expansionProgress = targetExp;
+    }
+
+    // Temporary digital readout hold & fade
+    if (readoutHoldFrames > 0)
+    {
+        --readoutHoldFrames;
+    }
+    else if (readoutAlpha > 0.0f)
+    {
+        readoutAlpha = juce::jmax(0.0f, readoutAlpha - 0.045f);
+        needsRepaint = true;
+    }
+
+    if (needsRepaint)
+        repaint();
+}
+
+bool EffectsPanel::EffectZoneComponent::isEffectEnabled() const
+{
+    if (auto* param = apvts.getRawParameterValue(config.enableParamID))
+        return *param >= 0.5f;
+    return false;
+}
+
+float EffectsPanel::EffectZoneComponent::getNormalizedParamValue(const juce::String& paramID) const
+{
+    if (auto* param = apvts.getParameter(paramID))
+        return param->getValue();
+    return 0.0f;
+}
+
+void EffectsPanel::EffectZoneComponent::setNormalizedParamValue(const juce::String& paramID, float normVal)
+{
+    if (auto* param = apvts.getParameter(paramID))
+    {
+        param->setValueNotifyingHost(juce::jlimit(0.0f, 1.0f, normVal));
+    }
+}
+
+void EffectsPanel::EffectZoneComponent::syncFromAPVTS()
+{
+    repaint();
+}
+
+void EffectsPanel::EffectZoneComponent::syncDelayTimeFromDivision()
+{
+    double bpm = 120.0;
+    if (bpmProvider)
+    {
+        double b = bpmProvider();
+        if (b >= 20.0 && b <= 400.0)
+            bpm = b;
+    }
+
+    double quarterMs = 60000.0 / bpm;
+    double factor = getNoteDivisionFactor(delayDivisionIdx);
+    float ms = (float)juce::jlimit(10.0, 1000.0, quarterMs * factor);
+
+    if (auto* param = apvts.getParameter("FX_DELAY_TIME"))
+    {
+        float normVal = param->getNormalisableRange().convertTo0to1(ms);
+        param->setValueNotifyingHost(normVal);
+    }
+}
+
+// Layout coordinate helpers
+juce::Rectangle<float> EffectsPanel::EffectZoneComponent::getHeaderBounds() const
+{
+    return juce::Rectangle<float>(2.0f, 3.0f, (float)getWidth() - 4.0f, 20.0f);
+}
+
+juce::Rectangle<float> EffectsPanel::EffectZoneComponent::getMixBarBounds() const
+{
+    return juce::Rectangle<float>(4.0f, 25.0f, (float)getWidth() - 8.0f, 14.0f);
+}
+
+juce::Rectangle<float> EffectsPanel::EffectZoneComponent::getSecondaryControlsBounds() const
+{
+    float topY = 42.0f;
+    float botY = (float)getHeight() - 26.0f;
+    return juce::Rectangle<float>(4.0f, topY, (float)getWidth() - 8.0f, juce::jmax(0.0f, botY - topY));
+}
+
+juce::Rectangle<float> EffectsPanel::EffectZoneComponent::getReadoutBounds() const
+{
+    return juce::Rectangle<float>(4.0f, (float)getHeight() - 24.0f, (float)getWidth() - 8.0f, 20.0f);
+}
+
+juce::Rectangle<float> EffectsPanel::EffectZoneComponent::getBypassToggleBounds() const
+{
+    auto area = getSecondaryControlsBounds();
+    if (config.index == 3) // DELAY: shares top row with Sync mode
+    {
+        return juce::Rectangle<float>(area.getX(), area.getY() + 2.0f, (area.getWidth() - 3.0f) * 0.48f, 16.0f);
+    }
+    return juce::Rectangle<float>(area.getX() + 2.0f, area.getY() + 2.0f, area.getWidth() - 4.0f, 16.0f);
+}
+
+juce::Rectangle<float> EffectsPanel::EffectZoneComponent::getDelaySyncToggleBounds() const
+{
+    auto area = getSecondaryControlsBounds();
+    float x = area.getX() + (area.getWidth() - 3.0f) * 0.52f;
+    float w = area.getRight() - x;
+    return juce::Rectangle<float>(x, area.getY() + 2.0f, w, 16.0f);
+}
+
+juce::Rectangle<float> EffectsPanel::EffectZoneComponent::getDelayDivisionBounds() const
+{
+    auto area = getSecondaryControlsBounds();
+    return juce::Rectangle<float>(area.getX() + 2.0f, area.getY() + 22.0f, area.getWidth() - 4.0f, 18.0f);
+}
+
+void EffectsPanel::EffectZoneComponent::resized()
+{
+    auto area = getSecondaryControlsBounds();
+
+    if (config.index == 3) // DELAY
+    {
+        // Secondary knob 1: Time (when free)
+        float knobSize = 30.0f;
+        secondaryKnob1.bounds = juce::Rectangle<float>(area.getCentreX() - knobSize * 0.5f, area.getY() + 22.0f, knobSize, knobSize);
+        secondaryKnob1.label = "TIME";
+        secondaryKnob1.paramID = "FX_DELAY_TIME";
+
+        // Secondary knob 2: Feedback
+        secondaryKnob2.bounds = juce::Rectangle<float>(area.getCentreX() - knobSize * 0.5f, area.getY() + 56.0f, knobSize, knobSize);
+        secondaryKnob2.label = "FDBK";
+        secondaryKnob2.paramID = "FX_DELAY_FEEDBACK";
+    }
+    else
+    {
+        float knobSize = 34.0f;
+        secondaryKnob1.bounds = juce::Rectangle<float>(area.getCentreX() - knobSize * 0.5f, area.getY() + 24.0f, knobSize, knobSize);
+        secondaryKnob1.paramID = config.secParam1ID;
+
+        if (config.index == 0) secondaryKnob1.label = "TONE";
+        else secondaryKnob1.label = "RATE";
+    }
+}
+
+static void drawMiniArcKnob(juce::Graphics& g, juce::Rectangle<float> b, const juce::String& label, float value01, juce::Colour color)
+{
+    float centreX = b.getCentreX();
+    float centreY = b.getY() + b.getHeight() * 0.42f;
+    float radius = juce::jmin(b.getWidth(), b.getHeight()) * 0.38f;
+
+    // Track arc
+    float startAngle = juce::degreesToRadians(140.0f);
+    float endAngle = juce::degreesToRadians(400.0f);
+    float currentAngle = startAngle + value01 * (endAngle - startAngle);
+
+    juce::Path trackPath;
+    trackPath.addCentredArc(centreX, centreY, radius, radius, 0.0f, startAngle, endAngle, true);
+    g.setColour(juce::Colour(0x18, 0x1A, 0x24));
+    g.strokePath(trackPath, juce::PathStrokeType(2.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+
+    // Illuminated value arc
+    if (value01 > 0.01f)
+    {
+        juce::Path fillPath;
+        fillPath.addCentredArc(centreX, centreY, radius, radius, 0.0f, startAngle, currentAngle, true);
+        g.setColour(color);
+        g.strokePath(fillPath, juce::PathStrokeType(2.2f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    }
+
+    // Center indicator dot
+    g.setColour(juce::Colour(0x0C, 0x0E, 0x14));
+    g.fillEllipse(centreX - radius * 0.5f, centreY - radius * 0.5f, radius, radius);
+    g.setColour(color.brighter(0.4f));
+    float ptrX = centreX + radius * 0.6f * std::sin(currentAngle);
+    float ptrY = centreY - radius * 0.6f * std::cos(currentAngle);
+    g.fillEllipse(ptrX - 1.2f, ptrY - 1.2f, 2.4f, 2.4f);
+
+    // Monospace Label below knob
+    g.setFont(SpectralUILookAndFeel::getMonospaceFont(7.8f, false));
+    g.setColour(juce::Colour(0x7A, 0x7E, 0x8E));
+    juce::Rectangle<float> lblRect(b.getX(), b.getBottom() - 11.0f, b.getWidth(), 11.0f);
+    g.drawText(label, lblRect.toNearestInt(), juce::Justification::centred, false);
+}
+
+void EffectsPanel::EffectZoneComponent::paint(juce::Graphics& g)
+{
+    bool enabled = isEffectEnabled();
+    auto totalBounds = getLocalBounds().toFloat();
+
+    // 1. Subtle selection ambient wash in dark LCD
+    if (isExpanded || expansionProgress > 0.02f)
+    {
+        g.setColour(config.lcdColor.withAlpha(0.06f * expansionProgress));
+        g.fillRect(totalBounds.reduced(1.0f, 2.0f));
+    }
+
+    // 2. Header Section
+    auto headerRect = getHeaderBounds();
+    if (isHeaderHovered)
+    {
+        g.setColour(config.lcdColor.withAlpha(0.12f));
+        g.fillRoundedRectangle(headerRect, 2.5f);
+    }
+
+    // Color-coded Indicator LED Dot
+    float ledX = headerRect.getX() + 4.0f;
+    float ledY = headerRect.getCentreY() - 2.5f;
+    float ledSize = 5.0f;
+    juce::Rectangle<float> ledRect(ledX, ledY, ledSize, ledSize);
+
     if (enabled)
     {
-        g.setColour(glow.withAlpha(0.32f));
-        g.fillRoundedRectangle(ledBarRect.expanded(2.5f, 2.0f), 3.5f);
+        if (isExpanded)
+        {
+            g.setColour(config.lcdColor.withAlpha(0.40f));
+            g.fillEllipse(ledRect.expanded(2.0f));
+            g.setColour(config.lcdColor.brighter(0.4f));
+            g.fillEllipse(ledRect);
+        }
+        else
+        {
+            g.setColour(config.lcdColor.withAlpha(0.85f));
+            g.fillEllipse(ledRect);
+        }
+    }
+    else
+    {
+        g.setColour(juce::Colour(0x22, 0x24, 0x2E));
+        g.fillEllipse(ledRect);
+        g.setColour(juce::Colour(0x36, 0x3A, 0x48));
+        g.drawEllipse(ledRect, 0.5f);
     }
 
-    // Outer frame of LED bar
-    g.setColour(enabled ? juce::Colour(0x1A, 0x1C, 0x24) : juce::Colour(0x12, 0x13, 0x18));
-    g.fillRoundedRectangle(ledBarRect, 2.5f);
-    g.setColour(enabled ? glow.withAlpha(0.65f) : juce::Colour(0x26, 0x28, 0x32));
-    g.drawRoundedRectangle(ledBarRect, 2.5f, 0.8f);
+    // Effect Name (understated monospace)
+    g.setFont(SpectralUILookAndFeel::getMonospaceFont(9.2f, true));
+    if (isExpanded)
+        g.setColour(config.lcdColor.brighter(0.5f));
+    else if (enabled)
+        g.setColour(isHeaderHovered ? juce::Colour(0xDD, 0xDB, 0xE4) : juce::Colour(0x9E, 0x9E, 0xAC));
+    else
+        g.setColour(isHeaderHovered ? juce::Colour(0x8A, 0x8E, 0x9A) : juce::Colour(0x56, 0x58, 0x64));
 
-    // 4 Discrete Segments
-    const int numSegments = 4;
-    const float gap = 1.5f;
-    const float segWidth = (barWidth - 2.0f - (numSegments - 1) * gap) / (float)numSegments;
-    const float segHeight = barHeight - 2.0f;
+    juce::Rectangle<float> nameRect(ledX + ledSize + 4.0f, headerRect.getY(), headerRect.getWidth() - ledSize - 8.0f, headerRect.getHeight());
+    g.drawText(config.name, nameRect.toNearestInt(), juce::Justification::centredLeft, false);
 
-    for (int i = 0; i < numSegments; ++i)
+    // 3. Primary Control — Horizontal Mix Bar
+    auto mixArea = getMixBarBounds();
+    float trackHeight = 5.5f;
+    float trackY = mixArea.getCentreY() - trackHeight * 0.5f;
+    float trackX = mixArea.getX() + 2.0f;
+    float trackW = mixArea.getWidth() - 4.0f;
+    juce::Rectangle<float> trackRect(trackX, trackY, trackW, trackHeight);
+
+    // Track channel (low opacity / dark LCD slot)
+    g.setColour(juce::Colour(0x06, 0x07, 0x0B));
+    g.fillRoundedRectangle(trackRect, 2.0f);
+    g.setColour(isMixBarHovered ? config.lcdColor.withAlpha(0.35f) : juce::Colour(0x18, 0x1A, 0x24));
+    g.drawRoundedRectangle(trackRect, 2.0f, 0.7f);
+
+    float mixNorm = getNormalizedParamValue(config.mixParamID);
+    float fillW = juce::jlimit(0.0f, trackW, mixNorm * trackW);
+
+    if (fillW > 0.5f)
     {
-        float sx = barX + 1.0f + (float)i * (segWidth + gap);
-        float sy = barY + 1.0f;
-        juce::Rectangle<float> segRect(sx, sy, segWidth, segHeight);
+        juce::Rectangle<float> fillRect(trackX, trackY, fillW, trackHeight);
 
+        juce::Colour botCol = config.lcdColor.darker(0.6f);
+        juce::Colour topCol = config.lcdColor;
+        if (!enabled)
+        {
+            botCol = botCol.withMultipliedSaturation(0.25f).withAlpha(0.20f);
+            topCol = topCol.withMultipliedSaturation(0.25f).withAlpha(0.30f);
+        }
+
+        juce::ColourGradient grad(botCol, trackX, trackY, topCol, trackX + fillW, trackY, false);
+        g.setGradientFill(grad);
+        g.fillRoundedRectangle(fillRect, 2.0f);
+
+        // Indicator endpoint mark
         if (enabled)
         {
-            juce::Colour segCol = (i < (int)colors.size()) ? colors[(size_t)i] : glow;
-            juce::Colour topCol = segCol.brighter(0.25f);
-            juce::Colour botCol = segCol.darker(0.15f);
-
-            juce::ColourGradient grad(topCol, sx, sy, botCol, sx, sy + segHeight, false);
-            g.setGradientFill(grad);
-            g.fillRoundedRectangle(segRect, 1.5f);
-
-            // Specular top highlight
-            g.setColour(juce::Colours::white.withAlpha(0.38f));
-            g.drawHorizontalLine((int)(sy + 1.0f), sx + 1.0f, sx + segWidth - 1.0f);
-        }
-        else
-        {
-            // Dimmed / unlit state: dark matte block with very faint ghost tint
-            juce::Colour tintCol = (i < (int)colors.size()) ? colors[(size_t)i] : glow;
-            g.setColour(juce::Colour(0x14, 0x16, 0x1D).interpolatedWith(tintCol, 0.08f));
-            g.fillRoundedRectangle(segRect, 1.5f);
-
-            g.setColour(juce::Colour(0x22, 0x25, 0x30));
-            g.drawRoundedRectangle(segRect, 1.5f, 0.5f);
+            float markX = trackX + fillW - 1.5f;
+            g.setColour(config.lcdColor.brighter(0.5f));
+            g.fillRoundedRectangle(markX, trackY - 1.0f, 2.0f, trackHeight + 2.0f, 1.0f);
         }
     }
 
-    // 2. Effect Name (Bottom portion)
-    auto labelRect = bounds.withTrimmedTop(barHeight + 3.0f);
-    g.setFont(SpectralUILookAndFeel::getMonospaceFont(9.0f, true));
-    g.setColour(enabled ? juce::Colour(0xDD, 0xDB, 0xE2)
-                        : (isHovered ? juce::Colour(0x90, 0x8E, 0x9A) : juce::Colour(0x56, 0x58, 0x64)));
-    g.drawText(effectName, labelRect.toNearestInt(), juce::Justification::centred, false);
-}
-
-void EffectsPanel::EffectModuleComponent::mouseDown(const juce::MouseEvent& e)
-{
-    mouseDownPos = e.position;
-    dragStartValue = (float)primarySlider.getValue();
-    wasDragged = false;
-    if (onHoverChanged) onHoverChanged(this);
-}
-
-void EffectsPanel::EffectModuleComponent::mouseDrag(const juce::MouseEvent& e)
-{
-    float dy = mouseDownPos.y - e.position.y;
-    if (std::abs(dy) > 2.5f || wasDragged)
+    // 4. In-Place Secondary Controls (Only rendered when expanded)
+    if (expansionProgress > 0.05f)
     {
-        wasDragged = true;
-        auto range = primarySlider.getRange();
-        float delta = (float)(range.getLength() * (dy / 90.0f));
-        float newVal = juce::jlimit((float)range.getStart(), (float)range.getEnd(), dragStartValue + delta);
-        primarySlider.setValue(newVal, juce::sendNotification);
-        if (onValueChanged) onValueChanged(newVal);
+        juce::Graphics::ScopedSaveState ss(g);
+        g.setOpacity(expansionProgress);
+
+        // (a) Bypass Button
+        auto bypassRect = getBypassToggleBounds();
+        g.setColour(enabled ? config.lcdColor.withAlpha(0.20f) : juce::Colour(0x12, 0x13, 0x1A));
+        g.fillRoundedRectangle(bypassRect, 2.5f);
+        g.setColour(enabled ? config.lcdColor.withAlpha(0.60f) : juce::Colour(0x28, 0x2A, 0x36));
+        g.drawRoundedRectangle(bypassRect, 2.5f, 0.7f);
+
+        g.setFont(SpectralUILookAndFeel::getMonospaceFont(8.0f, true));
+        g.setColour(enabled ? config.lcdColor.brighter(0.4f) : juce::Colour(0x60, 0x64, 0x72));
+        g.drawText(enabled ? "ACTIVE" : "BYPASS", bypassRect.toNearestInt(), juce::Justification::centred, false);
+
+        // (b) Effect specific secondary controls
+        if (config.index == 3) // DELAY
+        {
+            // Sync toggle button
+            auto syncRect = getDelaySyncToggleBounds();
+            g.setColour(delayIsSynced ? config.lcdColor.withAlpha(0.20f) : juce::Colour(0x12, 0x13, 0x1A));
+            g.fillRoundedRectangle(syncRect, 2.5f);
+            g.setColour(delayIsSynced ? config.lcdColor.withAlpha(0.60f) : juce::Colour(0x28, 0x2A, 0x36));
+            g.drawRoundedRectangle(syncRect, 2.5f, 0.7f);
+
+            g.setFont(SpectralUILookAndFeel::getMonospaceFont(8.0f, true));
+            g.setColour(delayIsSynced ? config.lcdColor.brighter(0.4f) : juce::Colour(0x60, 0x64, 0x72));
+            g.drawText(delayIsSynced ? "SYNC" : "FREE", syncRect.toNearestInt(), juce::Justification::centred, false);
+
+            if (delayIsSynced)
+            {
+                // Note division selector pill
+                auto divRect = getDelayDivisionBounds();
+                g.setColour(juce::Colour(0x0C, 0x0E, 0x14));
+                g.fillRoundedRectangle(divRect, 2.5f);
+                g.setColour(config.lcdColor.withAlpha(0.45f));
+                g.drawRoundedRectangle(divRect, 2.5f, 0.7f);
+
+                g.setFont(SpectralUILookAndFeel::getMonospaceFont(8.5f, true));
+                g.setColour(config.lcdColor.brighter(0.3f));
+                const auto& names = getNoteDivisionNames();
+                juce::String divName = (delayDivisionIdx >= 0 && delayDivisionIdx < names.size()) ? names[delayDivisionIdx] : "1/8";
+                g.drawText("DIV: " + divName, divRect.toNearestInt(), juce::Justification::centred, false);
+            }
+            else
+            {
+                // Draw Time Knob
+                auto kb = secondaryKnob1.bounds;
+                float val01 = getNormalizedParamValue(secondaryKnob1.paramID);
+                drawMiniArcKnob(g, kb, secondaryKnob1.label, val01, config.lcdColor);
+            }
+
+            // Draw Feedback Knob
+            auto kb2 = secondaryKnob2.bounds;
+            float val01_fb = getNormalizedParamValue(secondaryKnob2.paramID);
+            drawMiniArcKnob(g, kb2, secondaryKnob2.label, val01_fb, config.lcdColor);
+        }
+        else
+        {
+            // Standard Mini Arc Knob (Tone / Rate)
+            auto kb = secondaryKnob1.bounds;
+            float val01 = getNormalizedParamValue(secondaryKnob1.paramID);
+            drawMiniArcKnob(g, kb, secondaryKnob1.label, val01, config.lcdColor);
+        }
+    }
+
+    // 5. Temporary Segmented Digital LCD Readout
+    if (readoutAlpha > 0.01f && readoutText.isNotEmpty())
+    {
+        auto roRect = getReadoutBounds();
+        g.setColour(juce::Colour(0x04, 0x05, 0x08).withAlpha(readoutAlpha));
+        g.fillRoundedRectangle(roRect, 2.5f);
+        g.setColour(config.lcdColor.withAlpha(0.30f * readoutAlpha));
+        g.drawRoundedRectangle(roRect, 2.5f, 0.6f);
+
+        // LCD digital glowing text
+        g.setFont(SpectralUILookAndFeel::getMonospaceFont(8.8f, true));
+        g.setColour(config.lcdColor.brighter(0.3f).withAlpha(readoutAlpha));
+        g.drawText(readoutText, roRect.toNearestInt(), juce::Justification::centred, false);
+    }
+}
+
+// Mouse event handling
+void EffectsPanel::EffectZoneComponent::mouseDown(const juce::MouseEvent& e)
+{
+    // 1. Header click (selects / toggles expansion)
+    if (getHeaderBounds().contains(e.position))
+    {
+        if (onSelectRequest)
+            onSelectRequest(config.index);
+        return;
+    }
+
+    // 2. Primary Mix Bar click & drag
+    auto mixArea = getMixBarBounds();
+    if (mixArea.contains(e.position))
+    {
+        isDraggingMixBar = true;
+        float trackX = mixArea.getX() + 2.0f;
+        float trackW = juce::jmax(1.0f, mixArea.getWidth() - 4.0f);
+        float normVal = juce::jlimit(0.0f, 1.0f, (e.position.x - trackX) / trackW);
+
+        setNormalizedParamValue(config.mixParamID, normVal);
+        int pct = (int)std::round(normVal * 100.0f);
+        updateReadout("MIX: " + juce::String(pct) + "%");
+        if (onParameterAdjusted)
+            onParameterAdjusted(config.index, "MIX: " + juce::String(pct) + "%");
+        return;
+    }
+
+    // 3. Secondary controls (only if expanded)
+    if (isExpanded && expansionProgress > 0.5f)
+    {
+        // Bypass Toggle click
+        if (getBypassToggleBounds().contains(e.position))
+        {
+            bool nextState = !isEffectEnabled();
+            if (auto* param = apvts.getParameter(config.enableParamID))
+                param->setValueNotifyingHost(nextState ? 1.0f : 0.0f);
+
+            updateReadout(nextState ? "ACTIVE" : "BYPASSED");
+            if (onParameterAdjusted)
+                onParameterAdjusted(config.index, nextState ? "ACTIVE" : "BYPASSED");
+            repaint();
+            return;
+        }
+
+        if (config.index == 3) // DELAY
+        {
+            // Sync Toggle click
+            if (getDelaySyncToggleBounds().contains(e.position))
+            {
+                delayIsSynced = !delayIsSynced;
+                if (delayIsSynced)
+                    syncDelayTimeFromDivision();
+
+                updateReadout(delayIsSynced ? "SYNC: ON" : "SYNC: OFF");
+                if (onParameterAdjusted)
+                    onParameterAdjusted(config.index, delayIsSynced ? "SYNC: ON" : "SYNC: OFF");
+                resized();
+                repaint();
+                return;
+            }
+
+            // Division Picker click
+            if (delayIsSynced && getDelayDivisionBounds().contains(e.position))
+            {
+                const auto& names = getNoteDivisionNames();
+                delayDivisionIdx = (delayDivisionIdx + 1) % names.size();
+                syncDelayTimeFromDivision();
+
+                updateReadout("DIV: " + names[delayDivisionIdx]);
+                if (onParameterAdjusted)
+                    onParameterAdjusted(config.index, "DIV: " + names[delayDivisionIdx]);
+                repaint();
+                return;
+            }
+
+            // Free Time Knob
+            if (!delayIsSynced && secondaryKnob1.bounds.contains(e.position))
+            {
+                secondaryKnob1.isDragging = true;
+                secondaryKnob1.dragStartY = e.position.y;
+                secondaryKnob1.dragStartVal = getNormalizedParamValue(secondaryKnob1.paramID);
+                return;
+            }
+
+            // Feedback Knob
+            if (secondaryKnob2.bounds.contains(e.position))
+            {
+                secondaryKnob2.isDragging = true;
+                secondaryKnob2.dragStartY = e.position.y;
+                secondaryKnob2.dragStartVal = getNormalizedParamValue(secondaryKnob2.paramID);
+                return;
+            }
+        }
+        else
+        {
+            // Tone / Rate Knob
+            if (secondaryKnob1.bounds.contains(e.position))
+            {
+                secondaryKnob1.isDragging = true;
+                secondaryKnob1.dragStartY = e.position.y;
+                secondaryKnob1.dragStartVal = getNormalizedParamValue(secondaryKnob1.paramID);
+                return;
+            }
+        }
+    }
+}
+
+void EffectsPanel::EffectZoneComponent::mouseDrag(const juce::MouseEvent& e)
+{
+    if (isDraggingMixBar)
+    {
+        auto mixArea = getMixBarBounds();
+        float trackX = mixArea.getX() + 2.0f;
+        float trackW = juce::jmax(1.0f, mixArea.getWidth() - 4.0f);
+        float normVal = juce::jlimit(0.0f, 1.0f, (e.position.x - trackX) / trackW);
+
+        setNormalizedParamValue(config.mixParamID, normVal);
+        int pct = (int)std::round(normVal * 100.0f);
+        updateReadout("MIX: " + juce::String(pct) + "%");
+        if (onParameterAdjusted)
+            onParameterAdjusted(config.index, "MIX: " + juce::String(pct) + "%");
+        return;
+    }
+
+    if (secondaryKnob1.isDragging)
+    {
+        float dy = secondaryKnob1.dragStartY - e.position.y;
+        float nextNorm = juce::jlimit(0.0f, 1.0f, secondaryKnob1.dragStartVal + dy / 100.0f);
+        setNormalizedParamValue(secondaryKnob1.paramID, nextNorm);
+
+        if (config.index == 0) // Drive Tone
+        {
+            int pct = (int)std::round(nextNorm * 100.0f);
+            updateReadout("TONE: " + juce::String(pct) + "%");
+        }
+        else if (config.index == 3) // Delay Time (ms)
+        {
+            float ms = 10.0f + nextNorm * (1000.0f - 10.0f);
+            updateReadout("TIME: " + juce::String((int)std::round(ms)) + "ms");
+        }
+        else // Rate (Hz)
+        {
+            if (auto* param = apvts.getParameter(secondaryKnob1.paramID))
+            {
+                float rawVal = param->getNormalisableRange().convertFrom0to1(nextNorm);
+                updateReadout("RATE: " + juce::String(rawVal, 2) + "Hz");
+            }
+        }
+        return;
+    }
+
+    if (secondaryKnob2.isDragging)
+    {
+        float dy = secondaryKnob2.dragStartY - e.position.y;
+        float nextNorm = juce::jlimit(0.0f, 1.0f, secondaryKnob2.dragStartVal + dy / 100.0f);
+        setNormalizedParamValue(secondaryKnob2.paramID, nextNorm);
+
+        int pct = (int)std::round(nextNorm * 100.0f);
+        updateReadout("FDBK: " + juce::String(pct) + "%");
+        return;
+    }
+}
+
+void EffectsPanel::EffectZoneComponent::mouseUp(const juce::MouseEvent&)
+{
+    isDraggingMixBar = false;
+    secondaryKnob1.isDragging = false;
+    secondaryKnob2.isDragging = false;
+}
+
+void EffectsPanel::EffectZoneComponent::mouseDoubleClick(const juce::MouseEvent& e)
+{
+    if (getMixBarBounds().contains(e.position))
+    {
+        setNormalizedParamValue(config.mixParamID, 0.0f);
+        updateReadout("MIX: 0%");
+        if (onParameterAdjusted)
+            onParameterAdjusted(config.index, "MIX: 0%");
+    }
+}
+
+void EffectsPanel::EffectZoneComponent::mouseMove(const juce::MouseEvent& e)
+{
+    bool headerHover = getHeaderBounds().contains(e.position);
+    bool mixHover = getMixBarBounds().contains(e.position);
+
+    if (headerHover != isHeaderHovered || mixHover != isMixBarHovered)
+    {
+        isHeaderHovered = headerHover;
+        isMixBarHovered = mixHover;
         repaint();
     }
 }
 
-void EffectsPanel::EffectModuleComponent::mouseUp(const juce::MouseEvent&)
+void EffectsPanel::EffectZoneComponent::mouseExit(const juce::MouseEvent&)
 {
-    if (!wasDragged)
-    {
-        // Click toggles bypass state
-        bool newState = !toggleButton.getToggleState();
-        toggleButton.setToggleState(newState, juce::sendNotification);
-        if (onHoverChanged) onHoverChanged(this);
-        repaint();
-    }
-    wasDragged = false;
-}
-
-void EffectsPanel::EffectModuleComponent::mouseEnter(const juce::MouseEvent&)
-{
-    isHovered = true;
-    if (onHoverChanged) onHoverChanged(this);
+    isHeaderHovered = false;
+    isMixBarHovered = false;
     repaint();
-}
-
-void EffectsPanel::EffectModuleComponent::mouseExit(const juce::MouseEvent&)
-{
-    isHovered = false;
-    if (onHoverChanged) onHoverChanged(nullptr);
-    repaint();
-}
-
-void EffectsPanel::EffectModuleComponent::mouseWheelMove(const juce::MouseEvent&, const juce::MouseWheelDetails& wheel)
-{
-    auto range = primarySlider.getRange();
-    float delta = (float)(range.getLength() * wheel.deltaY * 0.05f);
-    float newVal = juce::jlimit((float)range.getStart(), (float)range.getEnd(), (float)primarySlider.getValue() + delta);
-    primarySlider.setValue(newVal, juce::sendNotification);
-    if (onValueChanged) onValueChanged(newVal);
-    repaint();
-}
-
-//==============================================================================
-// 7-Segment Digital Character Drawing Helper
-//==============================================================================
-static void draw7SegmentDigit(juce::Graphics& g, juce::Rectangle<float> b, juce::juce_wchar c, juce::Colour onCol, juce::Colour offCol)
-{
-    // Segment mapping bits: 0:a, 1:b, 2:c, 3:d, 4:e, 5:f, 6:g
-    uint8_t mask = 0;
-    switch (c)
-    {
-        case '0': mask = 0b00111111; break;
-        case '1': mask = 0b00000110; break;
-        case '2': mask = 0b01011011; break;
-        case '3': mask = 0b01001111; break;
-        case '4': mask = 0b01100110; break;
-        case '5': mask = 0b01101101; break;
-        case '6': mask = 0b01111101; break;
-        case '7': mask = 0b00000111; break;
-        case '8': mask = 0b01111111; break;
-        case '9': mask = 0b01101111; break;
-        case '-': mask = 0b01000000; break;
-        default:  mask = 0b00000000; break;
-    }
-
-    float w = b.getWidth();
-    float h = b.getHeight();
-    float t = juce::jmax(2.2f, h * 0.125f); // segment thickness
-    float gap = t * 0.20f;
-    float slant = w * 0.06f; // subtle digital slant
-
-    float x = b.getX();
-    float y = b.getY();
-    float midY = y + h * 0.5f;
-
-    auto drawHorizSeg = [&](bool on, float sx, float sy, float sw) {
-        juce::Path p;
-        p.startNewSubPath(sx + t * 0.5f + slant, sy);
-        p.lineTo(sx + sw - t * 0.5f + slant, sy);
-        p.lineTo(sx + sw + slant, sy + t * 0.5f);
-        p.lineTo(sx + sw - t * 0.5f + slant, sy + t);
-        p.lineTo(sx + t * 0.5f + slant, sy + t);
-        p.lineTo(sx + slant, sy + t * 0.5f);
-        p.closeSubPath();
-
-        if (on)
-        {
-            g.setColour(onCol.withAlpha(0.35f));
-            g.strokePath(p, juce::PathStrokeType(t * 0.75f));
-            g.setColour(onCol);
-            g.fillPath(p);
-        }
-        else
-        {
-            g.setColour(offCol);
-            g.fillPath(p);
-        }
-    };
-
-    auto drawVertSeg = [&](bool on, float sx, float sy, float sh) {
-        juce::Path p;
-        p.startNewSubPath(sx + slant, sy + t * 0.5f);
-        p.lineTo(sx + t + slant, sy + t * 0.5f);
-        p.lineTo(sx + t + slant, sy + sh - t * 0.5f);
-        p.lineTo(sx + t * 0.5f + slant, sy + sh);
-        p.lineTo(sx + slant, sy + sh - t * 0.5f);
-        p.closeSubPath();
-
-        if (on)
-        {
-            g.setColour(onCol.withAlpha(0.35f));
-            g.strokePath(p, juce::PathStrokeType(t * 0.75f));
-            g.setColour(onCol);
-            g.fillPath(p);
-        }
-        else
-        {
-            g.setColour(offCol);
-            g.fillPath(p);
-        }
-    };
-
-    // a: Top
-    drawHorizSeg((mask & (1 << 0)) != 0, x + gap, y, w - 2.0f * gap);
-    // b: Top-Right
-    drawVertSeg((mask & (1 << 1)) != 0, x + w - t, y + gap, midY - y - gap);
-    // c: Bottom-Right
-    drawVertSeg((mask & (1 << 2)) != 0, x + w - t, midY + gap, y + h - midY - gap);
-    // d: Bottom
-    drawHorizSeg((mask & (1 << 3)) != 0, x + gap, y + h - t, w - 2.0f * gap);
-    // e: Bottom-Left
-    drawVertSeg((mask & (1 << 4)) != 0, x, midY + gap, y + h - midY - gap);
-    // f: Top-Left
-    drawVertSeg((mask & (1 << 5)) != 0, x, y + gap, midY - y - gap);
-    // g: Middle
-    drawHorizSeg((mask & (1 << 6)) != 0, x + gap, midY - t * 0.5f, w - 2.0f * gap);
 }
 
 //==============================================================================
 // EffectsPanel Implementation
 //==============================================================================
-EffectsPanel::EffectsPanel(juce::AudioProcessorValueTreeState& apvts)
-    : driveModule("DRIVE",
-                  { juce::Colour(0xFD, 0xBA, 0x74), juce::Colour(0xFB, 0x92, 0x3C),
-                    juce::Colour(0xF9, 0x73, 0x16), juce::Colour(0xEA, 0x58, 0x0C) },
-                  juce::Colour(0xF9, 0x73, 0x16)),
-      phaserModule("PHASER",
-                   { juce::Colour(0xFE, 0xF9, 0xC3), juce::Colour(0xFE, 0xF0, 0x8A),
-                     juce::Colour(0xFA, 0xCC, 0x15), juce::Colour(0xCA, 0x8A, 0x04) },
-                   juce::Colour(0xFA, 0xCC, 0x15)),
-      delayModule("DELAY",
-                  { juce::Colour(0xBB, 0xF7, 0xD0), juce::Colour(0x86, 0xEF, 0xAC),
-                    juce::Colour(0x22, 0xC5, 0x5E), juce::Colour(0x16, 0xA3, 0x4A) },
-                  juce::Colour(0x22, 0xC5, 0x5E)),
-      chorusModule("CHORUS",
-                   { juce::Colour(0xBF, 0xDB, 0xFE), juce::Colour(0x60, 0xA5, 0xFA),
-                     juce::Colour(0x3B, 0x82, 0xF6), juce::Colour(0x1D, 0x4E, 0xD8) },
-                   juce::Colour(0x3B, 0x82, 0xF6)),
-      gateModule("GATE",
-                 { juce::Colour(0xFB, 0xCF, 0xE8), juce::Colour(0xF4, 0x72, 0xB6),
-                   juce::Colour(0xD9, 0x46, 0xEF), juce::Colour(0x86, 0x19, 0x8F) },
-                 juce::Colour(0xD9, 0x46, 0xEF))
+EffectsPanel::EffectsPanel(juce::AudioProcessorValueTreeState& apvtsRef,
+                           std::function<double()> bpmProviderFn)
+    : apvts(apvtsRef),
+      bpmProvider(bpmProviderFn)
 {
-    auto setupModule = [this](EffectModuleComponent& mod) {
-        addAndMakeVisible(mod);
-        mod.onHoverChanged = [this](EffectModuleComponent* m) {
-            focusedModule = m;
-            updateDisplayedPercentage();
-            repaint();
-        };
-        mod.onValueChanged = [this](float) {
-            updateDisplayedPercentage();
-            repaint();
-        };
-    };
+    setupZones();
 
-    setupModule(driveModule);
-    setupModule(phaserModule);
-    setupModule(delayModule);
-    setupModule(chorusModule);
-    setupModule(gateModule);
+    for (const auto& paramID : watchedParamIDs)
+    {
+        apvts.addParameterListener(paramID, this);
+    }
 
-    // Attachments to existing APVTS parameters
-    driveToggleAttachment = std::make_unique<ButtonAttachment>(apvts, "FX_DRIVE_ENABLE", driveModule.toggleButton);
-    driveAmountAttachment = std::make_unique<SliderAttachment>(apvts, "FX_DRIVE_AMOUNT", driveModule.primarySlider);
-    driveToneAttachment = std::make_unique<SliderAttachment>(apvts, "FX_DRIVE_TONE", driveModule.secondarySlider);
-
-    phaserToggleAttachment = std::make_unique<ButtonAttachment>(apvts, "FX_PHASER_ENABLE", phaserModule.toggleButton);
-    phaserAmountAttachment = std::make_unique<SliderAttachment>(apvts, "FX_PHASER_AMOUNT", phaserModule.primarySlider);
-    phaserRateAttachment = std::make_unique<SliderAttachment>(apvts, "FX_PHASER_RATE", phaserModule.secondarySlider);
-
-    delayToggleAttachment = std::make_unique<ButtonAttachment>(apvts, "FX_DELAY_ENABLE", delayModule.toggleButton);
-    delayAmountAttachment = std::make_unique<SliderAttachment>(apvts, "FX_DELAY_AMOUNT", delayModule.primarySlider);
-    delayTimeAttachment = std::make_unique<SliderAttachment>(apvts, "FX_DELAY_TIME", delayModule.secondarySlider);
-
-    chorusToggleAttachment = std::make_unique<ButtonAttachment>(apvts, "FX_CHORUS_ENABLE", chorusModule.toggleButton);
-    chorusAmountAttachment = std::make_unique<SliderAttachment>(apvts, "FX_CHORUS_AMOUNT", chorusModule.primarySlider);
-    chorusRateAttachment = std::make_unique<SliderAttachment>(apvts, "FX_CHORUS_RATE", chorusModule.secondarySlider);
-
-    sidechainToggleAttachment = std::make_unique<ButtonAttachment>(apvts, "FX_SIDECHAIN_ENABLE", gateModule.toggleButton);
-    sidechainMixAttachment = std::make_unique<SliderAttachment>(apvts, "FX_SIDECHAIN_MIX", gateModule.primarySlider);
-    sidechainRateAttachment = std::make_unique<SliderAttachment>(apvts, "FX_SIDECHAIN_RATE", gateModule.secondarySlider);
-
-    updateDisplayedPercentage();
+    startTimerHz(60);
 }
 
 EffectsPanel::~EffectsPanel()
 {
-    driveToggleAttachment.reset();
-    driveAmountAttachment.reset();
-    driveToneAttachment.reset();
+    stopTimer();
 
-    phaserToggleAttachment.reset();
-    phaserAmountAttachment.reset();
-    phaserRateAttachment.reset();
-
-    delayToggleAttachment.reset();
-    delayAmountAttachment.reset();
-    delayTimeAttachment.reset();
-
-    chorusToggleAttachment.reset();
-    chorusAmountAttachment.reset();
-    chorusRateAttachment.reset();
-
-    sidechainToggleAttachment.reset();
-    sidechainMixAttachment.reset();
-    sidechainRateAttachment.reset();
+    for (const auto& paramID : watchedParamIDs)
+    {
+        apvts.removeParameterListener(paramID, this);
+    }
 }
 
-void EffectsPanel::updateDisplayedPercentage()
+void EffectsPanel::setupZones()
 {
-    if (focusedModule != nullptr)
+    zones.clear();
+
+    const std::vector<EffectZoneConfig> defs = {
+        { 0, "DRIVE",  juce::Colour(0xD9, 0x77, 0x06), "FX_DRIVE_ENABLE",     "FX_DRIVE_AMOUNT", "FX_DRIVE_TONE",     "" },
+        { 1, "CHORUS", juce::Colour(0x3B, 0x82, 0xF6), "FX_CHORUS_ENABLE",    "FX_CHORUS_AMOUNT", "FX_CHORUS_RATE",     "" },
+        { 2, "PHASER", juce::Colour(0x8B, 0x7A, 0xA8), "FX_PHASER_ENABLE",    "FX_PHASER_AMOUNT", "FX_PHASER_RATE",     "" },
+        { 3, "DELAY",  juce::Colour(0x14, 0xB8, 0xA6), "FX_DELAY_ENABLE",     "FX_DELAY_AMOUNT", "FX_DELAY_TIME",     "FX_DELAY_FEEDBACK" },
+        { 4, "GATE",   juce::Colour(0x93, 0x33, 0xEA), "FX_SIDECHAIN_ENABLE", "FX_SIDECHAIN_MIX", "FX_SIDECHAIN_RATE", "" }
+    };
+
+    for (const auto& def : defs)
     {
-        displayedPercentage = juce::jlimit(0, 100, (int)std::round(focusedModule->getAmount() * 100.0f));
+        auto zone = std::make_unique<EffectZoneComponent>(
+            def, apvts, bpmProvider,
+            [this](int selectedIdx) {
+                // Expand / Collapse selection toggle
+                if (selectedZoneIndex == selectedIdx)
+                {
+                    selectedZoneIndex = -1; // Collapse
+                }
+                else
+                {
+                    selectedZoneIndex = selectedIdx; // Expand this one, collapse others
+                }
+
+                for (auto& z : zones)
+                {
+                    if (z != nullptr)
+                        z->setSelected(z->getZoneIndex() == selectedZoneIndex);
+                }
+                repaint();
+            },
+            [this](int zoneIdx, const juce::String& text) {
+                juce::ignoreUnused(zoneIdx, text);
+            });
+
+        addAndMakeVisible(*zone);
+        zones.push_back(std::move(zone));
     }
-    else
+}
+
+void EffectsPanel::parameterChanged(const juce::String&, float)
+{
+    // External parameter changes (automation, preset load, shuffle FX)
+    juce::MessageManager::callAsync([this]() {
+        for (auto& z : zones)
+        {
+            if (z != nullptr)
+                z->syncFromAPVTS();
+        }
+        repaint();
+    });
+}
+
+void EffectsPanel::timerCallback()
+{
+    for (auto& z : zones)
     {
-        // If Delay or other active effects are engaged, compute representative active amount
-        float totalVal = 0.0f;
-        int activeCount = 0;
-
-        EffectModuleComponent* modules[] = { &driveModule, &phaserModule, &delayModule, &chorusModule, &gateModule };
-        for (auto* m : modules)
-        {
-            if (m->isEffectEnabled())
-            {
-                totalVal += m->getAmount();
-                activeCount++;
-            }
-        }
-
-        if (activeCount > 0)
-        {
-            displayedPercentage = juce::jlimit(0, 100, (int)std::round((totalVal / (float)activeCount) * 100.0f));
-        }
-        else
-        {
-            // Default iconic reference value when at rest
-            displayedPercentage = 33;
-        }
+        if (z != nullptr)
+            z->tickAnimation();
     }
 }
 
@@ -399,131 +751,44 @@ void EffectsPanel::paint(juce::Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat();
 
-    // 1. Dark hardware rack panel chassis
-    g.setColour(juce::Colour(0x0C, 0x0D, 0x11));
-    g.fillRoundedRectangle(bounds, 6.0f);
+    // 1. Unified Continuous Dark Hardware LCD Background
+    juce::Colour topBg = juce::Colour(0x0A, 0x0B, 0x0F);
+    juce::Colour botBg = juce::Colour(0x0E, 0x0F, 0x14);
+    juce::ColourGradient bgGrad(topBg, bounds.getX(), bounds.getY(), botBg, bounds.getX(), bounds.getBottom(), false);
+    g.setGradientFill(bgGrad);
+    g.fillRoundedRectangle(bounds, 5.0f);
 
-    // Subtle dark-grey border
-    g.setColour(juce::Colour(0x28, 0x2A, 0x34));
-    g.drawRoundedRectangle(bounds, 6.0f, 1.2f);
+    // Hairline outer bezel frame
+    g.setColour(juce::Colour(0x20, 0x22, 0x2B));
+    g.drawRoundedRectangle(bounds, 5.0f, 1.0f);
 
-    // Inset top specular highlight
-    g.setColour(juce::Colour(0x3C, 0x40, 0x50).withAlpha(0.25f));
-    g.drawHorizontalLine((int)(bounds.getY() + 1.0f), bounds.getX() + 6.0f, bounds.getRight() - 6.0f);
+    // Subtle top specular highlight line
+    g.setColour(juce::Colour(0x38, 0x3C, 0x4C).withAlpha(0.20f));
+    g.drawHorizontalLine((int)(bounds.getY() + 1.0f), bounds.getX() + 5.0f, bounds.getRight() - 5.0f);
 
-    // 2. Thin vertical divider separating effect controls from the digital percentage display
-    if (dividerX > 0.0f)
+    // 2. Extremely subtle vertical divider guides separating the 5 zones
+    float colWidth = bounds.getWidth() / 5.0f;
+    g.setColour(juce::Colour(0x16, 0x18, 0x22));
+    for (int i = 1; i < 5; ++i)
     {
-        g.setColour(juce::Colour(0x24, 0x26, 0x30));
-        g.drawVerticalLine((int)dividerX, bounds.getY() + 8.0f, bounds.getBottom() - 8.0f);
+        float divX = bounds.getX() + (float)i * colWidth;
+        g.drawVerticalLine((int)divX, bounds.getY() + 4.0f, bounds.getBottom() - 4.0f);
     }
-
-    // 3. Digital 7-Segment Percentage Display
-    if (!digitalDisplayArea.isEmpty())
-    {
-        drawDigitalDisplay(g, digitalDisplayArea);
-    }
-}
-
-void EffectsPanel::drawDigitalDisplay(juce::Graphics& g, juce::Rectangle<float> area)
-{
-    // Format digits string (e.g. "33", "100", " 5")
-    int val = juce::jlimit(0, 100, displayedPercentage);
-    juce::String valStr = juce::String(val);
-
-    juce::Colour litGreen = juce::Colour(0x22, 0xC5, 0x5E);
-    juce::Colour ghostGreen = juce::Colour(0x0A, 0x22, 0x12).withAlpha(0.35f);
-
-    // Recessed background glow for display area
-    g.setColour(litGreen.withAlpha(0.04f));
-    g.fillRoundedRectangle(area.reduced(2.0f), 4.0f);
-
-    float totalHeight = juce::jmin(44.0f, area.getHeight() - 16.0f);
-    float digitWidth = totalHeight * 0.46f;
-    float digitGap = digitWidth * 0.22f;
-    float percentWidth = digitWidth * 0.85f;
-
-    int numDigits = (val >= 100) ? 3 : 2;
-    float blockWidth = (float)numDigits * digitWidth + (float)(numDigits - 1) * digitGap + digitGap * 1.5f + percentWidth;
-
-    float startX = area.getRight() - blockWidth - 10.0f;
-    float startY = area.getCentreY() - totalHeight * 0.5f;
-
-    // Draw digits
-    if (numDigits == 3)
-    {
-        draw7SegmentDigit(g, juce::Rectangle<float>(startX, startY, digitWidth, totalHeight),
-                          valStr[0], litGreen, ghostGreen);
-        draw7SegmentDigit(g, juce::Rectangle<float>(startX + digitWidth + digitGap, startY, digitWidth, totalHeight),
-                          valStr[1], litGreen, ghostGreen);
-        draw7SegmentDigit(g, juce::Rectangle<float>(startX + (digitWidth + digitGap) * 2.0f, startY, digitWidth, totalHeight),
-                          valStr[2], litGreen, ghostGreen);
-    }
-    else
-    {
-        // 2 Digits
-        juce::juce_wchar d1 = (valStr.length() >= 2) ? valStr[0] : (juce::juce_wchar)' ';
-        juce::juce_wchar d2 = (valStr.length() >= 2) ? valStr[1] : valStr[0];
-
-        draw7SegmentDigit(g, juce::Rectangle<float>(startX, startY, digitWidth, totalHeight),
-                          d1, litGreen, ghostGreen);
-        draw7SegmentDigit(g, juce::Rectangle<float>(startX + digitWidth + digitGap, startY, digitWidth, totalHeight),
-                          d2, litGreen, ghostGreen);
-    }
-
-    // Draw '%' Symbol in digital style
-    float px = startX + (float)numDigits * digitWidth + (float)(numDigits - 1) * digitGap + digitGap * 1.5f;
-    float py = startY;
-    float pw = percentWidth;
-    float ph = totalHeight;
-    float dotSize = juce::jmax(3.0f, ph * 0.14f);
-
-    // Top dot
-    g.setColour(litGreen);
-    g.fillRect(px + 1.0f, py + 2.0f, dotSize, dotSize);
-
-    // Diagonal slash
-    g.setColour(litGreen.withAlpha(0.35f));
-    g.drawLine(px + 2.0f, py + ph - 2.0f, px + pw - 2.0f, py + 2.0f, dotSize * 0.9f);
-    g.setColour(litGreen);
-    g.drawLine(px + 2.0f, py + ph - 2.0f, px + pw - 2.0f, py + 2.0f, dotSize * 0.65f);
-
-    // Bottom dot
-    g.fillRect(px + pw - dotSize - 1.0f, py + ph - dotSize - 2.0f, dotSize, dotSize);
 }
 
 void EffectsPanel::resized()
 {
-    auto area = getLocalBounds().toFloat().reduced(8.0f, 6.0f);
-    if (area.getWidth() <= 0.0f || area.getHeight() <= 0.0f)
+    auto bounds = getLocalBounds();
+    if (bounds.isEmpty() || zones.empty())
         return;
 
-    // Right ~30% for Digital 7-Segment Percentage Display
-    float rightWidth = juce::jmin(115.0f, area.getWidth() * 0.32f);
-    digitalDisplayArea = area.removeFromRight(rightWidth);
+    int totalZones = (int)zones.size();
+    float colWidth = (float)bounds.getWidth() / (float)totalZones;
 
-    dividerX = digitalDisplayArea.getX() - 6.0f;
-    area.removeFromRight(12.0f);
-
-    // Left Effects Grid (DRIVE | PHASER | DELAY / CHORUS | GATE)
-    float colWidth = area.getWidth() / 3.0f;
-    float rowHeight = area.getHeight() / 2.0f;
-
-    float moduleW = juce::jmin(62.0f, colWidth - 6.0f);
-    float moduleH = juce::jmin(38.0f, rowHeight - 4.0f);
-
-    // Col 1: DRIVE (top), CHORUS (bottom)
-    auto col1 = area.removeFromLeft(colWidth);
-    auto c1Top = col1.removeFromTop(rowHeight);
-    driveModule.setBounds(c1Top.withSizeKeepingCentre(moduleW, moduleH).toNearestInt());
-    chorusModule.setBounds(col1.withSizeKeepingCentre(moduleW, moduleH).toNearestInt());
-
-    // Col 2: PHASER (top), GATE (bottom)
-    auto col2 = area.removeFromLeft(colWidth);
-    auto c2Top = col2.removeFromTop(rowHeight);
-    phaserModule.setBounds(c2Top.withSizeKeepingCentre(moduleW, moduleH).toNearestInt());
-    gateModule.setBounds(col2.withSizeKeepingCentre(moduleW, moduleH).toNearestInt());
-
-    // Col 3: DELAY (vertically centered in column 3)
-    delayModule.setBounds(area.withSizeKeepingCentre(moduleW, moduleH).toNearestInt());
+    for (int i = 0; i < totalZones; ++i)
+    {
+        int x0 = (int)std::round((float)i * colWidth);
+        int x1 = (int)std::round((float)(i + 1) * colWidth);
+        zones[(size_t)i]->setBounds(x0, bounds.getY(), x1 - x0, bounds.getHeight());
+    }
 }

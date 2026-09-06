@@ -98,6 +98,8 @@ public:
     bool isPluginInitialized() const { return isInitialized; }
     void setPluginInitialized(bool init) { isInitialized = init; }
 
+    double getHostBpm() const { return sampleEngine.getHostBpm(); }
+
     void loadSample(const juce::AudioBuffer<float>& buffer, double nativeSampleRate = 44100.0, int rootNote = 60)
     {
         sampleEngine.loadSample(buffer, nativeSampleRate, rootNote);
