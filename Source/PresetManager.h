@@ -23,8 +23,19 @@ public:
     juce::File getPresetsFolder() const { return presetsFolder; }
     juce::File getSamplesFolder() const { return samplesFolder; }
 
+    // The currently browsed/scanned root folder. Defaults to getPresetsFolder() and persists
+    // across sessions (see loadPersistedRoot()/persistRoot()). Banks are its immediate
+    // subdirectories; presets are files directly inside a bank subdirectory.
+    juce::File getPresetsRoot() const { return presetsRoot; }
+
+    // Returns true if newRoot was a valid, existing directory and became the new root.
+    // Returns false if newRoot was invalid/missing, in which case the root falls back to
+    // getPresetsFolder() (the default presets directory) instead.
+    bool setPresetsRoot(const juce::File& newRoot);
+
     juce::Array<PresetInfo> getAllPresets() const;
     juce::StringArray getAllBanks() const;
+    juce::Array<PresetInfo> getPresetsInBank(const juce::String& bankName) const;
     juce::Array<juce::File> getAllSamples() const;
 
     bool createBank(const juce::String& bankName);
@@ -73,12 +84,17 @@ public:
 private:
     juce::File presetsFolder;
     juce::File samplesFolder;
+    juce::File presetsRoot;
+    juce::File rootSettingsFile;
 
     mutable juce::Array<PresetInfo> cachedPresets;
     mutable bool isCacheValid = false;
 
     void ensureDirectoriesExist();
+    void ensureRootExists();
+    void loadPersistedRoot();
+    void persistRoot() const;
+    juce::Array<PresetInfo> scanBankDirectory(const juce::File& bankDir, const juce::String& bankName) const;
     void createFactoryPreset(const juce::String& name, const juce::String& category,
-                             float ampA, float ampD, float ampS, float ampR,
-                             float filtA, float filtD, float filtS, float filtR);
+                             float ampA, float ampD, float ampS, float ampR);
 };

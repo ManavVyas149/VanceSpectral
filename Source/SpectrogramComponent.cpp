@@ -1,6 +1,7 @@
 #include "SpectrogramComponent.h"
 #include "PluginProcessor.h"
 #include "PresetManager.h"
+#include "AudioResampler.h"
 
 SpectrogramComponent::SpectrogramComponent(VancespectralAudioProcessor &p)
     : processor(p) {
@@ -59,10 +60,15 @@ void SpectrogramComponent::loadAudioFile(const juce::File &file, bool isPartOfPr
       return;
     }
 
-    juce::AudioBuffer<float> tempBuffer((int)localReader->numChannels, (int)localReader->lengthInSamples);
-    localReader->read(&tempBuffer, 0, (int)localReader->lengthInSamples, 0, true, true);
-    double sr = localReader->sampleRate;
+    juce::AudioBuffer<float> rawBuffer((int)localReader->numChannels, (int)localReader->lengthInSamples);
+    localReader->read(&rawBuffer, 0, (int)localReader->lengthInSamples, 0, true, true);
+    double sourceSr = localReader->sampleRate;
     localReader.reset();
+
+    // Resample at import time via libsamplerate (SRC_SINC_BEST_QUALITY) if sample rate differs from plugin session rate
+    double targetSr = processor.getSampleRate() > 0.0 ? processor.getSampleRate() : 44100.0;
+    juce::AudioBuffer<float> tempBuffer = AudioResampler::resampleIfNeeded(rawBuffer, sourceSr, targetSr);
+    double sr = targetSr;
 
     PresetManager pm;
     juce::File imported = pm.importSample(file);
@@ -149,14 +155,15 @@ void SpectrogramComponent::loadDirectAudioBuffer(const juce::AudioBuffer<float>&
   if (buffer.getNumSamples() == 0)
     return;
 
-  audioBuffer = buffer;
+  double targetSr = processor.getSampleRate() > 0.0 ? processor.getSampleRate() : 44100.0;
+  audioBuffer = AudioResampler::resampleIfNeeded(buffer, sampleRate, targetSr);
   loadedFile = juce::File();
   fileLoaded = true;
 
   loopEnabled = isLooping;
   loopButton.setToggleState(loopEnabled, juce::dontSendNotification);
 
-  processor.setLoadedSample(juce::File(), audioBuffer, sampleRate);
+  processor.setLoadedSample(juce::File(), audioBuffer, targetSr);
   processor.setCurrentPresetName(fileName.isNotEmpty() ? fileName : "Custom / Unsaved");
   processor.setRegion(startPosition, endPosition);
   processor.setLoop(loopEnabled);
@@ -178,14 +185,24 @@ void SpectrogramComponent::setLoopEnabled(bool loop) {
 
 void SpectrogramComponent::restoreFromProcessorState() {
   if (processor.isSampleLoaded()) {
-    loadedFile = processor.getLoadedSampleFile();
-    if (loadedFile.existsAsFile()) {
-      reader.reset(formatManager.createReaderFor(loadedFile));
-      if (reader != nullptr) {
-        audioBuffer.setSize((int)reader->numChannels, (int)reader->lengthInSamples);
-        reader->read(&audioBuffer, 0, (int)reader->lengthInSamples, 0, true, true);
-        reader.reset();
-        fileLoaded = true;
+    if (processor.getLoadedSampleBuffer().getNumSamples() > 0) {
+      audioBuffer = processor.getLoadedSampleBuffer();
+      loadedFile = processor.getLoadedSampleFile();
+      fileLoaded = true;
+    } else {
+      loadedFile = processor.getLoadedSampleFile();
+      if (loadedFile.existsAsFile()) {
+        reader.reset(formatManager.createReaderFor(loadedFile));
+        if (reader != nullptr) {
+          juce::AudioBuffer<float> rawBuf((int)reader->numChannels, (int)reader->lengthInSamples);
+          reader->read(&rawBuf, 0, (int)reader->lengthInSamples, 0, true, true);
+          double sourceSr = reader->sampleRate;
+          reader.reset();
+
+          double targetSr = processor.getSampleRate() > 0.0 ? processor.getSampleRate() : 44100.0;
+          audioBuffer = AudioResampler::resampleIfNeeded(rawBuf, sourceSr, targetSr);
+          fileLoaded = true;
+        }
       }
     }
   }
@@ -695,13 +712,14 @@ juce::File SpectrogramComponent::createTempWavForExport(bool exportSelectionOnly
   if (fileStream == nullptr || fileStream->failedToOpen())
     return loadedFile;
 
+  std::unique_ptr<juce::OutputStream> outStream(std::move(fileStream));
   double sr = reader != nullptr && reader->sampleRate > 0.0 ? reader->sampleRate : 44100.0;
-  std::unique_ptr<juce::AudioFormatWriter> writer(
-      wavFormat.createWriterFor(fileStream.release(),
-                                sr,
-                                (unsigned int)audioBuffer.getNumChannels(),
-                                24, // 24-bit PCM depth
-                                {}, 0));
+  std::unique_ptr<juce::AudioFormatWriter> writer(wavFormat.createWriterFor(
+      outStream,
+      juce::AudioFormatWriterOptions()
+          .withSampleRate(sr)
+          .withNumChannels((unsigned int)audioBuffer.getNumChannels())
+          .withBitsPerSample(24)));
 
   if (writer != nullptr) {
     juce::AudioBuffer<float> exportBuffer(audioBuffer.getNumChannels(), numSamples);
@@ -878,7 +896,6 @@ void SpectrogramComponent::mouseDown(const juce::MouseEvent &e) {
       initialSelectionBoundsNormalized = selections.getReference(i).normalizedBounds;
       dragStartMousePosNormalized = juce::Point<float>(normX, normY);
       updateFrequencyFilterFromSelections();
-      processor.playSample();
       repaint();
       return;
     }
@@ -1037,7 +1054,6 @@ void SpectrogramComponent::mouseUp(const juce::MouseEvent &) {
 
     currentDrawingPathNormalized.clear();
     updateFrequencyFilterFromSelections();
-    processor.playSample();
     repaint();
   }
 }

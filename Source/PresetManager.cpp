@@ -85,18 +85,51 @@ void PresetManager::ensureDirectoriesExist()
     auto existingFiles = presetsFolder.findChildFiles(juce::File::TypesOfFileToFind::findFiles, true, "*.vsts;*.vsfx;*.json");
     if (existingFiles.isEmpty())
     {
-        createFactoryPreset("Cold Synth", "Synth", 0.05f, 0.20f, 0.8f, 0.40f, 0.02f, 0.30f, 0.5f, 0.35f);
-        createFactoryPreset("Spectral Lead", "Lead", 0.01f, 0.15f, 0.9f, 0.25f, 0.01f, 0.20f, 0.7f, 0.20f);
-        createFactoryPreset("Cyber Bass", "Bass", 0.005f, 0.30f, 0.6f, 0.20f, 0.005f, 0.40f, 0.4f, 0.15f);
-        createFactoryPreset("Neon Pad", "Pad", 0.80f, 1.20f, 0.85f, 1.50f, 0.60f, 1.00f, 0.75f, 1.20f);
-        createFactoryPreset("Vibe Synth", "Synth", 0.08f, 0.25f, 0.75f, 0.50f, 0.04f, 0.35f, 0.6f, 0.40f);
-        createFactoryPreset("Glitch Pulse", "FX", 0.001f, 0.08f, 0.3f, 0.10f, 0.001f, 0.10f, 0.2f, 0.08f);
+        createFactoryPreset("Cold Synth", "Synth", 0.05f, 0.20f, 0.8f, 0.40f);
+        createFactoryPreset("Spectral Lead", "Lead", 0.01f, 0.15f, 0.9f, 0.25f);
+        createFactoryPreset("Cyber Bass", "Bass", 0.005f, 0.30f, 0.6f, 0.20f);
+        createFactoryPreset("Neon Pad", "Pad", 0.80f, 1.20f, 0.85f, 1.50f);
+        createFactoryPreset("Vibe Synth", "Synth", 0.08f, 0.25f, 0.75f, 0.50f);
+        createFactoryPreset("Glitch Pulse", "FX", 0.001f, 0.08f, 0.3f, 0.10f);
     }
+
+    rootSettingsFile = appDir.getChildFile("browser_root.txt");
+    presetsRoot = presetsFolder;
+    loadPersistedRoot();
+}
+
+void PresetManager::ensureRootExists()
+{
+    if (!presetsRoot.exists())
+        presetsRoot.createDirectory();
+}
+
+void PresetManager::loadPersistedRoot()
+{
+    if (!rootSettingsFile.existsAsFile())
+        return;
+
+    juce::File saved(rootSettingsFile.loadFileAsString().trim());
+    if (saved.isDirectory())
+        presetsRoot = saved;
+}
+
+void PresetManager::persistRoot() const
+{
+    rootSettingsFile.replaceWithText(presetsRoot.getFullPathName());
+}
+
+bool PresetManager::setPresetsRoot(const juce::File& newRoot)
+{
+    bool valid = newRoot.isDirectory() && newRoot.exists();
+    presetsRoot = valid ? newRoot : presetsFolder;
+    persistRoot();
+    invalidateCache();
+    return valid;
 }
 
 void PresetManager::createFactoryPreset(const juce::String& name, const juce::String& category,
-                                          float ampA, float ampD, float ampS, float ampR,
-                                          float filtA, float filtD, float filtS, float filtR)
+                                          float ampA, float ampD, float ampS, float ampR)
 {
     auto factoryFolder = presetsFolder.getChildFile("Factory");
     factoryFolder.createDirectory();
@@ -116,10 +149,6 @@ void PresetManager::createFactoryPreset(const juce::String& name, const juce::St
     paramsObj->setProperty("AMP_DECAY", ampD);
     paramsObj->setProperty("AMP_SUSTAIN", ampS);
     paramsObj->setProperty("AMP_RELEASE", ampR);
-    paramsObj->setProperty("FILTER_ATTACK", filtA);
-    paramsObj->setProperty("FILTER_DECAY", filtD);
-    paramsObj->setProperty("FILTER_SUSTAIN", filtS);
-    paramsObj->setProperty("FILTER_RELEASE", filtR);
     paramsObj->setProperty("PLAYBACK_MODE", 0.0f);
     paramsObj->setProperty("PITCH_MODE", 0.0f);
     paramsObj->setProperty("PITCH_SEMITONES", 0.0f);
@@ -127,6 +156,21 @@ void PresetManager::createFactoryPreset(const juce::String& name, const juce::St
     paramsObj->setProperty("POLY_MODE", 0.0f);
     paramsObj->setProperty("GLIDE", 0.0f);
     paramsObj->setProperty("GAIN", 0.0f);
+    paramsObj->setProperty("FX_GATE_ENABLE", 0.0f);
+    paramsObj->setProperty("FX_GATE_AMOUNT", 0.0f);
+    paramsObj->setProperty("FX_CHORUS_ENABLE", 0.0f);
+    paramsObj->setProperty("FX_CHORUS_AMOUNT", 0.0f);
+    paramsObj->setProperty("FX_CHORUS_RATE", 1.0f);
+    paramsObj->setProperty("FX_PHASER_ENABLE", 0.0f);
+    paramsObj->setProperty("FX_PHASER_AMOUNT", 0.0f);
+    paramsObj->setProperty("FX_PHASER_RATE", 0.5f);
+    paramsObj->setProperty("FX_DELAY_ENABLE", 0.0f);
+    paramsObj->setProperty("FX_DELAY_AMOUNT", 0.0f);
+    paramsObj->setProperty("FX_DELAY_TIME", 250.0f);
+    paramsObj->setProperty("FX_DELAY_FEEDBACK", 0.35f);
+    paramsObj->setProperty("FX_DRIVE_ENABLE", 0.0f);
+    paramsObj->setProperty("FX_DRIVE_AMOUNT", 0.0f);
+    paramsObj->setProperty("FX_DRIVE_TONE", 0.5f);
 
     obj->setProperty("parameters", paramsObj);
 
@@ -143,58 +187,62 @@ void PresetManager::createFactoryPreset(const juce::String& name, const juce::St
     }
 }
 
+juce::Array<PresetInfo> PresetManager::scanBankDirectory(const juce::File& bankDir, const juce::String& bankName) const
+{
+    juce::Array<PresetInfo> result;
+    if (!bankDir.isDirectory())
+        return result;
+
+    // Non-recursive: only files directly inside the bank folder count as its presets.
+    auto files = bankDir.findChildFiles(juce::File::TypesOfFileToFind::findFiles, false, "*.vsts;*.vsfx;*.json");
+
+    for (const auto& file : files)
+    {
+        if (file.getFileName().startsWith("."))
+            continue;
+
+        juce::var parsed = juce::JSON::parse(file.loadFileAsString());
+        if (!parsed.isObject())
+            continue;
+
+        PresetInfo info;
+        info.file = file;
+        info.name = parsed.getProperty("name", file.getFileNameWithoutExtension()).toString();
+
+        juce::String cat = parsed.getProperty("category", "").toString();
+        if (file.hasFileExtension(".vsts"))
+            cat = "STATES";
+        else if (cat.isEmpty())
+            cat = "FX";
+        info.category = cat;
+
+        // Bank membership is authoritative from the folder the file lives in, not JSON metadata.
+        info.bank = bankName;
+        info.sampleFileName = parsed.getProperty("sample", "").toString();
+        info.isFavorite = (bool)parsed.getProperty("isFavorite", false);
+        info.isFactory = (bool)parsed.getProperty("isFactory", bankName.equalsIgnoreCase("Factory"));
+        info.lastUsed = (juce::int64)parsed.getProperty("lastUsed", (juce::int64)0);
+
+        result.add(info);
+    }
+
+    return result;
+}
+
+juce::Array<PresetInfo> PresetManager::getPresetsInBank(const juce::String& bankName) const
+{
+    juce::String clean = juce::File::createLegalFileName(bankName.trim());
+    return scanBankDirectory(presetsRoot.getChildFile(clean), bankName);
+}
+
 juce::Array<PresetInfo> PresetManager::getAllPresets() const
 {
     if (isCacheValid)
         return cachedPresets;
 
     cachedPresets.clear();
-    if (!presetsFolder.exists())
-    {
-        isCacheValid = true;
-        return cachedPresets;
-    }
-
-    auto files = presetsFolder.findChildFiles(juce::File::TypesOfFileToFind::findFiles, true, "*.vsts;*.vsfx;*.json");
-
-    for (const auto& file : files)
-    {
-        // Skip files in hidden directories like .history
-        juce::String relPath = file.getRelativePathFrom(presetsFolder);
-        if (relPath.startsWith(".") || relPath.contains("/.") || relPath.contains("\\."))
-            continue;
-
-        juce::var parsed = juce::JSON::parse(file.loadFileAsString());
-        if (parsed.isObject())
-        {
-            PresetInfo info;
-            info.file = file;
-            info.name = parsed.getProperty("name", file.getFileNameWithoutExtension()).toString();
-            
-            juce::String cat = parsed.getProperty("category", "").toString();
-            if (file.hasFileExtension(".vsts"))
-            {
-                cat = "STATES";
-            }
-            else if (cat.isEmpty())
-            {
-                cat = "FX";
-            }
-            info.category = cat;
-
-            juce::String folderBank = file.getParentDirectory().getFileName();
-            if (folderBank.equalsIgnoreCase("Presets"))
-                folderBank = "User";
-
-            info.bank = parsed.getProperty("bank", folderBank).toString();
-            info.sampleFileName = parsed.getProperty("sample", "").toString();
-            info.isFavorite = (bool)parsed.getProperty("isFavorite", false);
-            info.isFactory = (bool)parsed.getProperty("isFactory", info.bank.equalsIgnoreCase("Factory"));
-            info.lastUsed = (juce::int64)parsed.getProperty("lastUsed", (juce::int64)0);
-
-            cachedPresets.add(info);
-        }
-    }
+    for (const auto& bankName : getAllBanks())
+        cachedPresets.addArray(scanBankDirectory(presetsRoot.getChildFile(bankName), bankName));
 
     isCacheValid = true;
     return cachedPresets;
@@ -202,31 +250,22 @@ juce::Array<PresetInfo> PresetManager::getAllPresets() const
 
 juce::StringArray PresetManager::getAllBanks() const
 {
+    // Banks are simply the immediate subdirectories of the currently selected root.
     juce::StringArray banks;
-    banks.add("Factory");
-    banks.add("User");
+    if (!presetsRoot.exists())
+        return banks;
 
-    if (presetsFolder.exists())
+    auto subDirs = presetsRoot.findChildFiles(juce::File::TypesOfFileToFind::findDirectories, false);
+    for (const auto& dir : subDirs)
     {
-        auto subDirs = presetsFolder.findChildFiles(juce::File::TypesOfFileToFind::findDirectories, false);
-        for (const auto& dir : subDirs)
-        {
-            juce::String name = dir.getFileName();
-            if (name.startsWith("."))
-                continue;
+        juce::String name = dir.getFileName();
+        if (name.startsWith("."))
+            continue;
 
-            if (!banks.contains(name, true))
-                banks.add(name);
-        }
+        banks.add(name);
     }
 
-    auto presets = getAllPresets();
-    for (const auto& p : presets)
-    {
-        if (p.bank.isNotEmpty() && !p.bank.startsWith(".") && !banks.contains(p.bank, true))
-            banks.add(p.bank);
-    }
-
+    banks.sort(true);
     return banks;
 }
 
@@ -251,8 +290,8 @@ bool PresetManager::createBank(const juce::String& bankName)
     if (clean.isEmpty())
         return false;
 
-    ensureDirectoriesExist();
-    auto dir = presetsFolder.getChildFile(clean);
+    ensureRootExists();
+    auto dir = presetsRoot.getChildFile(clean);
     if (!dir.exists())
     {
         dir.createDirectory();
@@ -269,8 +308,8 @@ bool PresetManager::renameBank(const juce::String& oldBankName, const juce::Stri
     juce::String cleanOld = juce::File::createLegalFileName(oldBankName.trim());
     juce::String cleanNew = juce::File::createLegalFileName(newBankName.trim());
 
-    auto oldDir = presetsFolder.getChildFile(cleanOld);
-    auto newDir = presetsFolder.getChildFile(cleanNew);
+    auto oldDir = presetsRoot.getChildFile(cleanOld);
+    auto newDir = presetsRoot.getChildFile(cleanNew);
 
     if (!oldDir.exists())
         return false;
@@ -298,7 +337,7 @@ bool PresetManager::deleteBank(const juce::String& bankName)
         return false;
 
     juce::String clean = juce::File::createLegalFileName(bankName.trim());
-    auto dir = presetsFolder.getChildFile(clean);
+    auto dir = presetsRoot.getChildFile(clean);
     if (dir.exists())
     {
         return dir.deleteRecursively();
@@ -308,7 +347,7 @@ bool PresetManager::deleteBank(const juce::String& bankName)
 
 bool PresetManager::importBankPackage(const juce::File& fileOrFolder)
 {
-    ensureDirectoriesExist();
+    ensureRootExists();
 
     if (!fileOrFolder.exists())
         return false;
@@ -317,7 +356,7 @@ bool PresetManager::importBankPackage(const juce::File& fileOrFolder)
     {
         juce::String bankName = fileOrFolder.getFileName();
         createBank(bankName);
-        auto targetBankDir = presetsFolder.getChildFile(bankName);
+        auto targetBankDir = presetsRoot.getChildFile(bankName);
 
         auto jsonFiles = fileOrFolder.findChildFiles(juce::File::TypesOfFileToFind::findFiles, true, "*.vsts;*.vsfx;*.json");
         for (const auto& src : jsonFiles)
@@ -349,7 +388,7 @@ bool PresetManager::importBankPackage(const juce::File& fileOrFolder)
         juce::ZipFile zip(fileOrFolder);
         juce::String bankName = fileOrFolder.getFileNameWithoutExtension();
         createBank(bankName);
-        auto targetBankDir = presetsFolder.getChildFile(bankName);
+        auto targetBankDir = presetsRoot.getChildFile(bankName);
 
         for (int i = 0; i < zip.getNumEntries(); ++i)
         {
@@ -393,7 +432,7 @@ bool PresetManager::importBankPackage(const juce::File& fileOrFolder)
                 bankName = "User";
         }
         createBank(bankName);
-        auto targetBankDir = presetsFolder.getChildFile(juce::File::createLegalFileName(bankName));
+        auto targetBankDir = presetsRoot.getChildFile(juce::File::createLegalFileName(bankName));
         juce::String fileExt = fileOrFolder.getFileExtension();
         if (fileExt.isEmpty()) fileExt = ".vsfx";
         juce::File dest = targetBankDir.getChildFile(fileOrFolder.getFileNameWithoutExtension() + fileExt);
@@ -435,15 +474,22 @@ juce::String PresetManager::audioBufferToBase64Wav(const juce::AudioBuffer<float
     if (buffer.getNumSamples() == 0 || buffer.getNumChannels() == 0)
         return {};
 
-    auto* stream = new juce::MemoryOutputStream();
+    auto stream = std::make_unique<juce::MemoryOutputStream>();
+    auto* rawStream = stream.get();
+    std::unique_ptr<juce::OutputStream> outStream(std::move(stream));
     juce::WavAudioFormat wavFormat;
-    std::unique_ptr<juce::AudioFormatWriter> writer(wavFormat.createWriterFor(stream, sampleRate, (unsigned int)buffer.getNumChannels(), 16, {}, 0));
+    std::unique_ptr<juce::AudioFormatWriter> writer(wavFormat.createWriterFor(
+        outStream,
+        juce::AudioFormatWriterOptions()
+            .withSampleRate(sampleRate)
+            .withNumChannels((unsigned int)buffer.getNumChannels())
+            .withBitsPerSample(16)));
 
     if (writer != nullptr)
     {
         writer->writeFromAudioSampleBuffer(buffer, 0, buffer.getNumSamples());
         writer->flush();
-        juce::String base64 = juce::Base64::toBase64(stream->getData(), stream->getDataSize());
+        juce::String base64 = juce::Base64::toBase64(rawStream->getData(), rawStream->getDataSize());
         writer.reset();
         return base64;
     }
@@ -493,7 +539,7 @@ bool PresetManager::savePreset(const juce::String& presetName,
                                 const juce::AudioBuffer<float>* sampleAudioBuffer,
                                 double sampleRate)
 {
-    ensureDirectoriesExist();
+    ensureRootExists();
 
     juce::String finalName = presetName.trim();
     if (finalName.isEmpty())
@@ -510,7 +556,7 @@ bool PresetManager::savePreset(const juce::String& presetName,
         return false;
 
     juce::String cleanBank = juce::File::createLegalFileName(finalBank);
-    auto targetDir = presetsFolder.getChildFile(cleanBank);
+    auto targetDir = presetsRoot.getChildFile(cleanBank);
     targetDir.createDirectory();
 
     juce::String cleanName = juce::File::createLegalFileName(finalName);
@@ -549,10 +595,13 @@ bool PresetManager::savePreset(const juce::String& presetName,
 
     const char* paramIDs[] = {
         "AMP_ATTACK", "AMP_DECAY", "AMP_SUSTAIN", "AMP_RELEASE",
-        "FILTER_ATTACK", "FILTER_DECAY", "FILTER_SUSTAIN", "FILTER_RELEASE",
         "PLAYBACK_MODE", "PITCH_MODE", "PITCH_SEMITONES",
-        "TIMBRE_SEMITONES", "TIMBRE_LINK", "TIMBRE_DRIFT",
-        "EXCITER", "POLY_MODE", "GLIDE", "GAIN"
+        "TIMBRE_DRIFT", "EXCITER", "POLY_MODE", "GLIDE", "GAIN",
+        "FX_GATE_ENABLE", "FX_GATE_AMOUNT",
+        "FX_CHORUS_ENABLE", "FX_CHORUS_AMOUNT", "FX_CHORUS_RATE",
+        "FX_PHASER_ENABLE", "FX_PHASER_AMOUNT", "FX_PHASER_RATE",
+        "FX_DELAY_ENABLE", "FX_DELAY_AMOUNT", "FX_DELAY_TIME", "FX_DELAY_FEEDBACK",
+        "FX_DRIVE_ENABLE", "FX_DRIVE_AMOUNT", "FX_DRIVE_TONE"
     };
 
     for (const auto& id : paramIDs)

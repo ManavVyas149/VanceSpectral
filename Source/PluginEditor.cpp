@@ -3,7 +3,8 @@
 
 VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(VancespectralAudioProcessor &p)
     : AudioProcessorEditor(&p), audioProcessor(p),
-      adsrPanel(p.getAPVTS()) {
+      adsrPanel(p.getAPVTS()),
+      effectsPanel(p.getAPVTS()) {
   
   setLookAndFeel(&spectralLookAndFeel);
   setWantsKeyboardFocus(true);
@@ -20,6 +21,7 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
   addAndMakeVisible(playbackControl);
   addAndMakeVisible(pitchControl);
   addAndMakeVisible(adsrPanel);
+  addAndMakeVisible(effectsPanel);
 
   volumeSlider.setSliderStyle(juce::Slider::LinearHorizontal);
   volumeSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
@@ -32,18 +34,14 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
       bool next = !polyButton.getToggleState();
       polyButton.setToggleState(next, juce::dontSendNotification);
       param->setValueNotifyingHost(next ? 1.0f : 0.0f);
-      int pIdx = 0;
-      if (auto* pParam = audioProcessor.getAPVTS().getParameter("PITCH_MODE"))
-        pIdx = juce::jlimit(0, 2, (int)std::round(pParam->getValue() * 2.0f));
-      adsrPanel.updateTimbreEnabledState(pIdx, next);
+      adsrPanel.updatePolyMode(next);
     }
   };
 
   volumeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
       audioProcessor.getAPVTS(), "GAIN", volumeSlider);
 
-  addAndMakeVisible(*presetOverlay);
-  presetOverlay->setVisible(false);
+  addChildComponent(*presetOverlay);
 
   auto syncUIFromAPVTS = [this]() {
     int pIdx = 0;
@@ -53,14 +51,14 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
       playbackControl.setSelectedIndex(idx, false);
     }
     if (auto* param = audioProcessor.getAPVTS().getParameter("PITCH_MODE")) {
-      pIdx = juce::jlimit(0, 2, (int)std::round(param->getValue() * 2.0f));
+      pIdx = juce::jlimit(0, 1, (int)std::round(param->getValue() * 1.0f));
       pitchControl.setSelectedIndex(pIdx, false);
     }
     if (auto* param = audioProcessor.getAPVTS().getParameter("POLY_MODE")) {
       isPoly = (param->getValue() >= 0.5f);
       polyButton.setToggleState(isPoly, juce::dontSendNotification);
     }
-    adsrPanel.updateTimbreEnabledState(pIdx, isPoly);
+    adsrPanel.updatePolyMode(isPoly);
   };
 
   syncUIFromAPVTS();
@@ -127,7 +125,8 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
                 presetOverlay->syncActivePresetFromProcessor(name);
                 presetOverlay->refreshPresetList();
               }
-              audioProcessor.checkpointHistoryState("State Saved: " + name, audioBuf, 44100.0);
+              double currentSr = audioProcessor.getSampleRate() > 0.0 ? audioProcessor.getSampleRate() : 44100.0;
+              audioProcessor.checkpointHistoryState("State Saved: " + name, audioBuf, currentSr);
             }
             else
             {
@@ -138,7 +137,7 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
           };
 
           juce::String cleanName = juce::File::createLegalFileName(name);
-          juce::File targetFile = presetManager.getPresetsFolder().getChildFile("User").getChildFile(cleanName + ".vsts");
+          juce::File targetFile = presetManager.getPresetsRoot().getChildFile("User").getChildFile(cleanName + ".vsts");
 
           if (targetFile.existsAsFile())
           {
@@ -175,7 +174,8 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
       presetOverlay->clearActivePresetSelection();
 
     const juce::AudioBuffer<float>* audioBuf = spectrogram ? &spectrogram->getAudioBuffer() : nullptr;
-    audioProcessor.checkpointHistoryState("Sample Loaded: " + sampleName, audioBuf, 44100.0);
+    double currentSr = audioProcessor.getSampleRate() > 0.0 ? audioProcessor.getSampleRate() : 44100.0;
+    audioProcessor.checkpointHistoryState("Sample Loaded: " + sampleName, audioBuf, currentSr);
   };
 
   // Atomic preset load helper
@@ -189,27 +189,21 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
     double loadedSr = 44100.0;
 
     if (presetManager.loadPreset(presetFile, audioProcessor.getAPVTS(), sampleFileName, startReg, endReg, selectionsVar, loopEnabled, &loadedBuf, &loadedSr)) {
+      syncUIFromAPVTS();
       juce::String pName = presetFile.getFileNameWithoutExtension();
-      juce::String catName = "";
-      juce::var parsed = juce::JSON::parse(presetFile.loadFileAsString());
-      if (parsed.isObject()) {
-        pName = parsed.getProperty("name", pName).toString();
-        catName = parsed.getProperty("category", "").toString();
-      }
       presetBar.setPresetName(pName);
       audioProcessor.setCurrentPresetName(pName);
+
       if (presetOverlay)
         presetOverlay->syncActivePresetFromProcessor(pName);
 
-      syncUIFromAPVTS();
-
+      // If preset has sample audio buffer embedded, reload it into Spectrogram & DSP engine!
       if (loadedBuf.getNumSamples() > 0 && spectrogram) {
         spectrogram->loadDirectAudioBuffer(loadedBuf, loadedSr, sampleFileName, loopEnabled);
-      } else if (sampleFileName.isNotEmpty() && spectrogram && catName.equalsIgnoreCase("STATES")) {
-        auto sampleFile = presetManager.getSamplesFolder().getChildFile(sampleFileName);
-        if (sampleFile.existsAsFile()) {
+      } else if (sampleFileName.isNotEmpty() && spectrogram) {
+        juce::File sampleFile = presetManager.getSamplesFolder().getChildFile(sampleFileName);
+        if (sampleFile.existsAsFile())
           spectrogram->loadAudioFile(sampleFile, true); // true = isPartOfPresetLoad!
-        }
       }
       // Note: For settings-only presets (FX category), loadedBuf is empty, so we do NOT reload sample audio!
 
@@ -219,7 +213,8 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
       }
 
       const juce::AudioBuffer<float>* audioBuf = spectrogram ? &spectrogram->getAudioBuffer() : nullptr;
-      audioProcessor.checkpointHistoryState("Preset Loaded: " + pName, audioBuf, 44100.0);
+      double currentSr = audioProcessor.getSampleRate() > 0.0 ? audioProcessor.getSampleRate() : 44100.0;
+      audioProcessor.checkpointHistoryState("Preset Loaded: " + pName, audioBuf, currentSr);
     }
   };
 
@@ -261,7 +256,8 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
     if (sampleFile.existsAsFile() && spectrogram) {
       spectrogram->loadAudioFile(sampleFile, false); // false = manual sample load resets settings
       const juce::AudioBuffer<float>* audioBuf = spectrogram ? &spectrogram->getAudioBuffer() : nullptr;
-      audioProcessor.checkpointHistoryState("Sample Loaded: " + sampleFile.getFileNameWithoutExtension(), audioBuf, 44100.0);
+      double currentSr = audioProcessor.getSampleRate() > 0.0 ? audioProcessor.getSampleRate() : 44100.0;
+      audioProcessor.checkpointHistoryState("Sample Loaded: " + sampleFile.getFileNameWithoutExtension(), audioBuf, currentSr);
     }
   };
 
@@ -288,11 +284,10 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
   };
 
   pitchControl.onSelectionChanged = [this](int index) {
+    juce::ignoreUnused(index);
     if (auto* param = audioProcessor.getAPVTS().getParameter("PITCH_MODE")) {
-      float normVal = juce::jlimit(0.0f, 1.0f, (float)index / 2.0f);
+      float normVal = juce::jlimit(0.0f, 1.0f, (float)index / 1.0f);
       param->setValueNotifyingHost(normVal);
-      bool isPoly = polyButton.getToggleState();
-      adsrPanel.updateTimbreEnabledState(index, isPoly);
     }
   };
 
@@ -313,7 +308,7 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
   }
 
   startTimer(2000);
-  setSize(1040, 640);
+  setSize(1280, 640);
 }
 
 VancespectralAudioProcessorEditor::~VancespectralAudioProcessorEditor() {
@@ -329,7 +324,8 @@ void VancespectralAudioProcessorEditor::timerCallback() {
   if (now - lastAutoCheckpointTimeMs > 120000) { // Every 2 minutes
     if (spectrogram && spectrogram->isFileLoaded()) {
       const juce::AudioBuffer<float>* audioBuf = &spectrogram->getAudioBuffer();
-      if (audioProcessor.checkpointHistoryState("Auto Snapshot", audioBuf, 44100.0)) {
+      double currentSr = audioProcessor.getSampleRate() > 0.0 ? audioProcessor.getSampleRate() : 44100.0;
+      if (audioProcessor.checkpointHistoryState("Auto Snapshot", audioBuf, currentSr)) {
         lastAutoCheckpointTimeMs = now;
         if (presetOverlay)
           presetOverlay->refreshHistoryList();
@@ -412,10 +408,10 @@ void VancespectralAudioProcessorEditor::resized() {
   if (spectrogram)
     spectrogram->setBounds(upperArea);
 
-  // Lower Area: Segmented Controls + Envelopes
+  // Lower Area: Segmented Controls + ADSR Panel + Effects Panel
   auto lowerArea = area;
 
-  // Segmented controls column (Playback & Pitch) on left
+  // Segmented controls column (Playback & Pitch) on left (300px width)
   auto controlsArea = lowerArea.removeFromLeft(300);
   lowerArea.removeFromLeft(gap);
 
@@ -424,9 +420,15 @@ void VancespectralAudioProcessorEditor::resized() {
   controlsArea.removeFromTop(gap);
   pitchControl.setBounds(controlsArea);
 
-  // Unified Envelope + Exciter section taking ~60% of remaining lower width
-  int envWidth = (int)(lowerArea.getWidth() * 0.60f);
-  adsrPanel.setBounds(lowerArea.removeFromLeft(envWidth));
+  // Effects Panel positioned to the right of AMP ENV / PITCH / EXCITER
+  int effectsWidth = juce::jmin(460, (int)(lowerArea.getWidth() * 0.46f));
+  auto effectsArea = lowerArea.removeFromRight(effectsWidth);
+  lowerArea.removeFromRight(gap);
+
+  effectsPanel.setBounds(effectsArea);
+
+  // Unified Envelope + Performance section taking remaining lower width
+  adsrPanel.setBounds(lowerArea);
 
   if (presetOverlay)
     presetOverlay->setBounds(getLocalBounds());

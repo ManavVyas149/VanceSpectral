@@ -1,11 +1,21 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <SoundTouch.h>
+
+#if defined(_MSC_VER)
+  #if defined(_DEBUG) || defined(DEBUG)
+    #pragma comment(lib, "SoundTouchD_x64.lib")
+  #else
+    #pragma comment(lib, "SoundTouch_x64.lib")
+  #endif
+#endif
+
 #include <atomic>
 #include "EnvelopeData.h"
 
 enum class PlaybackMode { Forward = 0, Backward, ForwBackw, BackForw, Random };
-enum class PitchMode { Stretch = 0, Resample, Axial };
+enum class PitchMode { Stretch = 0, Resample };
 
 struct FrequencyBand {
     float minFreq = 20.0f;
@@ -67,6 +77,7 @@ public:
 
     void setRootNote(int noteNumber);
     int getRootNote() const { return rootNoteNumber.load(); }
+    const juce::AudioBuffer<float>& getLoadedSample() const { return sample; }
 
     bool isPlaying() const;
     double getPlayPositionNormalized() const;
@@ -76,14 +87,11 @@ public:
     double getRegionEndNormalized() const;
 
     void updateAmpADSR(float attack, float decay, float sustain, float release);
-    void updateFilterADSR(float attack, float decay, float sustain, float release);
 
     void setFrequencyFilter(bool enabled, float minFreq, float maxFreq);
     void setFrequencyFilterBands(const juce::Array<FrequencyBand>& bands);
     void setSpectralRegions(const juce::Array<SpectralRegion>& regions);
 
-    void setTimbreSemitones(float semitones);
-    void setTimbreLink(bool linked);
     void setTimbreDrift(float amount);
 
     void setExciterAmount(float amount);
@@ -92,13 +100,6 @@ public:
     void setGlideTime(float timeMs);
 
     static constexpr int MAX_VOICES = 32;
-
-    struct WSOLAGrain
-    {
-        bool active = false;
-        double sourceStartPos = 0.0;
-        double samplePhase = 0.0;
-    };
 
     struct Voice
     {
@@ -123,18 +124,14 @@ public:
         juce::OwnedArray<VoiceRegionFilter> voiceFilters;
 
         int randomGrainCounter = 0;
-        double pitchPhase = 0.0;
         int samplesProcessed = 0;
 
-        WSOLAGrain wsolaGrains[2];
-        int wsolaHopCounter = 0;
-        bool wsolaInitialized = false;
+        soundtouch::SoundTouch soundTouch;
+        float lastAppliedPitchSemitones = -999.0f;
+        double lastAppliedRate = -999.0;
+        PitchMode lastAppliedPitchMode = PitchMode::Stretch;
 
         EnvelopeData ampEnvelope{ EnvelopeCategory::AmplifierEnvelope };
-        EnvelopeData filterEnvelope{ EnvelopeCategory::FilterEnvelope };
-
-        float filterStateL = 0.0f;
-        float filterStateR = 0.0f;
 
         void startQuickFadeOut(int totalSamples)
         {
@@ -165,16 +162,12 @@ public:
             randomSpectralRegions.clear();
             voiceFilters.clear();
             randomGrainCounter = 0;
-            pitchPhase = 0.0;
             samplesProcessed = 0;
-            wsolaGrains[0] = {};
-            wsolaGrains[1] = {};
-            wsolaHopCounter = 0;
-            wsolaInitialized = false;
-            filterStateL = 0.0f;
-            filterStateR = 0.0f;
+            soundTouch.clear();
+            lastAppliedPitchSemitones = -999.0f;
+            lastAppliedRate = -999.0;
+            lastAppliedPitchMode = PitchMode::Stretch;
             ampEnvelope.reset();
-            filterEnvelope.reset();
         }
     };
 
@@ -187,6 +180,8 @@ private:
 
     struct RegionFilterPair {
         SpectralRegion region;
+        int snappedStartSample = 0;
+        int snappedEndSample = 0;
         juce::IIRFilter hpL1, hpL2, hpR1, hpR2;
         juce::IIRFilter lpL1, lpL2, lpR1, lpR2;
     };
@@ -206,6 +201,15 @@ private:
     uint64_t lastNoteTriggerSample = 0;
     uint64_t globalSampleCounter = 0;
     float smoothedPolyGainScale = 1.0f;
+
+    static int findNearestZeroCrossing(const juce::AudioBuffer<float>& buffer, int targetSample, int searchWindowSamples);
+
+    static juce::AudioBuffer<float> computeFilteredBuffer(
+        const juce::AudioBuffer<float>& inSample,
+        double sr,
+        const juce::Array<SpectralRegion>& regions,
+        bool freqEnabled,
+        const juce::Array<FrequencyBand>& bands);
 
     void updateFilteredSample();
     void initVoice(Voice& v, int noteNumber, float velocity);
@@ -228,8 +232,6 @@ private:
     std::atomic<int> rootNoteNumber{ 60 };
     std::atomic<int> currentNoteNumber{ 60 };
     std::atomic<float> pitchSemitones{ 0.0f };
-    std::atomic<float> timbreSemitones{ 0.0f };
-    std::atomic<bool> timbreLink{ true };
     std::atomic<float> timbreDriftAmount{ 0.0f };
 
     // Exciter state

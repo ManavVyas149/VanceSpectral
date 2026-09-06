@@ -8,11 +8,239 @@
     <Filter Include="Vancespectral\Components">
       <UniqueIdentifier>{FE55FE78-72BF-30E3-9DFB-D5CA9E99069F}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Vancespectral\DSP\Airwindows">
+      <UniqueIdentifier>{99ABFC86-5D6F-29C9-A572-3B9211059E81}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Vancespectral\DSP">
       <UniqueIdentifier>{C77AB903-9D5A-0273-E520-324E28080F4F}</UniqueIdentifier>
     </Filter>
     <Filter Include="Vancespectral">
       <UniqueIdentifier>{2BDFDAE0-3EBB-DF21-D908-7E34E739D3EB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_buffers\Buffers">
+      <UniqueIdentifier>{219C3D50-6B05-EAFA-E610-3A014D446F18}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_buffers">
+      <UniqueIdentifier>{D2105F87-78E1-71E7-F7A5-C9EAE0C6E0EA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_core\DataStructures">
+      <UniqueIdentifier>{4C5E3785-C4F7-F44B-8D2A-7F2EB83B8600}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_core\Functional">
+      <UniqueIdentifier>{6152A0FC-4B75-33CE-6B83-743F5ABB1AC8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_core\JUCEHelpers\dsp">
+      <UniqueIdentifier>{43EE1C31-A98C-132E-92C2-1EE35653B299}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_core\JUCEHelpers">
+      <UniqueIdentifier>{3443787C-C75A-9326-B1FB-DAAEA7CBB177}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_core\Memory">
+      <UniqueIdentifier>{69CB3317-B67E-730C-E102-575D0494CD23}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_core\third_party\span-lite\example\nonstd">
+      <UniqueIdentifier>{A11D35B4-209E-5C33-F3D9-F3A3150AC2E3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_core\third_party\span-lite\example">
+      <UniqueIdentifier>{9A99BE6D-CFDB-B509-1F37-487438A5D28C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_core\third_party\span-lite\include\nonstd">
+      <UniqueIdentifier>{1A5C9B73-3C45-4A4B-20CE-8F9FE794E1FF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_core\third_party\span-lite\include">
+      <UniqueIdentifier>{15D57C4E-D401-3C4B-6AA6-C29D757BC7E2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_core\third_party\span-lite\test\lest">
+      <UniqueIdentifier>{D9AE2973-4F16-5939-51A9-183F0E2380D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_core\third_party\span-lite\test\nonstd">
+      <UniqueIdentifier>{6197C31A-813D-E8D6-40DF-AEE2D61721B7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_core\third_party\span-lite\test">
+      <UniqueIdentifier>{04898BDC-E639-F858-2895-062026548407}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_core\third_party\span-lite">
+      <UniqueIdentifier>{D7A43D6B-59C9-6876-36ED-B41D7F381004}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_core\third_party\types_list\example">
+      <UniqueIdentifier>{3DAF3FA3-3C89-8277-2CFE-93969B56C090}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_core\third_party\types_list\include\types_list">
+      <UniqueIdentifier>{E4AF810A-CD4C-DE1B-815C-34BDB6B5FF64}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_core\third_party\types_list\include">
+      <UniqueIdentifier>{39A24998-9536-B956-E6FD-9B6DA5A50A4C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_core\third_party\types_list\test\third_party\Catch2">
+      <UniqueIdentifier>{EC4F920A-B611-48FE-E84E-E464152945EE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_core\third_party\types_list\test\third_party">
+      <UniqueIdentifier>{0058F46C-6158-2610-B275-3E171F820E0F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_core\third_party\types_list\test">
+      <UniqueIdentifier>{9EEB0617-50C9-9024-438F-98B27CE625D6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_core\third_party\types_list">
+      <UniqueIdentifier>{3C4ADF95-0871-CFCB-405B-3EB0ADA6DB8E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_core\third_party">
+      <UniqueIdentifier>{4EDEB68C-B07B-5594-F64C-8F66ABE93D1C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_core\Types">
+      <UniqueIdentifier>{D236CE54-4435-695E-DD0A-50AA4EB72854}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_core">
+      <UniqueIdentifier>{8B4BE14A-A6EC-AE5E-018A-81CE5744BD94}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_data_structures\Allocators">
+      <UniqueIdentifier>{DE7EE513-35A4-D0F8-E590-BB8BCE0D93E4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_data_structures\Helpers">
+      <UniqueIdentifier>{B4F77926-5F7C-CFA0-BA9A-B246ADEB8D02}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_data_structures\Structures">
+      <UniqueIdentifier>{7639D7FA-32F1-3D2A-9A89-12274659C78E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_data_structures\third_party">
+      <UniqueIdentifier>{838C43AB-4EE1-9066-C35A-BD7B7F19CD12}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_data_structures">
+      <UniqueIdentifier>{BF6B55F3-D364-5CAA-DB33-D8880420A1FD}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_dsp_data_structures\LookupTables">
+      <UniqueIdentifier>{B2B97097-CF73-5FD3-0430-05E736A9D377}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_dsp_data_structures\Other">
+      <UniqueIdentifier>{C23037DE-CAC8-9C57-406B-E9CFD26F1558}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_dsp_data_structures\Processors">
+      <UniqueIdentifier>{FC0664FD-13EE-ECFD-A29F-F1242EE9BCA6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_dsp_data_structures\third_party\moodycamel">
+      <UniqueIdentifier>{B7DBBAA4-EB61-A308-8025-5E02CEC7F20F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_dsp_data_structures\third_party">
+      <UniqueIdentifier>{1AF606DE-6B1E-F0B8-8E3A-7BB9DFE965BD}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_dsp_data_structures">
+      <UniqueIdentifier>{3F9D237D-BDA6-0BF3-D9DD-AC574D1EAC33}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_dsp_utils\Convolution">
+      <UniqueIdentifier>{518EA529-9EA6-40B0-7B6E-719BB8AE1D57}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_dsp_utils\Delay\BBD">
+      <UniqueIdentifier>{AE804EA1-9427-5A47-48C8-FD2B06CE283B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_dsp_utils\Delay">
+      <UniqueIdentifier>{7D73614B-C35D-8E91-8447-12031D9FEB07}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_dsp_utils\Processors">
+      <UniqueIdentifier>{9EFF04F6-0E1C-597F-A4B9-DAE11367C087}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_dsp_utils\Resampling">
+      <UniqueIdentifier>{ED47E4D4-8D94-418F-5411-B005AE062185}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_dsp_utils">
+      <UniqueIdentifier>{210A1985-015B-874C-501A-AF148304E34D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_filters\HigherOrderFilters">
+      <UniqueIdentifier>{2FC863B7-9785-DB22-C603-A86DC2FBD369}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_filters\LowerOrderFilters">
+      <UniqueIdentifier>{780A5B99-919A-4B1F-7B71-9779224E33C2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_filters\Other">
+      <UniqueIdentifier>{6AD4E80A-3DE1-018E-5715-F2706C3EAED2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_filters\Utils">
+      <UniqueIdentifier>{BD567765-E4E2-CE8C-ECC6-D1D493D107EC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_filters">
+      <UniqueIdentifier>{69E26153-0CA4-48B6-5341-3BC1B5059E4A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_listeners\third_party">
+      <UniqueIdentifier>{BF0816B7-98F6-7802-C321-5A7C7449C4E3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_listeners">
+      <UniqueIdentifier>{3F344050-8958-B040-266C-06FBABBBE25C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_math\Math">
+      <UniqueIdentifier>{16742E79-81CB-4D53-2AA1-6ED5D404F996}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl\quadrature">
+      <UniqueIdentifier>{46AE36FE-78D7-9CA5-D82D-4EC215F79F8F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl">
+      <UniqueIdentifier>{472D7981-3735-45A1-9DF4-D109556D9C46}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_math\third_party\gcem\include">
+      <UniqueIdentifier>{6EFD6EC5-D199-13D9-16DF-F119FB6B8029}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_math\third_party\gcem\tests">
+      <UniqueIdentifier>{D3A4BB97-3005-191D-4BF1-1AFB17D34C53}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_math\third_party\gcem">
+      <UniqueIdentifier>{DE06AAE2-341B-41BA-C76F-3129879E827C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_math\third_party">
+      <UniqueIdentifier>{06AFA345-F508-CD18-F4E6-C255FDB5C78C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_math">
+      <UniqueIdentifier>{FB66740F-21AF-B2E7-E821-9CD8A12ABA39}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_simd\SIMD">
+      <UniqueIdentifier>{9D45FEA7-AE93-6AED-62BD-E5C7213533D6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_simd\third_party\xsimd\benchmark">
+      <UniqueIdentifier>{C8711BFE-BF4E-C242-97A5-02E08BF9D47A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_simd\third_party\xsimd\examples">
+      <UniqueIdentifier>{A5E43969-59B9-B2A9-1734-D5187F94E905}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch\generic">
+      <UniqueIdentifier>{F85CF052-7D2C-F8EE-8AA5-DE8888F0B843}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch">
+      <UniqueIdentifier>{4888E099-8BC9-C155-169E-8E57EDA51BF2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\config">
+      <UniqueIdentifier>{35FFC934-CBB5-4174-6C14-FB47D729A09D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\math">
+      <UniqueIdentifier>{44733ADA-7810-FFD5-01F6-7E62DF61DB12}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\memory">
+      <UniqueIdentifier>{E08221AE-0056-FB38-6479-09288D5387C5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\types">
+      <UniqueIdentifier>{1A6FAF3D-F02E-B531-CBBA-B1C6287AD2BA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd">
+      <UniqueIdentifier>{38930904-3E01-A013-9E9F-3CD221E01E31}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_simd\third_party\xsimd\include">
+      <UniqueIdentifier>{EF54DCA9-91B5-4401-A419-ED46FB891AAE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_simd\third_party\xsimd\test">
+      <UniqueIdentifier>{BE3D3385-DB97-4E02-DFAA-4BA08AAB50D1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_simd\third_party\xsimd">
+      <UniqueIdentifier>{7D246882-6E23-910C-B705-79D96A8AFBF0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_simd\third_party">
+      <UniqueIdentifier>{CB516731-FF6B-E405-4375-1368F7CD8876}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_simd">
+      <UniqueIdentifier>{EFFA01D7-4657-DD4A-0D98-41819F731BFC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_sources\Oscillators">
+      <UniqueIdentifier>{1F4D4662-AE2E-4828-FDBB-DA9ADD2ABFCD}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_sources\Other">
+      <UniqueIdentifier>{683F03C3-816E-C87B-195F-F021D45A56F1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\chowdsp_sources">
+      <UniqueIdentifier>{2D10CDB9-4CE0-38FF-EB72-A803D7E87166}</UniqueIdentifier>
     </Filter>
     <Filter Include="JUCE Modules\juce_audio_basics\audio_play_head">
       <UniqueIdentifier>{EB58F05A-A968-CEBE-40C4-107CDD8F240F}</UniqueIdentifier>
@@ -464,6 +692,30 @@
     <Filter Include="JUCE Modules\juce_data_structures">
       <UniqueIdentifier>{911F0159-A7A8-4A43-3FD4-154F62F4A44B}</UniqueIdentifier>
     </Filter>
+    <Filter Include="JUCE Modules\juce_dsp\containers">
+      <UniqueIdentifier>{53CF03D3-988B-CD28-9130-CE08FDCEF7E9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\juce_dsp\filter_design">
+      <UniqueIdentifier>{29C6FE02-507E-F3FE-16CD-74D84842C1EA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\juce_dsp\frequency">
+      <UniqueIdentifier>{8001BD68-125B-E392-8D3B-1F9C9520A65A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\juce_dsp\maths">
+      <UniqueIdentifier>{EDC17061-CFA0-8EA0-0ADA-90F31C2FB0F2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\juce_dsp\native">
+      <UniqueIdentifier>{B813BD14-6565-2525-9AC3-E3AA48EDDA85}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\juce_dsp\processors">
+      <UniqueIdentifier>{DDF4BA73-8578-406D-21F8-06B9BC70BFEA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\juce_dsp\widgets">
+      <UniqueIdentifier>{73374573-0194-9A6E-461A-A81EEB511C26}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JUCE Modules\juce_dsp">
+      <UniqueIdentifier>{5DD60D0E-B16A-0BED-EDC4-C56E6960CA9E}</UniqueIdentifier>
+    </Filter>
     <Filter Include="JUCE Modules\juce_events\broadcasters">
       <UniqueIdentifier>{9D5816C2-E2B2-2E3F-B095-AC8BD1100D29}</UniqueIdentifier>
     </Filter>
@@ -879,6 +1131,381 @@
     </ClCompile>
     <ClCompile Include="..\..\Source\HistoryManager.cpp">
       <Filter>Vancespectral\DSP</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Source\EffectsEngine.cpp">
+      <Filter>Vancespectral\DSP</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\..\..\modules\chowdsp_buffers\Buffers\chowdsp_Buffer.cpp">
+      <Filter>JUCE Modules\chowdsp_buffers\Buffers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\..\..\modules\chowdsp_buffers\Buffers\chowdsp_StaticBuffer.cpp">
+      <Filter>JUCE Modules\chowdsp_buffers\Buffers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\..\..\modules\chowdsp_buffers\chowdsp_buffers.cpp">
+      <Filter>JUCE Modules\chowdsp_buffers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\JUCEHelpers\dsp\juce_LookupTable.cpp">
+      <Filter>JUCE Modules\chowdsp_core\JUCEHelpers\dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\JUCEHelpers\juce_FloatVectorOperations.cpp">
+      <Filter>JUCE Modules\chowdsp_core\JUCEHelpers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\third_party\span-lite\example\01-basic.cpp">
+      <Filter>JUCE Modules\chowdsp_core\third_party\span-lite\example</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\third_party\span-lite\example\02-span.cpp">
+      <Filter>JUCE Modules\chowdsp_core\third_party\span-lite\example</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\third_party\span-lite\test\span-main.t.cpp">
+      <Filter>JUCE Modules\chowdsp_core\third_party\span-lite\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\third_party\span-lite\test\span.t.cpp">
+      <Filter>JUCE Modules\chowdsp_core\third_party\span-lite\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\third_party\types_list\example\example.cpp">
+      <Filter>JUCE Modules\chowdsp_core\third_party\types_list\example</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\third_party\types_list\example\example_mp11.cpp">
+      <Filter>JUCE Modules\chowdsp_core\third_party\types_list\example</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\third_party\types_list\test\test.cpp">
+      <Filter>JUCE Modules\chowdsp_core\third_party\types_list\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\chowdsp_core.cpp">
+      <Filter>JUCE Modules\chowdsp_core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\Structures\chowdsp_AbstractTree.cpp">
+      <Filter>JUCE Modules\chowdsp_data_structures\Structures</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_data_structures\LookupTables\chowdsp_LookupTableTransform.cpp">
+      <Filter>JUCE Modules\chowdsp_dsp_data_structures\LookupTables</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_data_structures\Other\chowdsp_SmoothedBufferValue.cpp">
+      <Filter>JUCE Modules\chowdsp_dsp_data_structures\Other</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_data_structures\Processors\chowdsp_COLAProcessor.cpp">
+      <Filter>JUCE Modules\chowdsp_dsp_data_structures\Processors</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_data_structures\Processors\chowdsp_RebufferedProcessor.cpp">
+      <Filter>JUCE Modules\chowdsp_dsp_data_structures\Processors</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_data_structures\chowdsp_dsp_data_structures.cpp">
+      <Filter>JUCE Modules\chowdsp_dsp_data_structures</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Convolution\chowdsp_ConvolutionEngine.cpp">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Convolution</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Convolution\chowdsp_IRHelpers.cpp">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Convolution</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Delay\chowdsp_DelayLine.cpp">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Delay</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Delay\chowdsp_PitchShift.cpp">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Delay</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Processors\chowdsp_AudioTimer.cpp">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Processors</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Processors\chowdsp_BypassProcessor.cpp">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Processors</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Processors\chowdsp_LevelDetector.cpp">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Processors</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Processors\chowdsp_Panner.cpp">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Processors</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Resampling\chowdsp_SRCResampler.cpp">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Resampling</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Resampling\chowdsp_VariableOversampling.cpp">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Resampling</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\chowdsp_dsp_utils.cpp">
+      <Filter>JUCE Modules\chowdsp_dsp_utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\LowerOrderFilters\chowdsp_ModFilterWrapper.cpp">
+      <Filter>JUCE Modules\chowdsp_filters\LowerOrderFilters</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\LowerOrderFilters\chowdsp_StateVariableFilter.cpp">
+      <Filter>JUCE Modules\chowdsp_filters\LowerOrderFilters</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\Other\chowdsp_FIRFilter.cpp">
+      <Filter>JUCE Modules\chowdsp_filters\Other</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\Math\chowdsp_BufferMath.cpp">
+      <Filter>JUCE Modules\chowdsp_math\Math</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\Math\chowdsp_FloatVectorOperations.cpp">
+      <Filter>JUCE Modules\chowdsp_math\Math</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\abs.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\acos.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\acosh.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\asin.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\asinh.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\atan.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\atan2.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\atanh.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\binomial_coef.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\copysign.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\cos.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\cosh.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\erf.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\erf_inv.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\exp.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\expm1.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\factorial.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\fmod.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\gcd.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\incomplete_beta.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\incomplete_beta_inv.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\incomplete_gamma.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\incomplete_gamma_inv.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\inv_sqrt.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\is_odd.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\lcm.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\lgamma.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\log.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\log_binomial_coef.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\log1p.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\log2.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\log10.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\other.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\pow.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\rounding.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\signbit.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\sin.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\sinh.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\sqrt.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\tan.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\tanh.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\tgamma.cpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\chowdsp_math.cpp">
+      <Filter>JUCE Modules\chowdsp_math</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\benchmark\main.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\benchmark</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\examples\mandelbrot.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\examples</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\main.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_api.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_arch.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_basic_math.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_batch.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_batch_bool.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_batch_cast.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_batch_complex.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_batch_constant.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_batch_float.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_batch_int.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_batch_manip.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_bitwise_cast.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_complex_exponential.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_complex_hyperbolic.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_complex_power.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_complex_trigonometric.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_conversion.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_error_gamma.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_explicit_batch_instantiation.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_exponential.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_extract_pair.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_fp_manipulation.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_gnu_source.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_hyperbolic.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_load_store.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_memory.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_poly_evaluation.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_power.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_rounding.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_select.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_shuffle.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_sum.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_traits.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_trigonometric.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_xsimd_api.cpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_sources\Oscillators\chowdsp_AdditiveOscillator.cpp">
+      <Filter>JUCE Modules\chowdsp_sources\Oscillators</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_sources\Oscillators\chowdsp_PolygonalOscillator.cpp">
+      <Filter>JUCE Modules\chowdsp_sources\Oscillators</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_sources\Oscillators\chowdsp_SawtoothWave.cpp">
+      <Filter>JUCE Modules\chowdsp_sources\Oscillators</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_sources\Oscillators\chowdsp_SineWave.cpp">
+      <Filter>JUCE Modules\chowdsp_sources\Oscillators</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_sources\Oscillators\chowdsp_SquareWave.cpp">
+      <Filter>JUCE Modules\chowdsp_sources\Oscillators</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_sources\Oscillators\chowdsp_TriangleWave.cpp">
+      <Filter>JUCE Modules\chowdsp_sources\Oscillators</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_sources\Other\chowdsp_Noise.cpp">
+      <Filter>JUCE Modules\chowdsp_sources\Other</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_sources\Other\chowdsp_RepitchedSource.cpp">
+      <Filter>JUCE Modules\chowdsp_sources\Other</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_audio_basics\audio_play_head\juce_AudioPlayHead.cpp">
       <Filter>JUCE Modules\juce_audio_basics\audio_play_head</Filter>
@@ -2425,6 +3052,117 @@
     <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_data_structures\juce_data_structures.mm">
       <Filter>JUCE Modules\juce_data_structures</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\containers\juce_AudioBlock_test.cpp">
+      <Filter>JUCE Modules\juce_dsp\containers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\containers\juce_SIMDInterleavingHelpers_test.cpp">
+      <Filter>JUCE Modules\juce_dsp\containers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\containers\juce_SIMDRegister_test.cpp">
+      <Filter>JUCE Modules\juce_dsp\containers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\filter_design\juce_FilterDesign.cpp">
+      <Filter>JUCE Modules\juce_dsp\filter_design</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\frequency\juce_Convolution.cpp">
+      <Filter>JUCE Modules\juce_dsp\frequency</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\frequency\juce_Convolution_test.cpp">
+      <Filter>JUCE Modules\juce_dsp\frequency</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\frequency\juce_FFT.cpp">
+      <Filter>JUCE Modules\juce_dsp\frequency</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\frequency\juce_FFT_test.cpp">
+      <Filter>JUCE Modules\juce_dsp\frequency</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\frequency\juce_Windowing.cpp">
+      <Filter>JUCE Modules\juce_dsp\frequency</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\maths\juce_LogRampedValue_test.cpp">
+      <Filter>JUCE Modules\juce_dsp\maths</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\maths\juce_LookupTable.cpp">
+      <Filter>JUCE Modules\juce_dsp\maths</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\maths\juce_Matrix.cpp">
+      <Filter>JUCE Modules\juce_dsp\maths</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\maths\juce_Matrix_test.cpp">
+      <Filter>JUCE Modules\juce_dsp\maths</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\maths\juce_SpecialFunctions.cpp">
+      <Filter>JUCE Modules\juce_dsp\maths</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\native\juce_SIMDNativeOps_avx.cpp">
+      <Filter>JUCE Modules\juce_dsp\native</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\native\juce_SIMDNativeOps_neon.cpp">
+      <Filter>JUCE Modules\juce_dsp\native</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\native\juce_SIMDNativeOps_sse.cpp">
+      <Filter>JUCE Modules\juce_dsp\native</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\processors\juce_BallisticsFilter.cpp">
+      <Filter>JUCE Modules\juce_dsp\processors</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\processors\juce_DelayLine.cpp">
+      <Filter>JUCE Modules\juce_dsp\processors</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\processors\juce_DryWetMixer.cpp">
+      <Filter>JUCE Modules\juce_dsp\processors</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\processors\juce_FIRFilter.cpp">
+      <Filter>JUCE Modules\juce_dsp\processors</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\processors\juce_FIRFilter_test.cpp">
+      <Filter>JUCE Modules\juce_dsp\processors</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\processors\juce_FirstOrderTPTFilter.cpp">
+      <Filter>JUCE Modules\juce_dsp\processors</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\processors\juce_IIRFilter.cpp">
+      <Filter>JUCE Modules\juce_dsp\processors</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\processors\juce_LinkwitzRileyFilter.cpp">
+      <Filter>JUCE Modules\juce_dsp\processors</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\processors\juce_Oversampling.cpp">
+      <Filter>JUCE Modules\juce_dsp\processors</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\processors\juce_Panner.cpp">
+      <Filter>JUCE Modules\juce_dsp\processors</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\processors\juce_ProcessorChain_test.cpp">
+      <Filter>JUCE Modules\juce_dsp\processors</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\processors\juce_StateVariableTPTFilter.cpp">
+      <Filter>JUCE Modules\juce_dsp\processors</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\widgets\juce_Chorus.cpp">
+      <Filter>JUCE Modules\juce_dsp\widgets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\widgets\juce_Compressor.cpp">
+      <Filter>JUCE Modules\juce_dsp\widgets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\widgets\juce_LadderFilter.cpp">
+      <Filter>JUCE Modules\juce_dsp\widgets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\widgets\juce_Limiter.cpp">
+      <Filter>JUCE Modules\juce_dsp\widgets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\widgets\juce_NoiseGate.cpp">
+      <Filter>JUCE Modules\juce_dsp\widgets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\widgets\juce_Phaser.cpp">
+      <Filter>JUCE Modules\juce_dsp\widgets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\juce_dsp.cpp">
+      <Filter>JUCE Modules\juce_dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\juce_dsp.mm">
+      <Filter>JUCE Modules\juce_dsp</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_events\broadcasters\juce_ActionBroadcaster.cpp">
       <Filter>JUCE Modules\juce_events\broadcasters</Filter>
     </ClCompile>
@@ -3931,6 +4669,21 @@
     <ClCompile Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_gui_extra\juce_gui_extra.mm">
       <Filter>JUCE Modules\juce_gui_extra</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\JuceLibraryCode\include_chowdsp_buffers.cpp">
+      <Filter>JUCE Library Code</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\JuceLibraryCode\include_chowdsp_core.cpp">
+      <Filter>JUCE Library Code</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\JuceLibraryCode\include_chowdsp_dsp_data_structures.cpp">
+      <Filter>JUCE Library Code</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\JuceLibraryCode\include_chowdsp_dsp_utils.cpp">
+      <Filter>JUCE Library Code</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\JuceLibraryCode\include_chowdsp_math.cpp">
+      <Filter>JUCE Library Code</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\JuceLibraryCode\include_juce_audio_basics.cpp">
       <Filter>JUCE Library Code</Filter>
     </ClCompile>
@@ -3974,6 +4727,9 @@
       <Filter>JUCE Library Code</Filter>
     </ClCompile>
     <ClCompile Include="..\..\JuceLibraryCode\include_juce_data_structures.cpp">
+      <Filter>JUCE Library Code</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\JuceLibraryCode\include_juce_dsp.cpp">
       <Filter>JUCE Library Code</Filter>
     </ClCompile>
     <ClCompile Include="..\..\JuceLibraryCode\include_juce_events.cpp">
@@ -4064,6 +4820,933 @@
     </ClInclude>
     <ClInclude Include="..\..\Source\HistoryManager.h">
       <Filter>Vancespectral\DSP</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\AudioResampler.h">
+      <Filter>Vancespectral\DSP</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\EffectsEngine.h">
+      <Filter>Vancespectral\DSP</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\Airwindows\AirwindowsSpiral.h">
+      <Filter>Vancespectral\DSP\Airwindows</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Source\Airwindows\AirwindowsChorus.h">
+      <Filter>Vancespectral\DSP\Airwindows</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\..\..\modules\chowdsp_buffers\Buffers\chowdsp_Buffer.h">
+      <Filter>JUCE Modules\chowdsp_buffers\Buffers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\..\..\modules\chowdsp_buffers\Buffers\chowdsp_BufferHelpers.h">
+      <Filter>JUCE Modules\chowdsp_buffers\Buffers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\..\..\modules\chowdsp_buffers\Buffers\chowdsp_BufferIterators.h">
+      <Filter>JUCE Modules\chowdsp_buffers\Buffers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\..\..\modules\chowdsp_buffers\Buffers\chowdsp_BufferView.h">
+      <Filter>JUCE Modules\chowdsp_buffers\Buffers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\..\..\modules\chowdsp_buffers\Buffers\chowdsp_SIMDAudioBlock.h">
+      <Filter>JUCE Modules\chowdsp_buffers\Buffers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\..\..\modules\chowdsp_buffers\Buffers\chowdsp_SIMDBufferHelpers.h">
+      <Filter>JUCE Modules\chowdsp_buffers\Buffers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\..\..\modules\chowdsp_buffers\Buffers\chowdsp_StaticBuffer.h">
+      <Filter>JUCE Modules\chowdsp_buffers\Buffers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_buffers\chowdsp_buffers.h">
+      <Filter>JUCE Modules\chowdsp_buffers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\DataStructures\chowdsp_AtomicHelpers.h">
+      <Filter>JUCE Modules\chowdsp_core\DataStructures</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\DataStructures\chowdsp_GraphicsHelpers.h">
+      <Filter>JUCE Modules\chowdsp_core\DataStructures</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\DataStructures\chowdsp_ScopedValue.h">
+      <Filter>JUCE Modules\chowdsp_core\DataStructures</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\DataStructures\chowdsp_StringHelpers.h">
+      <Filter>JUCE Modules\chowdsp_core\DataStructures</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\Functional\chowdsp_Bindings.h">
+      <Filter>JUCE Modules\chowdsp_core\Functional</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\Functional\chowdsp_EndOfScopeAction.h">
+      <Filter>JUCE Modules\chowdsp_core\Functional</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\JUCEHelpers\dsp\juce_FastMathApproximations.h">
+      <Filter>JUCE Modules\chowdsp_core\JUCEHelpers\dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\JUCEHelpers\dsp\juce_LookupTable.h">
+      <Filter>JUCE Modules\chowdsp_core\JUCEHelpers\dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\JUCEHelpers\dsp\juce_ProcessSpec.h">
+      <Filter>JUCE Modules\chowdsp_core\JUCEHelpers\dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\JUCEHelpers\juce_CompilerWarnings.h">
+      <Filter>JUCE Modules\chowdsp_core\JUCEHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\JUCEHelpers\juce_Decibels.h">
+      <Filter>JUCE Modules\chowdsp_core\JUCEHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\JUCEHelpers\juce_ExtraDefinitions.h">
+      <Filter>JUCE Modules\chowdsp_core\JUCEHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\JUCEHelpers\juce_FloatVectorOperations.h">
+      <Filter>JUCE Modules\chowdsp_core\JUCEHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\JUCEHelpers\juce_MathsFunctions.h">
+      <Filter>JUCE Modules\chowdsp_core\JUCEHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\JUCEHelpers\juce_SmoothedValue.h">
+      <Filter>JUCE Modules\chowdsp_core\JUCEHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\JUCEHelpers\juce_TargetPlatform.h">
+      <Filter>JUCE Modules\chowdsp_core\JUCEHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\Memory\chowdsp_AlignedAlloc.h">
+      <Filter>JUCE Modules\chowdsp_core\Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\Memory\chowdsp_MemoryAliasing.h">
+      <Filter>JUCE Modules\chowdsp_core\Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\third_party\span-lite\example\nonstd\span.tweak.hpp">
+      <Filter>JUCE Modules\chowdsp_core\third_party\span-lite\example\nonstd</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\third_party\span-lite\include\nonstd\span.hpp">
+      <Filter>JUCE Modules\chowdsp_core\third_party\span-lite\include\nonstd</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\third_party\span-lite\test\lest\lest_cpp03.hpp">
+      <Filter>JUCE Modules\chowdsp_core\third_party\span-lite\test\lest</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\third_party\span-lite\test\nonstd\span.tweak.hpp">
+      <Filter>JUCE Modules\chowdsp_core\third_party\span-lite\test\nonstd</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\third_party\span-lite\test\span-main.t.hpp">
+      <Filter>JUCE Modules\chowdsp_core\third_party\span-lite\test</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\third_party\types_list\include\types_list\types_list.hpp">
+      <Filter>JUCE Modules\chowdsp_core\third_party\types_list\include\types_list</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\third_party\types_list\test\third_party\Catch2\catch.hpp">
+      <Filter>JUCE Modules\chowdsp_core\third_party\types_list\test\third_party\Catch2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\Types\chowdsp_TypeHasCheckers.h">
+      <Filter>JUCE Modules\chowdsp_core\Types</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\Types\chowdsp_TypeTraits.h">
+      <Filter>JUCE Modules\chowdsp_core\Types</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\chowdsp_core.h">
+      <Filter>JUCE Modules\chowdsp_core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\Allocators\chowdsp_ArenaAllocator.h">
+      <Filter>JUCE Modules\chowdsp_data_structures\Allocators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\Allocators\chowdsp_ChainedArenaAllocator.h">
+      <Filter>JUCE Modules\chowdsp_data_structures\Allocators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\Allocators\chowdsp_FlatMemoryPool.h">
+      <Filter>JUCE Modules\chowdsp_data_structures\Allocators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\Allocators\chowdsp_PoolAllocator.h">
+      <Filter>JUCE Modules\chowdsp_data_structures\Allocators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\Allocators\chowdsp_STLArenaAllocator.h">
+      <Filter>JUCE Modules\chowdsp_data_structures\Allocators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\Helpers\chowdsp_ArenaHelpers.h">
+      <Filter>JUCE Modules\chowdsp_data_structures\Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\Helpers\chowdsp_ArrayHelpers.h">
+      <Filter>JUCE Modules\chowdsp_data_structures\Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\Helpers\chowdsp_Iterators.h">
+      <Filter>JUCE Modules\chowdsp_data_structures\Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\Helpers\chowdsp_TupleHelpers.h">
+      <Filter>JUCE Modules\chowdsp_data_structures\Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\Helpers\chowdsp_VectorHelpers.h">
+      <Filter>JUCE Modules\chowdsp_data_structures\Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\Structures\chowdsp_AbstractTree.h">
+      <Filter>JUCE Modules\chowdsp_data_structures\Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\Structures\chowdsp_BucketArray.h">
+      <Filter>JUCE Modules\chowdsp_data_structures\Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\Structures\chowdsp_ChunkList.h">
+      <Filter>JUCE Modules\chowdsp_data_structures\Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\Structures\chowdsp_DestructiblePointer.h">
+      <Filter>JUCE Modules\chowdsp_data_structures\Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\Structures\chowdsp_DoubleBuffer.h">
+      <Filter>JUCE Modules\chowdsp_data_structures\Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\Structures\chowdsp_EnumMap.h">
+      <Filter>JUCE Modules\chowdsp_data_structures\Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\Structures\chowdsp_EnumMapComplete.h">
+      <Filter>JUCE Modules\chowdsp_data_structures\Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\Structures\chowdsp_FixedSizeFunction.h">
+      <Filter>JUCE Modules\chowdsp_data_structures\Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\Structures\chowdsp_LocalPointer.h">
+      <Filter>JUCE Modules\chowdsp_data_structures\Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\Structures\chowdsp_OptionalArray.h">
+      <Filter>JUCE Modules\chowdsp_data_structures\Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\Structures\chowdsp_OptionalPointer.h">
+      <Filter>JUCE Modules\chowdsp_data_structures\Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\Structures\chowdsp_OptionalRef.h">
+      <Filter>JUCE Modules\chowdsp_data_structures\Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\Structures\chowdsp_PackedPointer.h">
+      <Filter>JUCE Modules\chowdsp_data_structures\Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\Structures\chowdsp_RawObject.h">
+      <Filter>JUCE Modules\chowdsp_data_structures\Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\Structures\chowdsp_SmallMap.h">
+      <Filter>JUCE Modules\chowdsp_data_structures\Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\Structures\chowdsp_SmallVector.h">
+      <Filter>JUCE Modules\chowdsp_data_structures\Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\Structures\chowdsp_StringLiteral.h">
+      <Filter>JUCE Modules\chowdsp_data_structures\Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\third_party\short_alloc.h">
+      <Filter>JUCE Modules\chowdsp_data_structures\third_party</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_data_structures\chowdsp_data_structures.h">
+      <Filter>JUCE Modules\chowdsp_data_structures</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_data_structures\LookupTables\chowdsp_LookupTableCache.h">
+      <Filter>JUCE Modules\chowdsp_dsp_data_structures\LookupTables</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_data_structures\LookupTables\chowdsp_LookupTableTransform.h">
+      <Filter>JUCE Modules\chowdsp_dsp_data_structures\LookupTables</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_data_structures\Other\chowdsp_RealtimeLatestObject.h">
+      <Filter>JUCE Modules\chowdsp_dsp_data_structures\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_data_structures\Other\chowdsp_SmoothedBufferValue.h">
+      <Filter>JUCE Modules\chowdsp_dsp_data_structures\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_data_structures\Other\chowdsp_UIToAudioPipeline.h">
+      <Filter>JUCE Modules\chowdsp_dsp_data_structures\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_data_structures\Processors\chowdsp_BufferMultiple.h">
+      <Filter>JUCE Modules\chowdsp_dsp_data_structures\Processors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_data_structures\Processors\chowdsp_COLAProcessor.h">
+      <Filter>JUCE Modules\chowdsp_dsp_data_structures\Processors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_data_structures\Processors\chowdsp_RebufferedProcessor.h">
+      <Filter>JUCE Modules\chowdsp_dsp_data_structures\Processors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_data_structures\third_party\moodycamel\atomicops.h">
+      <Filter>JUCE Modules\chowdsp_dsp_data_structures\third_party\moodycamel</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_data_structures\third_party\moodycamel\concurrentqueue.h">
+      <Filter>JUCE Modules\chowdsp_dsp_data_structures\third_party\moodycamel</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_data_structures\third_party\moodycamel\readerwriterqueue.h">
+      <Filter>JUCE Modules\chowdsp_dsp_data_structures\third_party\moodycamel</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_data_structures\chowdsp_dsp_data_structures.h">
+      <Filter>JUCE Modules\chowdsp_dsp_data_structures</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Convolution\chowdsp_ConvolutionEngine.h">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Convolution</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Convolution\chowdsp_IRHelpers.h">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Convolution</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Convolution\chowdsp_IRTransfer.h">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Convolution</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Delay\BBD\chowdsp_BBDDelayLine.h">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Delay\BBD</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Delay\BBD\chowdsp_BBDDelayWrapper.h">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Delay\BBD</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Delay\BBD\chowdsp_BBDFilterBank.h">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Delay\BBD</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Delay\chowdsp_DelayInterpolation.h">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Delay</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Delay\chowdsp_DelayLine.h">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Delay</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Delay\chowdsp_PitchShift.h">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Delay</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Delay\chowdsp_StaticDelayBuffer.h">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Delay</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Processors\chowdsp_AudioTimer.h">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Processors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Processors\chowdsp_BypassProcessor.h">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Processors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Processors\chowdsp_Gain.h">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Processors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Processors\chowdsp_LevelDetector.h">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Processors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Processors\chowdsp_LinearPhase3WayCrossover.h">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Processors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Processors\chowdsp_OvershootLimiter.h">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Processors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Processors\chowdsp_Panner.h">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Processors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Processors\chowdsp_TunerProcessor.h">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Processors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Processors\chowdsp_WidthPanner.h">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Processors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Resampling\chowdsp_BaseResampler.h">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Resampling</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Resampling\chowdsp_Downsampler.h">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Resampling</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Resampling\chowdsp_LanczosResampler.h">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Resampling</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Resampling\chowdsp_ResampledProcess.h">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Resampling</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Resampling\chowdsp_ResamplingProcessor.h">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Resampling</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Resampling\chowdsp_SRCResampler.h">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Resampling</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Resampling\chowdsp_Upsampler.h">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Resampling</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\Resampling\chowdsp_VariableOversampling.h">
+      <Filter>JUCE Modules\chowdsp_dsp_utils\Resampling</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_utils\chowdsp_dsp_utils.h">
+      <Filter>JUCE Modules\chowdsp_dsp_utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\HigherOrderFilters\chowdsp_ButterworthFilter.h">
+      <Filter>JUCE Modules\chowdsp_filters\HigherOrderFilters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\HigherOrderFilters\chowdsp_ChebyshevIIFilter.h">
+      <Filter>JUCE Modules\chowdsp_filters\HigherOrderFilters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\HigherOrderFilters\chowdsp_EllipticFilter.h">
+      <Filter>JUCE Modules\chowdsp_filters\HigherOrderFilters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\HigherOrderFilters\chowdsp_NthOrderFilter.h">
+      <Filter>JUCE Modules\chowdsp_filters\HigherOrderFilters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\HigherOrderFilters\chowdsp_SOSFilter.h">
+      <Filter>JUCE Modules\chowdsp_filters\HigherOrderFilters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\LowerOrderFilters\chowdsp_FirstOrderFilters.h">
+      <Filter>JUCE Modules\chowdsp_filters\LowerOrderFilters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\LowerOrderFilters\chowdsp_IIRFilter.h">
+      <Filter>JUCE Modules\chowdsp_filters\LowerOrderFilters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\LowerOrderFilters\chowdsp_ModFilterWrapper.h">
+      <Filter>JUCE Modules\chowdsp_filters\LowerOrderFilters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\LowerOrderFilters\chowdsp_OnePoleSVF.h">
+      <Filter>JUCE Modules\chowdsp_filters\LowerOrderFilters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\LowerOrderFilters\chowdsp_SecondOrderFilters.h">
+      <Filter>JUCE Modules\chowdsp_filters\LowerOrderFilters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\LowerOrderFilters\chowdsp_StateVariableFilter.h">
+      <Filter>JUCE Modules\chowdsp_filters\LowerOrderFilters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\Other\chowdsp_ARPFilter.h">
+      <Filter>JUCE Modules\chowdsp_filters\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\Other\chowdsp_CrossoverFilter.h">
+      <Filter>JUCE Modules\chowdsp_filters\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\Other\chowdsp_FIRFilter.h">
+      <Filter>JUCE Modules\chowdsp_filters\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\Other\chowdsp_FIRPolyphaseDecimator.h">
+      <Filter>JUCE Modules\chowdsp_filters\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\Other\chowdsp_FIRPolyphaseInterpolator.h">
+      <Filter>JUCE Modules\chowdsp_filters\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\Other\chowdsp_FractionalOrderFilter.h">
+      <Filter>JUCE Modules\chowdsp_filters\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\Other\chowdsp_HilbertFilter.h">
+      <Filter>JUCE Modules\chowdsp_filters\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\Other\chowdsp_LinkwitzRileyFilter.h">
+      <Filter>JUCE Modules\chowdsp_filters\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\Other\chowdsp_ThreeWayCrossoverFilter.h">
+      <Filter>JUCE Modules\chowdsp_filters\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\Other\chowdsp_WernerFilter.h">
+      <Filter>JUCE Modules\chowdsp_filters\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\Utils\chowdsp_CoefficientCalculators.h">
+      <Filter>JUCE Modules\chowdsp_filters\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\Utils\chowdsp_ConformalMaps.h">
+      <Filter>JUCE Modules\chowdsp_filters\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\Utils\chowdsp_FilterChain.h">
+      <Filter>JUCE Modules\chowdsp_filters\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\Utils\chowdsp_LinearTransforms.h">
+      <Filter>JUCE Modules\chowdsp_filters\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\Utils\chowdsp_QValCalcs.h">
+      <Filter>JUCE Modules\chowdsp_filters\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\Utils\chowdsp_VicanekHelpers.h">
+      <Filter>JUCE Modules\chowdsp_filters\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_filters\chowdsp_filters.h">
+      <Filter>JUCE Modules\chowdsp_filters</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_listeners\third_party\rocket.hpp">
+      <Filter>JUCE Modules\chowdsp_listeners\third_party</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_listeners\chowdsp_listeners.h">
+      <Filter>JUCE Modules\chowdsp_listeners</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\Math\chowdsp_BufferMath.h">
+      <Filter>JUCE Modules\chowdsp_math\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\Math\chowdsp_ChebyshevPolynomials.h">
+      <Filter>JUCE Modules\chowdsp_math\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\Math\chowdsp_Combinatorics.h">
+      <Filter>JUCE Modules\chowdsp_math\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\Math\chowdsp_DecibelsApprox.h">
+      <Filter>JUCE Modules\chowdsp_math\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\Math\chowdsp_FloatVectorOperations.h">
+      <Filter>JUCE Modules\chowdsp_math\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\Math\chowdsp_JacobiElliptic.h">
+      <Filter>JUCE Modules\chowdsp_math\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\Math\chowdsp_LogApprox.h">
+      <Filter>JUCE Modules\chowdsp_math\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\Math\chowdsp_MatrixOps.h">
+      <Filter>JUCE Modules\chowdsp_math\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\Math\chowdsp_OtherMathOps.h">
+      <Filter>JUCE Modules\chowdsp_math\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\Math\chowdsp_Polylogarithm.h">
+      <Filter>JUCE Modules\chowdsp_math\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\Math\chowdsp_Polynomials.h">
+      <Filter>JUCE Modules\chowdsp_math\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\Math\chowdsp_PowApprox.h">
+      <Filter>JUCE Modules\chowdsp_math\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\Math\chowdsp_Power.h">
+      <Filter>JUCE Modules\chowdsp_math\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\Math\chowdsp_RandomFloat.h">
+      <Filter>JUCE Modules\chowdsp_math\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\Math\chowdsp_Ratio.h">
+      <Filter>JUCE Modules\chowdsp_math\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\Math\chowdsp_TanhIntegrals.h">
+      <Filter>JUCE Modules\chowdsp_math\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\Math\chowdsp_TrigApprox.h">
+      <Filter>JUCE Modules\chowdsp_math\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\quadrature\gauss_legendre_30.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl\quadrature</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\quadrature\gauss_legendre_50.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl\quadrature</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\abs.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\acos.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\acosh.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\asin.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\asinh.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\atan.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\atan2.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\atanh.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\beta.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\binomial_coef.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\ceil.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\copysign.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\cos.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\cosh.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\erf.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\erf_inv.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\exp.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\expm1.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\factorial.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\find_exponent.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\find_fraction.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\find_whole.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\floor.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\fmod.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\gcd.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\gcem_options.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\incomplete_beta.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\incomplete_beta_inv.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\incomplete_gamma.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\incomplete_gamma_inv.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\inv_sqrt.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\is_even.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\is_finite.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\is_inf.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\is_nan.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\is_odd.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\lbeta.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\lcm.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\lgamma.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\lmgamma.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\log.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\log_binomial_coef.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\log1p.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\log2.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\log10.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\mantissa.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\max.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\min.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\neg_zero.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\pow.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\pow_integral.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\round.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\sgn.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\signbit.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\sin.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\sinh.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\sqrt.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\tan.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\tanh.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\tgamma.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem_incl\trunc.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include\gcem_incl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\include\gcem.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\gcem_tests.hpp">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\chowdsp_math.h">
+      <Filter>JUCE Modules\chowdsp_math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\SIMD\chowdsp_SampleTypeHelpers.h">
+      <Filter>JUCE Modules\chowdsp_simd\SIMD</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\SIMD\chowdsp_SIMDAlignmentHelpers.h">
+      <Filter>JUCE Modules\chowdsp_simd\SIMD</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\SIMD\chowdsp_SIMDComplexMathOps.h">
+      <Filter>JUCE Modules\chowdsp_simd\SIMD</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\SIMD\chowdsp_SIMDDecibels.h">
+      <Filter>JUCE Modules\chowdsp_simd\SIMD</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\SIMD\chowdsp_SIMDLogic.h">
+      <Filter>JUCE Modules\chowdsp_simd\SIMD</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\SIMD\chowdsp_SIMDSmoothedValue.h">
+      <Filter>JUCE Modules\chowdsp_simd\SIMD</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\SIMD\chowdsp_SIMDSpecialMath.h">
+      <Filter>JUCE Modules\chowdsp_simd\SIMD</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\SIMD\chowdsp_SIMDUtils.h">
+      <Filter>JUCE Modules\chowdsp_simd\SIMD</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\benchmark\xsimd_benchmark.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\benchmark</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\examples\pico_bench.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\examples</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\generic\xsimd_generic_arithmetic.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch\generic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\generic\xsimd_generic_complex.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch\generic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\generic\xsimd_generic_details.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch\generic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\generic\xsimd_generic_logical.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch\generic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\generic\xsimd_generic_math.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch\generic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\generic\xsimd_generic_memory.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch\generic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\generic\xsimd_generic_rounding.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch\generic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\generic\xsimd_generic_trigo.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch\generic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\xsimd_avx.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\xsimd_avx2.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\xsimd_avx512bw.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\xsimd_avx512cd.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\xsimd_avx512dq.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\xsimd_avx512f.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\xsimd_constants.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\xsimd_fma3_avx.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\xsimd_fma3_avx2.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\xsimd_fma3_sse.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\xsimd_fma4.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\xsimd_generic.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\xsimd_generic_fwd.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\xsimd_isa.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\xsimd_neon.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\xsimd_neon64.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\xsimd_scalar.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\xsimd_sse2.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\xsimd_sse3.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\xsimd_sse4_1.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\xsimd_sse4_2.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\xsimd_ssse3.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\arch\xsimd_sve.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\arch</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\config\xsimd_arch.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\config</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\config\xsimd_config.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\config</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\config\xsimd_cpuid.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\config</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\math\xsimd_rem_pio2.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\memory\xsimd_aligned_allocator.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\memory</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\memory\xsimd_alignment.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\memory</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\types\xsimd_all_registers.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\types</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\types\xsimd_api.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\types</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\types\xsimd_avx_register.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\types</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\types\xsimd_avx2_register.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\types</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\types\xsimd_avx512bw_register.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\types</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\types\xsimd_avx512cd_register.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\types</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\types\xsimd_avx512dq_register.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\types</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\types\xsimd_avx512f_register.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\types</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\types\xsimd_batch.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\types</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\types\xsimd_batch_constant.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\types</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\types\xsimd_fma3_avx_register.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\types</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\types\xsimd_fma3_avx2_register.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\types</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\types\xsimd_fma3_sse_register.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\types</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\types\xsimd_fma4_register.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\types</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\types\xsimd_generic_arch.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\types</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\types\xsimd_neon_register.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\types</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\types\xsimd_neon64_register.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\types</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\types\xsimd_register.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\types</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\types\xsimd_sse2_register.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\types</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\types\xsimd_sse3_register.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\types</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\types\xsimd_sse4_1_register.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\types</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\types\xsimd_sse4_2_register.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\types</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\types\xsimd_ssse3_register.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\types</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\types\xsimd_sve_register.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\types</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\types\xsimd_traits.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\types</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\types\xsimd_utils.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd\types</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\include\xsimd\xsimd.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\include\xsimd</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_sum.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\test_utils.hpp">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\chowdsp_simd.h">
+      <Filter>JUCE Modules\chowdsp_simd</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_sources\Oscillators\chowdsp_AdditiveOscillator.h">
+      <Filter>JUCE Modules\chowdsp_sources\Oscillators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_sources\Oscillators\chowdsp_PolygonalOscillator.h">
+      <Filter>JUCE Modules\chowdsp_sources\Oscillators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_sources\Oscillators\chowdsp_SawtoothWave.h">
+      <Filter>JUCE Modules\chowdsp_sources\Oscillators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_sources\Oscillators\chowdsp_SineWave.h">
+      <Filter>JUCE Modules\chowdsp_sources\Oscillators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_sources\Oscillators\chowdsp_SquareWave.h">
+      <Filter>JUCE Modules\chowdsp_sources\Oscillators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_sources\Oscillators\chowdsp_TriangleWave.h">
+      <Filter>JUCE Modules\chowdsp_sources\Oscillators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_sources\Other\chowdsp_Noise.h">
+      <Filter>JUCE Modules\chowdsp_sources\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_sources\Other\chowdsp_NoiseSynth.h">
+      <Filter>JUCE Modules\chowdsp_sources\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_sources\Other\chowdsp_RepitchedSource.h">
+      <Filter>JUCE Modules\chowdsp_sources\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_sources\chowdsp_sources.h">
+      <Filter>JUCE Modules\chowdsp_sources</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_audio_basics\audio_play_head\juce_AudioPlayHead.h">
       <Filter>JUCE Modules\juce_audio_basics\audio_play_head</Filter>
@@ -6137,6 +7820,147 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_data_structures\juce_data_structures.h">
       <Filter>JUCE Modules\juce_data_structures</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\containers\juce_AudioBlock.h">
+      <Filter>JUCE Modules\juce_dsp\containers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\containers\juce_SIMDInterleavingHelpers.h">
+      <Filter>JUCE Modules\juce_dsp\containers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\containers\juce_SIMDRegister.h">
+      <Filter>JUCE Modules\juce_dsp\containers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\containers\juce_SIMDRegister_Impl.h">
+      <Filter>JUCE Modules\juce_dsp\containers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\filter_design\juce_FilterDesign.h">
+      <Filter>JUCE Modules\juce_dsp\filter_design</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\frequency\juce_Convolution.h">
+      <Filter>JUCE Modules\juce_dsp\frequency</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\frequency\juce_FFT.h">
+      <Filter>JUCE Modules\juce_dsp\frequency</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\frequency\juce_Windowing.h">
+      <Filter>JUCE Modules\juce_dsp\frequency</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\maths\juce_FastMathApproximations.h">
+      <Filter>JUCE Modules\juce_dsp\maths</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\maths\juce_LogRampedValue.h">
+      <Filter>JUCE Modules\juce_dsp\maths</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\maths\juce_LookupTable.h">
+      <Filter>JUCE Modules\juce_dsp\maths</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\maths\juce_Matrix.h">
+      <Filter>JUCE Modules\juce_dsp\maths</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\maths\juce_Phase.h">
+      <Filter>JUCE Modules\juce_dsp\maths</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\maths\juce_Polynomial.h">
+      <Filter>JUCE Modules\juce_dsp\maths</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\maths\juce_SpecialFunctions.h">
+      <Filter>JUCE Modules\juce_dsp\maths</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\native\juce_SIMDNativeOps_avx.h">
+      <Filter>JUCE Modules\juce_dsp\native</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\native\juce_SIMDNativeOps_fallback.h">
+      <Filter>JUCE Modules\juce_dsp\native</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\native\juce_SIMDNativeOps_neon.h">
+      <Filter>JUCE Modules\juce_dsp\native</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\native\juce_SIMDNativeOps_sse.h">
+      <Filter>JUCE Modules\juce_dsp\native</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\processors\juce_BallisticsFilter.h">
+      <Filter>JUCE Modules\juce_dsp\processors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\processors\juce_DelayLine.h">
+      <Filter>JUCE Modules\juce_dsp\processors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\processors\juce_DryWetMixer.h">
+      <Filter>JUCE Modules\juce_dsp\processors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\processors\juce_FIRFilter.h">
+      <Filter>JUCE Modules\juce_dsp\processors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\processors\juce_FirstOrderTPTFilter.h">
+      <Filter>JUCE Modules\juce_dsp\processors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\processors\juce_IIRFilter.h">
+      <Filter>JUCE Modules\juce_dsp\processors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\processors\juce_IIRFilter_Impl.h">
+      <Filter>JUCE Modules\juce_dsp\processors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\processors\juce_LinkwitzRileyFilter.h">
+      <Filter>JUCE Modules\juce_dsp\processors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\processors\juce_Oversampling.h">
+      <Filter>JUCE Modules\juce_dsp\processors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\processors\juce_Panner.h">
+      <Filter>JUCE Modules\juce_dsp\processors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\processors\juce_ProcessContext.h">
+      <Filter>JUCE Modules\juce_dsp\processors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\processors\juce_ProcessorChain.h">
+      <Filter>JUCE Modules\juce_dsp\processors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\processors\juce_ProcessorDuplicator.h">
+      <Filter>JUCE Modules\juce_dsp\processors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\processors\juce_ProcessorWrapper.h">
+      <Filter>JUCE Modules\juce_dsp\processors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\processors\juce_StateVariableFilter.h">
+      <Filter>JUCE Modules\juce_dsp\processors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\processors\juce_StateVariableTPTFilter.h">
+      <Filter>JUCE Modules\juce_dsp\processors</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\widgets\juce_Bias.h">
+      <Filter>JUCE Modules\juce_dsp\widgets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\widgets\juce_Chorus.h">
+      <Filter>JUCE Modules\juce_dsp\widgets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\widgets\juce_Compressor.h">
+      <Filter>JUCE Modules\juce_dsp\widgets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\widgets\juce_Gain.h">
+      <Filter>JUCE Modules\juce_dsp\widgets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\widgets\juce_LadderFilter.h">
+      <Filter>JUCE Modules\juce_dsp\widgets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\widgets\juce_Limiter.h">
+      <Filter>JUCE Modules\juce_dsp\widgets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\widgets\juce_NoiseGate.h">
+      <Filter>JUCE Modules\juce_dsp\widgets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\widgets\juce_Oscillator.h">
+      <Filter>JUCE Modules\juce_dsp\widgets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\widgets\juce_Phaser.h">
+      <Filter>JUCE Modules\juce_dsp\widgets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\widgets\juce_Reverb.h">
+      <Filter>JUCE Modules\juce_dsp\widgets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\widgets\juce_WaveShaper.h">
+      <Filter>JUCE Modules\juce_dsp\widgets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_dsp\juce_dsp.h">
+      <Filter>JUCE Modules\juce_dsp</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_events\broadcasters\juce_ActionBroadcaster.h">
       <Filter>JUCE Modules\juce_events\broadcasters</Filter>
@@ -8888,6 +10712,72 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\third_party\span-lite\example\CMakeLists.txt">
+      <Filter>JUCE Modules\chowdsp_core\third_party\span-lite\example</Filter>
+    </None>
+    <None Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\third_party\span-lite\test\CMakeLists.txt">
+      <Filter>JUCE Modules\chowdsp_core\third_party\span-lite\test</Filter>
+    </None>
+    <None Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\third_party\span-lite\CMakeLists.txt">
+      <Filter>JUCE Modules\chowdsp_core\third_party\span-lite</Filter>
+    </None>
+    <None Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\third_party\span-lite\LICENSE.txt">
+      <Filter>JUCE Modules\chowdsp_core\third_party\span-lite</Filter>
+    </None>
+    <None Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\third_party\span-lite\README.md">
+      <Filter>JUCE Modules\chowdsp_core\third_party\span-lite</Filter>
+    </None>
+    <None Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\third_party\types_list\example\CMakeLists.txt">
+      <Filter>JUCE Modules\chowdsp_core\third_party\types_list\example</Filter>
+    </None>
+    <None Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\third_party\types_list\test\CMakeLists.txt">
+      <Filter>JUCE Modules\chowdsp_core\third_party\types_list\test</Filter>
+    </None>
+    <None Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\third_party\types_list\CMakeLists.txt">
+      <Filter>JUCE Modules\chowdsp_core\third_party\types_list</Filter>
+    </None>
+    <None Include="..\..\ThirdParty\chowdsp_utils\modules\common\chowdsp_core\third_party\types_list\README.md">
+      <Filter>JUCE Modules\chowdsp_core\third_party\types_list</Filter>
+    </None>
+    <None Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_dsp_data_structures\third_party\moodycamel\LICENSE.md">
+      <Filter>JUCE Modules\chowdsp_dsp_data_structures\third_party\moodycamel</Filter>
+    </None>
+    <None Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\tests\CMakeLists.txt">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem\tests</Filter>
+    </None>
+    <None Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\.readthedocs.requirements.txt">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem</Filter>
+    </None>
+    <None Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\CMakeLists.txt">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem</Filter>
+    </None>
+    <None Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\contributors.txt">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem</Filter>
+    </None>
+    <None Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\NOTICE.txt">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem</Filter>
+    </None>
+    <None Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_math\third_party\gcem\README.md">
+      <Filter>JUCE Modules\chowdsp_math\third_party\gcem</Filter>
+    </None>
+    <None Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\benchmark\CMakeLists.txt">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\benchmark</Filter>
+    </None>
+    <None Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\examples\CMakeLists.txt">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\examples</Filter>
+    </None>
+    <None Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\test\CMakeLists.txt">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd\test</Filter>
+    </None>
+    <None Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\CMakeLists.txt">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd</Filter>
+    </None>
+    <None Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\CONTRIBUTING.md">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd</Filter>
+    </None>
+    <None Include="..\..\ThirdParty\chowdsp_utils\modules\dsp\chowdsp_simd\third_party\xsimd\README.md">
+      <Filter>JUCE Modules\chowdsp_simd\third_party\xsimd</Filter>
+    </None>
     <None Include="..\..\..\..\..\Downloads\juce-9.0.1-windows\JUCE\modules\juce_audio_devices\native\asio\LICENSE.txt">
       <Filter>JUCE Modules\juce_audio_devices\native\asio</Filter>
     </None>

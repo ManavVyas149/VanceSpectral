@@ -112,10 +112,13 @@ bool HistoryManager::pushHistoryState(const juce::String& label,
     std::vector<std::pair<juce::String, float>> paramValues;
     const char* paramIDs[] = {
         "AMP_ATTACK", "AMP_DECAY", "AMP_SUSTAIN", "AMP_RELEASE",
-        "FILTER_ATTACK", "FILTER_DECAY", "FILTER_SUSTAIN", "FILTER_RELEASE",
         "PLAYBACK_MODE", "PITCH_MODE", "PITCH_SEMITONES",
-        "TIMBRE_SEMITONES", "TIMBRE_LINK", "TIMBRE_DRIFT",
-        "EXCITER", "POLY_MODE", "GLIDE", "GAIN"
+        "TIMBRE_DRIFT", "EXCITER", "POLY_MODE", "GLIDE", "GAIN",
+        "FX_GATE_ENABLE", "FX_GATE_AMOUNT",
+        "FX_CHORUS_ENABLE", "FX_CHORUS_AMOUNT", "FX_CHORUS_RATE",
+        "FX_PHASER_ENABLE", "FX_PHASER_AMOUNT", "FX_PHASER_RATE",
+        "FX_DELAY_ENABLE", "FX_DELAY_AMOUNT", "FX_DELAY_TIME", "FX_DELAY_FEEDBACK",
+        "FX_DRIVE_ENABLE", "FX_DRIVE_AMOUNT", "FX_DRIVE_TONE"
     };
     for (const auto& id : paramIDs)
     {

@@ -26,39 +26,22 @@ juce::AudioProcessorValueTreeState::ParameterLayout VancespectralAudioProcessor:
     params.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID("AMP_RELEASE", 1), "Amp Release", juce::NormalisableRange<float>(0.001f, 5.0f, 0.001f, 0.5f), 0.5f));
 
-    // Filter Envelope Parameters (4 Knobs: Attack, Decay, Sustain, Release)
-    params.push_back(std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID("FILTER_ATTACK", 1), "Filter Attack", juce::NormalisableRange<float>(0.001f, 5.0f, 0.001f, 0.5f), 0.05f));
-    params.push_back(std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID("FILTER_DECAY", 1), "Filter Decay", juce::NormalisableRange<float>(0.001f, 5.0f, 0.001f, 0.5f), 0.3f));
-    params.push_back(std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID("FILTER_SUSTAIN", 1), "Filter Sustain", juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.5f));
-    params.push_back(std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID("FILTER_RELEASE", 1), "Filter Release", juce::NormalisableRange<float>(0.001f, 5.0f, 0.001f, 0.5f), 0.4f));
 
     // Playback Mode Parameter (5 states: Forward, Backward, Forw-Backw, Back-Forw, Random)
     params.push_back(std::make_unique<juce::AudioParameterChoice>(
         juce::ParameterID("PLAYBACK_MODE", 1), "Playback Mode",
         juce::StringArray{ "Forward", "Backward", "Forw-Backw", "Back-Forw", "Random" }, 0));
 
-    // Pitch Mode Parameter (3 states: Stretch, Resample, Axial)
+    // Pitch Mode Parameter (2 states: Stretch, Resample)
     params.push_back(std::make_unique<juce::AudioParameterChoice>(
         juce::ParameterID("PITCH_MODE", 1), "Pitch Mode",
-        juce::StringArray{ "Stretch", "Resample", "Axial" }, 0));
+        juce::StringArray{ "Stretch", "Resample" }, 0));
 
     // Pitch Semitones Offset Parameter (-24 to +24 semitones, default 0 st)
     params.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID("PITCH_SEMITONES", 1), "Pitch Shift", juce::NormalisableRange<float>(-24.0f, 24.0f, 1.0f), 0.0f));
 
-    // Timbre / Formant Shift Parameter (-24 to +24 semitones, default 0 st)
-    params.push_back(std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID("TIMBRE_SEMITONES", 1), "Timbre Shift", juce::NormalisableRange<float>(-24.0f, 24.0f, 1.0f), 0.0f));
-
-    // Timbre Link Parameter (True = linked to pitch shift, False = decoupled timbre)
-    params.push_back(std::make_unique<juce::AudioParameterBool>(
-        juce::ParameterID("TIMBRE_LINK", 1), "Timbre Link", true));
-
-    // Timbre Drift Amount Parameter (0.0 to 1.0, default 0.0)
+    // Voice Drift Amount Parameter (0.0 to 1.0, default 0.0)
     params.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID("TIMBRE_DRIFT", 1), "Voice Drift", juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.0f));
 
@@ -78,6 +61,42 @@ juce::AudioProcessorValueTreeState::ParameterLayout VancespectralAudioProcessor:
     // Master Gain Parameter (-48.0 dB to +6.0 dB, default 0.0 dB)
     params.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID("GAIN", 1), "Master Gain", juce::NormalisableRange<float>(-48.0f, 6.0f, 0.1f), 0.0f));
+
+    // Master Wet Effects (Gate, Chorus, Phaser, Delay, Drive)
+    params.push_back(std::make_unique<juce::AudioParameterBool>(
+        juce::ParameterID("FX_GATE_ENABLE", 1), "Gate Enable", false));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("FX_GATE_AMOUNT", 1), "Gate Amount", juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.0f));
+
+    params.push_back(std::make_unique<juce::AudioParameterBool>(
+        juce::ParameterID("FX_CHORUS_ENABLE", 1), "Chorus Enable", false));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("FX_CHORUS_AMOUNT", 1), "Chorus Mix", juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("FX_CHORUS_RATE", 1), "Chorus Rate", juce::NormalisableRange<float>(0.1f, 5.0f, 0.01f, 0.5f), 1.0f));
+
+    params.push_back(std::make_unique<juce::AudioParameterBool>(
+        juce::ParameterID("FX_PHASER_ENABLE", 1), "Phaser Enable", false));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("FX_PHASER_AMOUNT", 1), "Phaser Mix", juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("FX_PHASER_RATE", 1), "Phaser Rate", juce::NormalisableRange<float>(0.05f, 4.0f, 0.01f, 0.5f), 0.5f));
+
+    params.push_back(std::make_unique<juce::AudioParameterBool>(
+        juce::ParameterID("FX_DELAY_ENABLE", 1), "Delay Enable", false));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("FX_DELAY_AMOUNT", 1), "Delay Mix", juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("FX_DELAY_TIME", 1), "Delay Time", juce::NormalisableRange<float>(10.0f, 1000.0f, 1.0f, 0.5f), 250.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("FX_DELAY_FEEDBACK", 1), "Delay Feedback", juce::NormalisableRange<float>(0.0f, 0.85f, 0.01f), 0.35f));
+
+    params.push_back(std::make_unique<juce::AudioParameterBool>(
+        juce::ParameterID("FX_DRIVE_ENABLE", 1), "Drive Enable", false));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("FX_DRIVE_AMOUNT", 1), "Drive Amount", juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("FX_DRIVE_TONE", 1), "Drive Tone", juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.5f));
 
     return { params.begin(), params.end() };
 }
@@ -176,8 +195,8 @@ void VancespectralAudioProcessor::prepareToPlay(
     double sampleRate,
     int samplesPerBlock)
 {
-    juce::ignoreUnused(samplesPerBlock);
     sampleEngine.prepare(sampleRate);
+    effectsEngine.prepare(sampleRate, samplesPerBlock);
     masterGainSmoother.reset(sampleRate, 0.02); // 20ms gain smoothing
     float masterGainDb = *apvts.getRawParameterValue("GAIN");
     masterGainSmoother.setCurrentAndTargetValue(juce::Decibels::decibelsToGain(masterGainDb));
@@ -245,17 +264,10 @@ void VancespectralAudioProcessor::processBlock(
     float ampR = *apvts.getRawParameterValue("AMP_RELEASE");
     sampleEngine.updateAmpADSR(ampA, ampD, ampS, ampR);
 
-    float filtA = *apvts.getRawParameterValue("FILTER_ATTACK");
-    float filtD = *apvts.getRawParameterValue("FILTER_DECAY");
-    float filtS = *apvts.getRawParameterValue("FILTER_SUSTAIN");
-    float filtR = *apvts.getRawParameterValue("FILTER_RELEASE");
-    sampleEngine.updateFilterADSR(filtA, filtD, filtS, filtR);
 
     int playMode = (int)*apvts.getRawParameterValue("PLAYBACK_MODE");
     int pitchMode = (int)*apvts.getRawParameterValue("PITCH_MODE");
     float pitchSemis = *apvts.getRawParameterValue("PITCH_SEMITONES");
-    float timbreSemis = *apvts.getRawParameterValue("TIMBRE_SEMITONES");
-    bool timbreLinked = *apvts.getRawParameterValue("TIMBRE_LINK") >= 0.5f;
     float timbreDriftVal = *apvts.getRawParameterValue("TIMBRE_DRIFT");
     float exciterVal = *apvts.getRawParameterValue("EXCITER");
     int polyModeVal = (int)*apvts.getRawParameterValue("POLY_MODE");
@@ -264,8 +276,6 @@ void VancespectralAudioProcessor::processBlock(
     sampleEngine.setPlaybackMode(playMode);
     sampleEngine.setPitchMode(pitchMode);
     sampleEngine.setPitchSemitones(pitchSemis);
-    sampleEngine.setTimbreSemitones(timbreSemis);
-    sampleEngine.setTimbreLink(timbreLinked);
     sampleEngine.setTimbreDrift(timbreDriftVal);
     sampleEngine.setExciterAmount(exciterVal);
     sampleEngine.setPolyMode(polyModeVal == 1);
@@ -281,6 +291,29 @@ void VancespectralAudioProcessor::processBlock(
     }
 
     sampleEngine.process(buffer, 0, buffer.getNumSamples());
+
+    // 5-Stage Master Effects Chain (Gate -> Chorus -> Phaser -> Delay -> Drive -> Exciter [inside sampleEngine] -> Volume)
+    effectsEngine.setGateEnabled(*apvts.getRawParameterValue("FX_GATE_ENABLE") >= 0.5f);
+    effectsEngine.setGateAmount(*apvts.getRawParameterValue("FX_GATE_AMOUNT"));
+
+    effectsEngine.setChorusEnabled(*apvts.getRawParameterValue("FX_CHORUS_ENABLE") >= 0.5f);
+    effectsEngine.setChorusAmount(*apvts.getRawParameterValue("FX_CHORUS_AMOUNT"));
+    effectsEngine.setChorusRate(*apvts.getRawParameterValue("FX_CHORUS_RATE"));
+
+    effectsEngine.setPhaserEnabled(*apvts.getRawParameterValue("FX_PHASER_ENABLE") >= 0.5f);
+    effectsEngine.setPhaserAmount(*apvts.getRawParameterValue("FX_PHASER_AMOUNT"));
+    effectsEngine.setPhaserRate(*apvts.getRawParameterValue("FX_PHASER_RATE"));
+
+    effectsEngine.setDelayEnabled(*apvts.getRawParameterValue("FX_DELAY_ENABLE") >= 0.5f);
+    effectsEngine.setDelayAmount(*apvts.getRawParameterValue("FX_DELAY_AMOUNT"));
+    effectsEngine.setDelayTime(*apvts.getRawParameterValue("FX_DELAY_TIME"));
+    effectsEngine.setDelayFeedback(*apvts.getRawParameterValue("FX_DELAY_FEEDBACK"));
+
+    effectsEngine.setDriveEnabled(*apvts.getRawParameterValue("FX_DRIVE_ENABLE") >= 0.5f);
+    effectsEngine.setDriveAmount(*apvts.getRawParameterValue("FX_DRIVE_AMOUNT"));
+    effectsEngine.setDriveTone(*apvts.getRawParameterValue("FX_DRIVE_TONE"));
+
+    effectsEngine.process(buffer);
 
     float masterGainDb = *apvts.getRawParameterValue("GAIN");
     float masterGainLinear = juce::Decibels::decibelsToGain(masterGainDb);
@@ -417,8 +450,12 @@ void VancespectralAudioProcessor::resetParametersToDefault()
 {
     const char* idsToReset[] = {
         "AMP_ATTACK", "AMP_DECAY", "AMP_SUSTAIN", "AMP_RELEASE",
-        "FILTER_ATTACK", "FILTER_DECAY", "FILTER_SUSTAIN", "FILTER_RELEASE",
-        "PLAYBACK_MODE", "PITCH_MODE", "PITCH_SEMITONES", "EXCITER", "POLY_MODE", "GLIDE", "GAIN"
+        "PLAYBACK_MODE", "PITCH_MODE", "PITCH_SEMITONES", "TIMBRE_DRIFT", "EXCITER", "POLY_MODE", "GLIDE", "GAIN",
+        "FX_GATE_ENABLE", "FX_GATE_AMOUNT",
+        "FX_CHORUS_ENABLE", "FX_CHORUS_AMOUNT", "FX_CHORUS_RATE",
+        "FX_PHASER_ENABLE", "FX_PHASER_AMOUNT", "FX_PHASER_RATE",
+        "FX_DELAY_ENABLE", "FX_DELAY_AMOUNT", "FX_DELAY_TIME", "FX_DELAY_FEEDBACK",
+        "FX_DRIVE_ENABLE", "FX_DRIVE_AMOUNT", "FX_DRIVE_TONE"
     };
 
     for (const auto& id : idsToReset)

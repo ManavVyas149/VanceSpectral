@@ -8,6 +8,7 @@
 #include "ToolbarComponent.h"
 #include "SegmentedControlComponent.h"
 #include "ADSRPanel.h"
+#include "EffectsPanel.h"
 #include "PresetManager.h"
 #include "PresetBrowserOverlay.h"
 
@@ -36,9 +37,10 @@ private:
     std::unique_ptr<SpectrogramComponent> spectrogram;
 
     SegmentedControlComponent playbackControl{ "playback", { "Forward", "Backward", "Forw-Backw", "Back-Forw", "Random" } };
-    SegmentedControlComponent pitchControl{ "pitch", { "Stretch", "Resample", "Axial" } };
+    SegmentedControlComponent pitchControl{ "pitch", { "Stretch", "Resample" } };
 
     ADSRPanel adsrPanel;
+    EffectsPanel effectsPanel;
 
     juce::Slider volumeSlider;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> volumeAttachment;

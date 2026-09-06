@@ -6,6 +6,8 @@
 
 #include "HistoryManager.h"
 
+// Simple two-level directory browser: ROOT FOLDER -> BANK (immediate subfolder) -> presets
+// (files inside that bank folder). See CLAUDE.md "Presets / History" for the on-disk model.
 class PresetBrowserOverlay : public juce::Component, public juce::ListBoxModel
 {
 public:
@@ -14,13 +16,15 @@ public:
 
     void paint(juce::Graphics& g) override;
     void resized() override;
+    void visibilityChanged() override;
+    bool keyPressed(const juce::KeyPress& key) override;
 
     void refreshBankList();
     void refreshPresetList();
     void refreshSampleList();
     void refreshHistoryList();
 
-    // ListBoxModel interface for Presets
+    // ListBoxModel interface for the bank list (primary navigation)
     int getNumRows() override;
     void paintListBoxItem(int rowNumber, juce::Graphics& g, int width, int height, bool rowIsSelected) override;
     void listBoxItemClicked(int row, const juce::MouseEvent& e) override;
@@ -38,77 +42,53 @@ public:
     void clearActivePresetSelection();
     juce::File getActivePresetFile() const { return activePresetFile; }
 
+    // Reachable from the toolbar/preset bar independently of this overlay's own UI.
     void executeShuffleFx();
-    void updateShuffleFxButtonState();
 
 private:
+    enum class ViewMode { Banks, PresetsInBank, Samples, History };
+
     PresetManager& presetManager;
     juce::AudioProcessorValueTreeState& apvts;
     HistoryManager* historyManager = nullptr;
 
-    // Header Components
+    ViewMode currentView = ViewMode::Banks;
+
+    // Header
     juce::TextButton closeButton{ "X" };
-
-    // Column 1: Presets & Bank & Search
-    juce::ComboBox bankSelector;
-    juce::TextButton bankActionsBtn{ "BANK..." };
-    juce::TextButton shuffleFxBtn{ juce::String::fromUTF8("\xe2\x87\x86 SHUFFLE FX") };
-
-    juce::TextEditor searchBox;
-    juce::ComboBox sortSelector;
-    juce::TextButton favoriteFilterBtn;
-
-    juce::ListBox presetListBox;
-
-    juce::TextButton filterAllBtn{ "ALL" };
-    juce::TextButton filterSynthBtn{ "SYNTH" };
-    juce::TextButton filterLeadBtn{ "LEAD" };
-    juce::TextButton filterBassBtn{ "BASS" };
-    juce::TextButton filterPadBtn{ "PAD" };
-    juce::TextButton filterFxBtn{ "FX" };
-    juce::TextButton filterStatesBtn{ "STATES" };
-
-    class CategoryBarContainer : public juce::Component
-    {
-    public:
-        CategoryBarContainer(PresetBrowserOverlay& owner) : owner(owner) {}
-        void resized() override;
-        void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override;
-    private:
-        PresetBrowserOverlay& owner;
-    };
-
-    CategoryBarContainer categoryContainer{ *this };
-    juce::Viewport categoryViewport;
-
-    juce::String activeCategoryFilter = "ALL";
-    juce::String activeBankFilter = "ALL BANKS";
-    bool onlyFavoritesFilter = false;
-    int activeSortMode = 0; // 0: A-Z, 1: Favorites First, 2: Recently Used
-
-    juce::File lastShuffledPresetFile;
-    juce::String lastShuffledBank;
-
-    // Column 2: Preset Details & Actions
+    juce::Label rootPathLabel;
+    juce::TextButton chooseRootBtn{ "Choose Folder..." };
+    juce::TextButton samplesToggleBtn{ "SAMPLES" };
+    juce::TextButton historyToggleBtn{ "HISTORY" };
     juce::Label statusLabel;
-    juce::Label selectedPresetTitle;
-    juce::Label selectedPresetDetails;
 
+    // Bank list (top level)
+    juce::ListBox bankListBox;
+    juce::TextButton manageBanksBtn{ "Manage" };
+    juce::Label emptyStateLabel;
+    juce::StringArray currentBanks;
+
+    // Preset list (inside a bank, one level down)
+    juce::TextButton backToBanksBtn{ "< Back to Banks" };
+    juce::Label currentBankLabel;
+    juce::ListBox presetListBox;
+    juce::Label selectedPresetTitle;
     juce::TextButton loadPresetBtn{ "LOAD PRESET" };
     juce::TextButton deletePresetBtn{ "DELETE PRESET" };
-
-    juce::TextEditor saveNameInput;
-    juce::ComboBox saveCategoryInput;
-    juce::ComboBox saveBankSelector;
-    juce::TextButton savePresetBtn{ "SAVE CURRENT PRESET" };
-
     bool confirmDeletePresetPending = false;
 
-    // Column 3: Sample Storage & Edit History
-    juce::TextButton sampleStorageTabBtn{ "SAMPLES" };
-    juce::TextButton historyTabBtn{ "EDIT HISTORY (10)" };
-    int activeSampleStorageTab = 0; // 0 = Samples, 1 = History
+    // Compact secondary "save current preset" action (saves into the open bank)
+    juce::TextEditor saveNameInput;
+    juce::TextButton savePresetBtn{ "SAVE CURRENT PRESET" };
 
+    juce::String currentBankName;
+    juce::Array<PresetInfo> currentBankPresets;
+    juce::Array<PresetInfo> allPresets; // all presets under the root, used by Shuffle FX only
+    int selectedPresetIndex = -1;
+
+    juce::File lastShuffledPresetFile;
+
+    // Sample Storage & Edit History (secondary panels, off the primary bank tree)
     juce::ListBox sampleListBox;
     juce::TextButton importSampleBtn{ "IMPORT SAMPLE FILE" };
     juce::TextButton loadSampleToEngineBtn{ "LOAD SAMPLE" };
@@ -120,13 +100,8 @@ private:
     juce::TextButton restoreHistoryBtn{ "RESTORE SELECTED STATE" };
     juce::TextButton clearHistoryBtn{ "CLEAR HISTORY" };
 
-    // Data lists
-    juce::Array<PresetInfo> allPresets;
-    juce::Array<PresetInfo> filteredPresets;
     juce::Array<juce::File> allSamples;
     juce::Array<HistoryEntry> allHistoryEntries;
-
-    int selectedPresetIndex = -1;
     int selectedSampleIndex = -1;
     int selectedHistoryIndex = -1;
 
@@ -136,12 +111,27 @@ private:
     class SpectrogramComponent* spectrogram = nullptr;
     std::unique_ptr<juce::FileChooser> fileChooser;
 
-    void filterPresets();
+    void showView(ViewMode mode);
+    void openBank(const juce::String& bankName);
     void updateSelectedPresetDetails();
     void executeLoadSelectedPreset();
     void executeRestoreSelectedHistory();
     void showBankActionsMenu();
     void showRenameSampleDialog(int sampleRow);
+    void updateRootPathLabel();
+    void updateEmptyStateVisibility();
+
+    class PresetListModel : public juce::ListBoxModel
+    {
+    public:
+        PresetListModel(PresetBrowserOverlay& owner) : owner(owner) {}
+        int getNumRows() override { return owner.currentBankPresets.size(); }
+        void paintListBoxItem(int rowNumber, juce::Graphics& g, int width, int height, bool rowIsSelected) override;
+        void listBoxItemClicked(int row, const juce::MouseEvent& e) override;
+        void listBoxItemDoubleClicked(int row, const juce::MouseEvent& e) override;
+    private:
+        PresetBrowserOverlay& owner;
+    };
 
     class SampleListModel : public juce::ListBoxModel
     {
@@ -168,6 +158,7 @@ private:
         PresetBrowserOverlay& owner;
     };
 
+    PresetListModel presetListModel{ *this };
     SampleListModel sampleListModel{ *this };
     HistoryListModel historyListModel{ *this };
 
