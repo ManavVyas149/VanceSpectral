@@ -62,6 +62,78 @@ public:
     bool isFileLoaded() const { return fileLoaded; }
     std::function<void(bool)> onFileLoadedStateChanged;
 
+    juce::Rectangle<float> getGraphBounds() const;
+    bool isWaveformCached() const { return !cachedWaveformEnvelope.isEmpty(); }
+
+    struct VisualPlayhead {
+        float positionNorm = 0.0f;
+        float alpha = 1.0f;
+    };
+
+    struct VoicePositionSmoother {
+        float visualPos = 0.0f;
+        float lastTargetPos = 0.0f;
+        float velocity = 0.0f;
+        double lastTargetTimeSec = 0.0;
+        bool initialized = false;
+
+        void reset() {
+            visualPos = 0.0f;
+            lastTargetPos = 0.0f;
+            velocity = 0.0f;
+            lastTargetTimeSec = 0.0;
+            initialized = false;
+        }
+
+        void update(float targetPos, double nowSec, double dt, float nominalSpeed) {
+            if (!initialized) {
+                visualPos = targetPos;
+                lastTargetPos = targetPos;
+                velocity = nominalSpeed;
+                lastTargetTimeSec = nowSec;
+                initialized = true;
+                return;
+            }
+
+            float diff = targetPos - lastTargetPos;
+            bool isDiscontinuous = std::abs(targetPos - visualPos) > 0.12f;
+
+            // Detect loop wrap, restart, or abrupt jump
+            if (isDiscontinuous || (diff < -0.05f && velocity > 0.0f) || (diff > 0.05f && velocity < 0.0f)) {
+                visualPos = targetPos;
+                lastTargetPos = targetPos;
+                lastTargetTimeSec = nowSec;
+                if (nominalSpeed < 0.0f)
+                    velocity = -std::abs(velocity != 0.0f ? velocity : nominalSpeed);
+                else
+                    velocity = std::abs(velocity != 0.0f ? velocity : nominalSpeed);
+
+                if (std::abs(velocity) < 0.0001f)
+                    velocity = nominalSpeed;
+                return;
+            }
+
+            if (std::abs(diff) > 0.00001f) {
+                double timeSinceLast = nowSec - lastTargetTimeSec;
+                if (timeSinceLast > 0.004 && timeSinceLast < 0.200) {
+                    float measuredVel = (float)(diff / timeSinceLast);
+                    velocity = velocity * 0.6f + measuredVel * 0.4f;
+                }
+                lastTargetPos = targetPos;
+                lastTargetTimeSec = nowSec;
+            }
+
+            // Continuous forward extrapolation using velocity
+            visualPos += velocity * (float)dt;
+
+            // Soft spring pull towards audio thread target
+            float error = targetPos - visualPos;
+            visualPos += error * 0.30f;
+
+            visualPos = juce::jlimit(0.0f, 1.0f, visualPos);
+        }
+    };
+
 private:
     class LoopButton : public juce::Button
     {
@@ -98,13 +170,37 @@ private:
     static juce::String formatFrequency(float hz);
     void updateFrequencyFilterFromSelections();
 
-    juce::Rectangle<float> getGraphBounds() const;
     juce::Rectangle<float> getAxisBounds() const;
 
     void generateSpectrogramImage();
+    void generateWaveformPaths(juce::Rectangle<float> bounds);
     void drawWaveform(juce::Graphics& g, juce::Rectangle<float> bounds);
     void drawFrequencyAxis(juce::Graphics& g, juce::Rectangle<float> axisBounds);
     juce::Colour getSpectrogramColor(float magnitudeNormalized);
+    void dismissActiveDialog();
+
+    void renderStaticGraph();
+    void invalidateStaticGraph();
+    void drawPlayheads(juce::Graphics& g, juce::Rectangle<float> graphBounds);
+    void drawInteractiveOverlays(juce::Graphics& g, juce::Rectangle<float> graphBounds);
+
+    static constexpr int maxVoiceSmoothers = 16;
+    VoicePositionSmoother voiceSmoothers[maxVoiceSmoothers];
+    double lastTimerTimeSec = 0.0;
+
+    juce::Array<VisualPlayhead> renderedPlayheads;
+    juce::Array<VisualPlayhead> prevVoicePlayheads;
+    bool wasPlaying = false;
+
+    juce::Image cachedStaticGraph;
+    bool staticGraphDirty = true;
+
+    juce::Path cachedWaveformEnvelope;
+    juce::Path cachedWaveformTop;
+    juce::Path cachedWaveformBottom;
+    juce::Rectangle<float> cachedWaveformBounds;
+
+    juce::Component::SafePointer<juce::AlertWindow> activeAlertWindow;
 
     VancespectralAudioProcessor& processor;
     ToolType currentTool = ToolType::RectangleSelect;

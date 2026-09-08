@@ -5,7 +5,7 @@ ADSRPanel::ADSRPanel(juce::AudioProcessorValueTreeState &apvts) {
     addAndMakeVisible(slider);
 
     label.setText(name, juce::dontSendNotification);
-    label.setFont(SpectralUILookAndFeel::getMonospaceFont(9.5f, false));
+    label.setFont(SpectralUILookAndFeel::getSpaceGrotesk(9.5f, false));
     label.setJustificationType(juce::Justification::centred);
     label.setColour(juce::Label::textColourId, SpectralUILookAndFeel::textMutedColour);
     addAndMakeVisible(label);
@@ -54,17 +54,25 @@ void ADSRPanel::updatePolyMode(bool isPoly) {
 void ADSRPanel::paint(juce::Graphics &g) {
   auto bounds = getLocalBounds().toFloat();
 
-  // Coated brutalist card panel background
+  // Coated frosted glass card panel background
   SpectralUILookAndFeel::drawPanelCard(g, bounds);
 
   // Section title styling
-  g.setFont(SpectralUILookAndFeel::getMonospaceFont(9.5f, true));
-  g.setColour(SpectralUILookAndFeel::textMainColour);
+  g.setFont(SpectralUILookAndFeel::getJetBrainsMono(11.8f, true));
+
+  auto drawSectionHeader = [&](const juce::String& title, juce::Rectangle<int> headerArea) {
+    if (!headerArea.isEmpty()) {
+      float dotY = (float)headerArea.getCentreY();
+      g.setColour(SpectralUILookAndFeel::accentColour.withAlpha(0.75f));
+      g.fillEllipse((float)headerArea.getX(), dotY - 2.5f, 5.0f, 5.0f);
+
+      g.setColour(SpectralUILookAndFeel::textMainColour);
+      g.drawText(title, headerArea.withTrimmedLeft(9), juce::Justification::left, true);
+    }
+  };
 
   // AMP ENV section label
-  if (!ampHeaderArea.isEmpty()) {
-    g.drawText("AMP ENV", ampHeaderArea, juce::Justification::left, true);
-  }
+  drawSectionHeader("AMP ENV", ampHeaderArea);
 
   // Vertical divider line separating AMP ENV section from PITCH & DRIFT section
   if (pitchDividerX > 0) {
@@ -73,10 +81,7 @@ void ADSRPanel::paint(juce::Graphics &g) {
   }
 
   // PITCH & DRIFT section label
-  if (!pitchHeaderArea.isEmpty()) {
-    g.setColour(SpectralUILookAndFeel::textMainColour);
-    g.drawText("PITCH & DRIFT", pitchHeaderArea, juce::Justification::left, true);
-  }
+  drawSectionHeader("PITCH & DRIFT", pitchHeaderArea);
 
   // Vertical divider line separating PITCH & DRIFT section from EXCITER & GLIDE section
   if (exciterDividerX > 0) {
@@ -85,14 +90,11 @@ void ADSRPanel::paint(juce::Graphics &g) {
   }
 
   // EXCITER & GLIDE section label
-  if (!exciterHeaderArea.isEmpty()) {
-    g.setColour(SpectralUILookAndFeel::textMainColour);
-    g.drawText("EXCITER & GLIDE", exciterHeaderArea, juce::Justification::left, true);
-  }
+  drawSectionHeader("EXCITER & GLIDE", exciterHeaderArea);
 }
 
 void ADSRPanel::resized() {
-  auto area = getLocalBounds().reduced(12, 8);
+  auto area = getLocalBounds().reduced(10, 6);
   if (area.getWidth() <= 0 || area.getHeight() <= 0)
     return;
 
@@ -105,31 +107,31 @@ void ADSRPanel::resized() {
     slider.setBounds(colArea.reduced(2, 2));
   };
 
-  // Rightmost section: EXCITER & GLIDE
-  int exciterWidth = juce::jmin(150, area.getWidth() / 4);
+  // Rightmost section: EXCITER & GLIDE (2 knobs)
+  int exciterWidth = juce::jmin(145, (int)(area.getWidth() * 0.24f));
   auto exciterSectionArea = area.removeFromRight(exciterWidth);
   exciterDividerX = exciterSectionArea.getX() - 6;
   area.removeFromRight(12);
 
-  exciterHeaderArea = exciterSectionArea.removeFromTop(16);
+  exciterHeaderArea = exciterSectionArea.removeFromTop(18);
   int eColWidth = exciterSectionArea.getWidth() / 2;
   setupColumn(exciterSectionArea.removeFromLeft(eColWidth), exciterLabel, exciterSlider);
   setupColumn(exciterSectionArea, glideLabel, glideSlider);
 
-  // Middle section: PITCH & DRIFT
-  int pitchWidth = juce::jmin(150, area.getWidth() / 3);
+  // Middle section: PITCH & DRIFT (2 knobs)
+  int pitchWidth = juce::jmin(145, (int)(area.getWidth() * 0.32f));
   auto pitchSectionArea = area.removeFromRight(pitchWidth);
   pitchDividerX = pitchSectionArea.getX() - 6;
   area.removeFromRight(12);
 
-  pitchHeaderArea = pitchSectionArea.removeFromTop(16);
+  pitchHeaderArea = pitchSectionArea.removeFromTop(18);
   int pColWidth = pitchSectionArea.getWidth() / 2;
   setupColumn(pitchSectionArea.removeFromLeft(pColWidth), pitchLabel, pitchSlider);
   setupColumn(pitchSectionArea, driftLabel, driftSlider);
 
-  // Left section: AMP ENV (spans across full left side)
+  // Left section: AMP ENV (spans across full left side, 4 knobs)
   auto ampRowArea = area;
-  ampHeaderArea = ampRowArea.removeFromTop(16);
+  ampHeaderArea = ampRowArea.removeFromTop(18);
 
   int knobWidth1 = ampRowArea.getWidth() / 4;
   setupColumn(ampRowArea.removeFromLeft(knobWidth1), ampAttackLabel, ampAttackSlider);

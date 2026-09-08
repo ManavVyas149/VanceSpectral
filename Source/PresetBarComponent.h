@@ -10,7 +10,6 @@ public:
 
   void paint(juce::Graphics &g) override;
   void resized() override;
-  void mouseDown(const juce::MouseEvent &e) override;
 
   juce::String getCurrentPresetName() const { return currentPresetName; }
   void setPresetName(const juce::String &name);
@@ -18,6 +17,14 @@ public:
     bankName = bank;
     repaint();
   }
+  juce::String getBankName() const { return bankName; }
+
+  void setPrevEnabled(bool enabled) { prevButton.setEnabled(enabled); }
+  void setNextEnabled(bool enabled) { nextButton.setEnabled(enabled); }
+  bool isPrevEnabled() const { return prevButton.isEnabled(); }
+  bool isNextEnabled() const { return nextButton.isEnabled(); }
+
+  juce::Rectangle<int> getPolyButtonArea() const;
 
   std::function<void()> onPrevClicked;
   std::function<void()> onNextClicked;
@@ -35,9 +42,11 @@ private:
                      bool isDown) override {
       auto bounds = getLocalBounds().toFloat();
       juce::Colour col =
-          isDown ? SpectralUILookAndFeel::accentColour
-                 : (isHighlighted ? SpectralUILookAndFeel::textMainColour
-                                  : SpectralUILookAndFeel::textMutedColour);
+          !isEnabled()
+              ? SpectralUILookAndFeel::textMutedColour.withAlpha(0.22f)
+              : (isDown ? SpectralUILookAndFeel::accentColour
+                        : (isHighlighted ? SpectralUILookAndFeel::textMainColour
+                                         : SpectralUILookAndFeel::textMutedColour));
 
       juce::Path p;
       float cx = bounds.getCentreX();
@@ -68,10 +77,10 @@ private:
 
   ChevronButton prevButton{false};
   ChevronButton nextButton{true};
+  juce::TextButton browseButton{ "BROWSE" };
   juce::TextButton saveStateButton{ "SAVE STATE" };
   juce::TextButton shuffleFxButton{ juce::String::fromUTF8("\xe2\x87\x86 SHUFFLE FX") };
-
-  juce::Rectangle<float> clickTargetBounds;
+  juce::Image logoImage;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PresetBarComponent)
 };

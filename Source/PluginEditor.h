@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
 #include "SpectralUILookAndFeel.h"
@@ -17,6 +18,20 @@ class VancespectralAudioProcessorEditor : public juce::AudioProcessorEditor,
                                           public juce::Timer
 {
 public:
+    static constexpr int nativeWidth = 1088;
+    static constexpr int nativeHeight = 544;
+
+    class ContentWrapper : public juce::Component
+    {
+    public:
+        ContentWrapper(VancespectralAudioProcessorEditor& owner) : editor(owner) {}
+        void paint(juce::Graphics& g) override;
+        void resized() override;
+
+    private:
+        VancespectralAudioProcessorEditor& editor;
+    };
+
     VancespectralAudioProcessorEditor(VancespectralAudioProcessor&);
     ~VancespectralAudioProcessorEditor() override;
 
@@ -36,8 +51,8 @@ private:
     ToolbarComponent toolbar;
     std::unique_ptr<SpectrogramComponent> spectrogram;
 
-    SegmentedControlComponent playbackControl{ "playback", { "Forward", "Backward", "Forw-Backw", "Back-Forw", "Random" } };
-    SegmentedControlComponent pitchControl{ "pitch", { "Stretch", "Resample" } };
+    SegmentedControlComponent playbackControl{ "playback", { "Forward", "Backward", "Forward-Backward", "Backward-Forward", "Random" }, SegmentedControlComponent::LayoutMode::Vertical };
+    SegmentedControlComponent pitchControl{ "pitch", { "Stretch", "Resample" }, SegmentedControlComponent::LayoutMode::Horizontal };
 
     ADSRPanel adsrPanel;
     EffectsPanel effectsPanel;
@@ -56,20 +71,20 @@ private:
             auto bounds = getLocalBounds().toFloat().reduced(1.0f);
             bool active = getToggleState();
 
-            juce::Colour bg = active ? SpectralUILookAndFeel::accentColour
-                                     : (isHighlighted ? juce::Colour(0x2C, 0x2E, 0x3A)
-                                                      : juce::Colour(0x20, 0x22, 0x2A));
+            juce::Colour bg = active ? SpectralUILookAndFeel::accentColour.withAlpha(0.20f)
+                                     : (isHighlighted ? juce::Colour(0xEE, 0xF0, 0xF8)
+                                                      : SpectralUILookAndFeel::panelBgColour);
 
             g.setColour(bg);
             g.fillRoundedRectangle(bounds, 3.0f);
 
-            juce::Colour borderCol = active ? SpectralUILookAndFeel::accentBright
+            juce::Colour borderCol = active ? SpectralUILookAndFeel::accentColour
                                             : SpectralUILookAndFeel::dividerColour;
             g.setColour(borderCol);
             g.drawRoundedRectangle(bounds, 3.0f, 1.0f);
 
-            g.setFont(SpectralUILookAndFeel::getMonospaceFont(9.5f));
-            g.setColour(active ? juce::Colours::black : SpectralUILookAndFeel::textMutedColour);
+            g.setFont(SpectralUILookAndFeel::getJetBrainsMono(10.5f, true));
+            g.setColour(active ? SpectralUILookAndFeel::accentColour : SpectralUILookAndFeel::textMainColour);
             g.drawText(active ? "POLY" : "MONO", bounds.toNearestInt(), juce::Justification::centred, false);
         }
     };
@@ -84,12 +99,14 @@ private:
     std::unique_ptr<juce::ParameterAttachment> playbackAttachment;
     std::unique_ptr<juce::ParameterAttachment> pitchAttachment;
 
-#include <map>
+    ContentWrapper contentWrapper{*this};
 
     int currentOctaveOffset = 0;
     std::map<int, int> activeQwertyNoteKeys;
     static int getQwertySemitone(juce::juce_wchar c);
     juce::int64 lastAutoCheckpointTimeMs = 0;
+
+    void updatePresetNavigationButtons();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(VancespectralAudioProcessorEditor)
 };

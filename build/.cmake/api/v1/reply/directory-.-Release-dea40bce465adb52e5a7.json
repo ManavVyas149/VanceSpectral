@@ -1,0 +1,157 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"install"
+		],
+		"files" : 
+		[
+			"CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 90,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 103,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 130,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 164,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 169,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 185,
+				"parent" : 0
+			}
+		]
+	},
+	"codemodelVersion" : 
+	{
+		"major" : 2,
+		"minor" : 10
+	},
+	"installers" : 
+	[
+		{
+			"backtrace" : 1,
+			"component" : "SoundTouch",
+			"destination" : "include/soundtouch",
+			"paths" : 
+			[
+				"include/BPMDetect.h",
+				"include/FIFOSampleBuffer.h",
+				"include/FIFOSamplePipe.h",
+				"include/STTypes.h",
+				"include/SoundTouch.h",
+				"include/soundtouch_config.h"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 2,
+			"component" : "Unspecified",
+			"destination" : "lib",
+			"paths" : 
+			[
+				"Release/SoundTouch.lib"
+			],
+			"targetId" : "SoundTouch::@6890427a1f51a3e7e1df",
+			"targetIndex" : 1,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 3,
+			"component" : "soundstretch",
+			"destination" : "bin",
+			"paths" : 
+			[
+				"Release/soundstretch.exe"
+			],
+			"targetId" : "soundstretch::@6890427a1f51a3e7e1df",
+			"targetIndex" : 3,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 3,
+			"component" : "soundstretch",
+			"cxxModuleBmiTarget" : 
+			{
+				"id" : "soundstretch::@6890427a1f51a3e7e1df",
+				"index" : 3
+			},
+			"destination" : "bin",
+			"type" : "cxxModuleBmi"
+		},
+		{
+			"backtrace" : 4,
+			"component" : "SoundTouch",
+			"destination" : "lib/pkgconfig",
+			"paths" : 
+			[
+				"C:/Users/Ansh Srivastava/OneDrive/Documents/GitHub/VanceSpectral/build/soundtouch.pc"
+			],
+			"type" : "file"
+		},
+		{
+			"backtrace" : 5,
+			"component" : "SoundTouch",
+			"destination" : "lib/cmake/SoundTouch",
+			"exportName" : "SoundTouchTargets",
+			"exportTargets" : 
+			[
+				{
+					"id" : "SoundTouch::@6890427a1f51a3e7e1df",
+					"index" : 1
+				}
+			],
+			"paths" : 
+			[
+				"CMakeFiles/Export/fa99ba0aecbeab0836538d30f1ae2cb3/SoundTouchTargets.cmake"
+			],
+			"type" : "export"
+		},
+		{
+			"backtrace" : 6,
+			"component" : "SoundTouch",
+			"destination" : "lib/cmake/SoundTouch",
+			"paths" : 
+			[
+				"C:/Users/Ansh Srivastava/OneDrive/Documents/GitHub/VanceSpectral/build/SoundTouchConfig.cmake",
+				"C:/Users/Ansh Srivastava/OneDrive/Documents/GitHub/VanceSpectral/build/SoundTouchConfigVersion.cmake"
+			],
+			"type" : "file"
+		}
+	],
+	"paths" : 
+	{
+		"build" : ".",
+		"source" : "."
+	}
+}

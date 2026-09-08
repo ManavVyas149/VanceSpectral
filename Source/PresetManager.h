@@ -26,6 +26,7 @@ public:
     juce::Array<PresetInfo> getAllPresets() const;
     juce::StringArray getAllBanks() const;
     juce::Array<juce::File> getAllSamples() const;
+    juce::String getBankForPreset(const juce::File& presetFile) const;
 
     bool createBank(const juce::String& bankName);
     bool renameBank(const juce::String& oldBankName, const juce::String& newBankName);
@@ -58,6 +59,8 @@ public:
                     double* outSampleRate = nullptr);
 
     bool deletePreset(const juce::File& presetFile);
+    bool isPresetDeletable(const juce::File& presetFile) const;
+    int getPresetCountForBank(const juce::String& bankName) const;
 
     static juce::String audioBufferToBase64Wav(const juce::AudioBuffer<float>& buffer, double sampleRate = 44100.0);
     static bool base64WavToAudioBuffer(const juce::String& base64Str, juce::AudioBuffer<float>& outBuffer, double& outSampleRate);
@@ -68,7 +71,12 @@ public:
     bool deleteSample(const juce::File& sampleFile);
 
     void createDefaultFactoryPresets(juce::AudioProcessorValueTreeState& apvts);
-    void invalidateCache() const { isCacheValid = false; }
+    void invalidateCache() const { isCacheValid = false; isBanksCacheValid = false; isSamplesCacheValid = false; }
+    void invalidatePresetsCache() const { isCacheValid = false; }
+    void invalidateBanksCache() const { isBanksCacheValid = false; }
+    void invalidateSamplesCache() const { isSamplesCacheValid = false; }
+
+    bool checkForExternalChanges();
 
 private:
     juce::File presetsFolder;
@@ -76,6 +84,15 @@ private:
 
     mutable juce::Array<PresetInfo> cachedPresets;
     mutable bool isCacheValid = false;
+
+    mutable juce::StringArray cachedBanks;
+    mutable bool isBanksCacheValid = false;
+
+    mutable juce::Array<juce::File> cachedSamples;
+    mutable bool isSamplesCacheValid = false;
+
+    juce::Time lastPresetsFolderScanTime;
+    juce::Time lastSamplesFolderScanTime;
 
     void ensureDirectoriesExist();
     void createFactoryPreset(const juce::String& name, const juce::String& category,

@@ -1,18 +1,18 @@
 #include "SpectralUILookAndFeel.h"
 
 // =============================================================================
-// Brutalist Precision Instrument Palette Constants
+// Minimalist Translucent Frosted-White & Lavender Palette Constants
 // =============================================================================
-const juce::Colour SpectralUILookAndFeel::bgColour        = juce::Colour::fromRGB(0xEC, 0xEB, 0xE4); // #ECEBE4 Warm Light Cream Chassis
-const juce::Colour SpectralUILookAndFeel::panelBgColour   = juce::Colour::fromRGB(0xF7, 0xF6, 0xF0); // #F7F6F0 Glossy Coated Card Surface
-const juce::Colour SpectralUILookAndFeel::graphBgColour   = juce::Colour::fromRGB(0x0C, 0x0D, 0x12); // #0C0D12 Deep Black Display Panel
-const juce::Colour SpectralUILookAndFeel::textMainColour  = juce::Colour::fromRGB(0x1E, 0x1F, 0x24); // #1E1F24 Charcoal Technical Text
-const juce::Colour SpectralUILookAndFeel::textMutedColour = juce::Colour::fromRGB(0x7A, 0x78, 0x74); // #7A7874 Warm Gray Label Text
-const juce::Colour SpectralUILookAndFeel::dividerColour   = juce::Colour::fromRGB(0xD0, 0xCC, 0xBE); // #D0CCBE Hairline Card Border
-const juce::Colour SpectralUILookAndFeel::accentColour    = juce::Colour::fromRGB(0xB8, 0x4D, 0xC4); // #B84DC4 Desaturated 'Burple' (Blue-Purple / Violet)
-const juce::Colour SpectralUILookAndFeel::accentBright    = juce::Colour::fromRGB(0xF2, 0xB8, 0xFF); // #F2B8FF Bright Lilac Highlight
-const juce::Colour SpectralUILookAndFeel::knobBodyColour  = juce::Colour::fromRGB(0x1E, 0x20, 0x28); // #1E2028 Precision Dark Knob Cylinder
-const juce::Colour SpectralUILookAndFeel::knobInsetColour = juce::Colour::fromRGB(0x15, 0x16, 0x1E); // #15161E Inner Dark Disc Face
+const juce::Colour SpectralUILookAndFeel::bgColour        = juce::Colour::fromRGB(0xF4, 0xF4, 0xF7); // #F4F4F7 Translucent Frosted-White Chassis
+const juce::Colour SpectralUILookAndFeel::panelBgColour   = juce::Colour::fromRGB(0xFA, 0xFA, 0xFC); // #FAF9FC Frosted Coated Card Surface
+const juce::Colour SpectralUILookAndFeel::graphBgColour   = juce::Colour::fromRGB(0x07, 0x08, 0x0B); // #07080B Deep Pitch-Black Display Panel
+const juce::Colour SpectralUILookAndFeel::textMainColour  = juce::Colour::fromRGB(0x18, 0x19, 0x20); // #181920 Charcoal Technical Text
+const juce::Colour SpectralUILookAndFeel::textMutedColour = juce::Colour::fromRGB(0x78, 0x7A, 0x86); // #787A86 Muted Technical Gray Labels
+const juce::Colour SpectralUILookAndFeel::dividerColour   = juce::Colour::fromRGB(0xD4, 0xD6, 0xE0); // #D4D6E0 Hairline Card Border / Divider
+const juce::Colour SpectralUILookAndFeel::accentColour    = juce::Colour::fromRGB(0xA7, 0x8B, 0xFA); // #A78BFA Restrained Lavender / Violet
+const juce::Colour SpectralUILookAndFeel::accentBright    = juce::Colour::fromRGB(0xC4, 0xB5, 0xFD); // #C4B5FD Soft Lilac Highlight
+const juce::Colour SpectralUILookAndFeel::knobBodyColour  = juce::Colour::fromRGB(0xDF, 0xE1, 0xEA); // #DFE1EA Machined Light-Silver Cylinder
+const juce::Colour SpectralUILookAndFeel::knobInsetColour = juce::Colour::fromRGB(0x12, 0x13, 0x18); // #121318 Inner Dark Disc Face
 
 SpectralUILookAndFeel::SpectralUILookAndFeel()
 {
@@ -23,134 +23,229 @@ SpectralUILookAndFeel::SpectralUILookAndFeel()
     setColour(juce::PopupMenu::textColourId, textMainColour);
     setColour(juce::PopupMenu::highlightedBackgroundColourId, accentColour.withAlpha(0.15f));
     setColour(juce::PopupMenu::highlightedTextColourId, textMainColour);
+
+    setColour(juce::ScrollBar::thumbColourId, accentColour.withAlpha(0.50f));
+    setColour(juce::ScrollBar::trackColourId, juce::Colours::transparentBlack);
+    setColour(juce::ScrollBar::backgroundColourId, juce::Colours::transparentBlack);
 }
 
-juce::Font SpectralUILookAndFeel::getGeometricFont(float height, bool bold)
+#include "BinaryFontData.h"
+
+static juce::Typeface::Ptr getJetBrainsMonoBoldTypeface()
 {
+    static juce::Typeface::Ptr tf = juce::Typeface::createSystemTypefaceFor(
+        BinaryData::JetBrainsMonoBold_ttf,
+        (size_t)BinaryData::JetBrainsMonoBold_ttfSize);
+    return tf;
+}
+
+static juce::Typeface::Ptr getJetBrainsMonoRegularTypeface()
+{
+    static juce::Typeface::Ptr tf = juce::Typeface::createSystemTypefaceFor(
+        BinaryData::JetBrainsMonoRegular_ttf,
+        (size_t)BinaryData::JetBrainsMonoRegular_ttfSize);
+    return tf;
+}
+
+static juce::Typeface::Ptr getSpaceGroteskTypeface()
+{
+    static juce::Typeface::Ptr tf = juce::Typeface::createSystemTypefaceFor(
+        BinaryData::SpaceGrotesk_ttf,
+        (size_t)BinaryData::SpaceGrotesk_ttfSize);
+    return tf;
+}
+
+juce::Font SpectralUILookAndFeel::getJetBrainsMono(float height, bool bold)
+{
+    auto tf = bold ? getJetBrainsMonoBoldTypeface() : getJetBrainsMonoRegularTypeface();
+    if (tf != nullptr)
+        return juce::Font(juce::FontOptions(tf).withHeight(height));
+
+    juce::FontOptions options(juce::Font::getDefaultMonospacedFontName(), height, bold ? juce::Font::bold : juce::Font::plain);
+    return juce::Font(options);
+}
+
+juce::Font SpectralUILookAndFeel::getSpaceGrotesk(float height, bool bold)
+{
+    auto tf = getSpaceGroteskTypeface();
+    if (tf != nullptr)
+    {
+        auto font = juce::Font(juce::FontOptions(tf).withHeight(height));
+        if (bold) font.setBold(true);
+        return font;
+    }
     juce::FontOptions options("Segoe UI", height, bold ? juce::Font::bold : juce::Font::plain);
     return juce::Font(options);
 }
 
+juce::Font SpectralUILookAndFeel::getGeometricFont(float height, bool bold)
+{
+    return getSpaceGrotesk(height, bold);
+}
+
 juce::Font SpectralUILookAndFeel::getMonospaceFont(float height, bool bold)
 {
-    juce::FontOptions options("Consolas", height, bold ? juce::Font::bold : juce::Font::plain);
-    return juce::Font(options);
+    return getJetBrainsMono(height, bold);
 }
 
 juce::Font SpectralUILookAndFeel::getLabelFont(juce::Label&)
 {
-    return getMonospaceFont(10.5f);
+    return getSpaceGrotesk(10.0f, false);
 }
 
 juce::Font SpectralUILookAndFeel::getTextButtonFont(juce::TextButton&, int buttonHeight)
 {
-    return getGeometricFont(juce::jmin(12.0f, (float)buttonHeight * 0.45f), true);
+    return getJetBrainsMono(juce::jmin(12.2f, (float)buttonHeight * 0.50f), true);
 }
 
 // =============================================================================
-// Static Brutalist Precision Drawing Helpers
+// Static Precision Drawing Helpers
 // =============================================================================
 
 void SpectralUILookAndFeel::drawCornerScrew(juce::Graphics& g, float cx, float cy, float radius, float slotAngleRad)
 {
     // Ambient soft drop shadow
-    g.setColour(juce::Colour(0x00, 0x00, 0x00).withAlpha(0.14f));
-    g.fillEllipse(cx - radius, cy - radius + 1.2f, radius * 2.0f, radius * 2.0f);
+    g.setColour(juce::Colour(0x00, 0x00, 0x00).withAlpha(0.12f));
+    g.fillEllipse(cx - radius, cy - radius + 1.0f, radius * 2.0f, radius * 2.0f);
 
-    // Metallic screw head disc (brushed steel gradient)
-    juce::ColourGradient grad(juce::Colour::fromRGB(0xDA, 0xD8, 0xCF), cx - radius * 0.5f, cy - radius * 0.5f,
-                              juce::Colour::fromRGB(0xB0, 0xAC, 0xA0), cx + radius * 0.5f, cy + radius * 0.5f, false);
+    // Metallic screw head disc (machined brushed aluminum gradient)
+    juce::ColourGradient grad(juce::Colour::fromRGB(0xEB, 0xEC, 0xF2), cx - radius * 0.5f, cy - radius * 0.5f,
+                              juce::Colour::fromRGB(0xB8, 0xBC, 0xC8), cx + radius * 0.5f, cy + radius * 0.5f, false);
     g.setGradientFill(grad);
     g.fillEllipse(cx - radius, cy - radius, radius * 2.0f, radius * 2.0f);
 
     // Subtle 1px rim highlight
-    g.setColour(juce::Colour::fromRGB(0xFF, 0xFF, 0xFF).withAlpha(0.65f));
+    g.setColour(juce::Colour::fromRGB(0xFF, 0xFF, 0xFF).withAlpha(0.75f));
     g.drawEllipse(cx - radius, cy - radius, radius * 2.0f, radius * 2.0f, 0.8f);
 
     // Beveled screw slot
     juce::Path slot;
-    float slotHalfLen = radius * 0.70f;
-    float slotHalfW = 0.85f;
+    float slotHalfLen = radius * 0.68f;
+    float slotHalfW = 0.80f;
     slot.addRectangle(-slotHalfLen, -slotHalfW, slotHalfLen * 2.0f, slotHalfW * 2.0f);
     slot.applyTransform(juce::AffineTransform::rotation(slotAngleRad).translated(cx, cy));
 
-    g.setColour(juce::Colour::fromRGB(0x4A, 0x47, 0x40));
+    g.setColour(juce::Colour::fromRGB(0x38, 0x3A, 0x44));
     g.fillPath(slot);
 
     // Slot 1-sided micro highlight
     juce::Path slotHi;
-    slotHi.addRectangle(-slotHalfLen, -slotHalfW - 0.5f, slotHalfLen * 2.0f, 0.6f);
+    slotHi.addRectangle(-slotHalfLen, -slotHalfW - 0.4f, slotHalfLen * 2.0f, 0.5f);
     slotHi.applyTransform(juce::AffineTransform::rotation(slotAngleRad).translated(cx, cy));
-    g.setColour(juce::Colour::fromRGB(0xFF, 0xFF, 0xFF).withAlpha(0.35f));
+    g.setColour(juce::Colour::fromRGB(0xFF, 0xFF, 0xFF).withAlpha(0.40f));
     g.fillPath(slotHi);
 }
 
 void SpectralUILookAndFeel::drawPcbTraces(juce::Graphics& g, juce::Rectangle<float> bounds)
 {
-    // Faint embedded PCB circuit traces (low opacity: 3.5% alpha)
-    juce::Colour traceCol = juce::Colour(0x35, 0x2A, 0x42).withAlpha(0.038f);
-    g.setColour(traceCol);
-
+    // Sophisticated PCB circuit traces underneath translucent chassis
     float w = bounds.getWidth();
     float h = bounds.getHeight();
     float x0 = bounds.getX();
     float y0 = bounds.getY();
 
+    // Subtle silvery-lavender traces
+    juce::Colour traceCol = juce::Colour(0x8A, 0x8E, 0xA5).withAlpha(0.14f);
+    juce::Colour accentTraceCol = accentColour.withAlpha(0.10f);
+
     juce::Path p;
-    // Trace line 1 (Top left trace)
-    p.startNewSubPath(x0 + 20.0f, y0 + 60.0f);
-    p.lineTo(x0 + 120.0f, y0 + 60.0f);
-    p.lineTo(x0 + 160.0f, y0 + 100.0f);
-    p.lineTo(x0 + 280.0f, y0 + 100.0f);
+    // Trace Line 1 (Top Left Header Bus)
+    p.startNewSubPath(x0 + 15.0f, y0 + 55.0f);
+    p.lineTo(x0 + 110.0f, y0 + 55.0f);
+    p.lineTo(x0 + 145.0f, y0 + 90.0f);
+    p.lineTo(x0 + 260.0f, y0 + 90.0f);
 
-    // Trace line 2 (Top right bus traces)
-    p.startNewSubPath(x0 + w - 40.0f, y0 + 40.0f);
-    p.lineTo(x0 + w - 180.0f, y0 + 40.0f);
-    p.lineTo(x0 + w - 220.0f, y0 + 80.0f);
-    p.lineTo(x0 + w - 340.0f, y0 + 80.0f);
+    // Trace Line 2 (Top Left Secondary Run)
+    p.startNewSubPath(x0 + 15.0f, y0 + 68.0f);
+    p.lineTo(x0 + 95.0f, y0 + 68.0f);
+    p.lineTo(x0 + 130.0f, y0 + 103.0f);
+    p.lineTo(x0 + 220.0f, y0 + 103.0f);
 
-    // Trace line 3 (Bottom left traces)
-    p.startNewSubPath(x0 + 40.0f, y0 + h - 50.0f);
-    p.lineTo(x0 + 180.0f, y0 + h - 50.0f);
-    p.lineTo(x0 + 220.0f, y0 + h - 90.0f);
-    p.lineTo(x0 + 360.0f, y0 + h - 90.0f);
+    // Trace Line 3 (Top Right Bus)
+    p.startNewSubPath(x0 + w - 30.0f, y0 + 42.0f);
+    p.lineTo(x0 + w - 170.0f, y0 + 42.0f);
+    p.lineTo(x0 + w - 210.0f, y0 + 82.0f);
+    p.lineTo(x0 + w - 330.0f, y0 + 82.0f);
 
-    // Trace line 4 (Bottom right traces)
-    p.startNewSubPath(x0 + w - 60.0f, y0 + h - 45.0f);
-    p.lineTo(x0 + w - 240.0f, y0 + h - 45.0f);
-    p.lineTo(x0 + w - 280.0f, y0 + h - 85.0f);
-    p.lineTo(x0 + w - 400.0f, y0 + h - 85.0f);
+    // Trace Line 4 (Top Right Parallel Run)
+    p.startNewSubPath(x0 + w - 30.0f, y0 + 54.0f);
+    p.lineTo(x0 + w - 155.0f, y0 + 54.0f);
+    p.lineTo(x0 + w - 195.0f, y0 + 94.0f);
+    p.lineTo(x0 + w - 290.0f, y0 + 94.0f);
 
-    g.strokePath(p, juce::PathStrokeType(1.2f));
+    // Trace Line 5 (Bottom Left Traces)
+    p.startNewSubPath(x0 + 35.0f, y0 + h - 45.0f);
+    p.lineTo(x0 + 160.0f, y0 + h - 45.0f);
+    p.lineTo(x0 + 200.0f, y0 + h - 85.0f);
+    p.lineTo(x0 + 340.0f, y0 + h - 85.0f);
 
-    // Circular Vias / Test Points
+    // Trace Line 6 (Bottom Center-Right Bus)
+    p.startNewSubPath(x0 + w - 45.0f, y0 + h - 40.0f);
+    p.lineTo(x0 + w - 220.0f, y0 + h - 40.0f);
+    p.lineTo(x0 + w - 260.0f, y0 + h - 80.0f);
+    p.lineTo(x0 + w - 380.0f, y0 + h - 80.0f);
+
+    g.setColour(traceCol);
+    g.strokePath(p, juce::PathStrokeType(1.1f));
+
+    // Accent traces
+    juce::Path pAcc;
+    pAcc.startNewSubPath(x0 + w * 0.5f - 40.0f, y0 + h - 18.0f);
+    pAcc.lineTo(x0 + w * 0.5f - 40.0f, y0 + h - 6.0f);
+    pAcc.startNewSubPath(x0 + w * 0.5f - 20.0f, y0 + h - 18.0f);
+    pAcc.lineTo(x0 + w * 0.5f - 20.0f, y0 + h - 6.0f);
+    pAcc.startNewSubPath(x0 + w * 0.5f, y0 + h - 18.0f);
+    pAcc.lineTo(x0 + w * 0.5f, y0 + h - 6.0f);
+    pAcc.startNewSubPath(x0 + w * 0.5f + 20.0f, y0 + h - 18.0f);
+    pAcc.lineTo(x0 + w * 0.5f + 20.0f, y0 + h - 6.0f);
+    pAcc.startNewSubPath(x0 + w * 0.5f + 40.0f, y0 + h - 18.0f);
+    pAcc.lineTo(x0 + w * 0.5f + 40.0f, y0 + h - 6.0f);
+
+    g.setColour(accentTraceCol);
+    g.strokePath(pAcc, juce::PathStrokeType(1.4f));
+
+    // Circular Vias / Solder Test Points
     auto drawVia = [&](float vx, float vy) {
-        g.drawEllipse(vx - 3.5f, vy - 3.5f, 7.0f, 7.0f, 1.0f);
+        g.setColour(traceCol);
+        g.drawEllipse(vx - 3.5f, vy - 3.5f, 7.0f, 7.0f, 0.9f);
+        g.setColour(accentColour.withAlpha(0.25f));
         g.fillEllipse(vx - 1.5f, vy - 1.5f, 3.0f, 3.0f);
     };
 
-    drawVia(x0 + 280.0f, y0 + 100.0f);
-    drawVia(x0 + w - 340.0f, y0 + 80.0f);
-    drawVia(x0 + 360.0f, y0 + h - 90.0f);
-    drawVia(x0 + w - 400.0f, y0 + h - 85.0f);
+    drawVia(x0 + 260.0f, y0 + 90.0f);
+    drawVia(x0 + 220.0f, y0 + 103.0f);
+    drawVia(x0 + w - 330.0f, y0 + 82.0f);
+    drawVia(x0 + w - 290.0f, y0 + 94.0f);
+    drawVia(x0 + 340.0f, y0 + h - 85.0f);
+    drawVia(x0 + w - 380.0f, y0 + h - 80.0f);
 }
 
 void SpectralUILookAndFeel::drawChassisBackground(juce::Graphics& g, juce::Rectangle<float> bounds)
 {
-    // Outer chassis fill in warm cream
+    // 1. Outer frosted translucent white chassis fill
     g.setColour(bgColour);
-    g.fillRoundedRectangle(bounds, 12.0f);
+    g.fillRoundedRectangle(bounds, 10.0f);
 
-    // Subtle 1px chassis border
+    // 2. Subtle diagonal glass reflection sheen
+    juce::ColourGradient glassSheen(juce::Colour(0xFF, 0xFF, 0xFF).withAlpha(0.40f), bounds.getX(), bounds.getY(),
+                                    juce::Colour(0xFF, 0xFF, 0xFF).withAlpha(0.04f), bounds.getRight(), bounds.getBottom(), false);
+    g.setGradientFill(glassSheen);
+    g.fillRoundedRectangle(bounds, 10.0f);
+
+    // 3. Crisp hairline chassis border
     g.setColour(dividerColour);
-    g.drawRoundedRectangle(bounds, 12.0f, 1.0f);
+    g.drawRoundedRectangle(bounds, 10.0f, 1.0f);
 
-    // Embedded PCB traces
+    // 4. Subtle inner highlight line along top & left
+    g.setColour(juce::Colour(0xFF, 0xFF, 0xFF).withAlpha(0.80f));
+    g.drawRoundedRectangle(bounds.reduced(1.0f), 9.0f, 0.8f);
+
+    // 5. Embedded PCB traces
     drawPcbTraces(g, bounds);
 
-    // 4 Corner Screws (slotted precision metal screws)
+    // 6. Corner Mounting Screws (4 precision slotted screws)
     constexpr float screwInset = 16.0f;
-    constexpr float screwRadius = 5.2f;
+    constexpr float screwRadius = 5.0f;
 
     drawCornerScrew(g, bounds.getX() + screwInset, bounds.getY() + screwInset, screwRadius, 0.65f);
     drawCornerScrew(g, bounds.getRight() - screwInset, bounds.getY() + screwInset, screwRadius, 2.10f);
@@ -165,37 +260,43 @@ void SpectralUILookAndFeel::drawPanelCard(juce::Graphics& g, juce::Rectangle<flo
     if (bounds.getWidth() <= 0 || bounds.getHeight() <= 0)
         return;
 
-    // Subtle ambient card drop shadow (low-opacity)
-    g.setColour(juce::Colour(0x00, 0x00, 0x00).withAlpha(0.05f));
-    g.fillRoundedRectangle(bounds.translated(0.0f, 1.5f), 6.0f);
+    // Subtle ambient card drop shadow
+    g.setColour(juce::Colour(0x00, 0x00, 0x00).withAlpha(0.04f));
+    g.fillRoundedRectangle(bounds.translated(0.0f, 1.0f), 5.0f);
 
-    // Card background fill
+    // Card frosted surface fill
     g.setColour(panelBgColour);
-    g.fillRoundedRectangle(bounds, 6.0f);
+    g.fillRoundedRectangle(bounds, 5.0f);
 
-    // Glossy diagonal highlight sheen (coated precision surface)
-    juce::ColourGradient sheen(juce::Colour(0xFF, 0xFF, 0xFF).withAlpha(0.32f), bounds.getX(), bounds.getY(),
-                               juce::Colour(0xFF, 0xFF, 0xFF).withAlpha(0.02f), bounds.getRight(), bounds.getBottom(), false);
+    // Glass gloss diagonal sheen
+    juce::ColourGradient sheen(juce::Colour(0xFF, 0xFF, 0xFF).withAlpha(0.50f), bounds.getX(), bounds.getY(),
+                               juce::Colour(0xFF, 0xFF, 0xFF).withAlpha(0.05f), bounds.getRight(), bounds.getBottom(), false);
     g.setGradientFill(sheen);
-    g.fillRoundedRectangle(bounds, 6.0f);
+    g.fillRoundedRectangle(bounds, 5.0f);
 
     // Crisp hairline border
     g.setColour(dividerColour);
-    g.drawRoundedRectangle(bounds, 6.0f, 1.0f);
+    g.drawRoundedRectangle(bounds, 5.0f, 1.0f);
 
     // Header Label & Secondary Subheader
     if (headerText.isNotEmpty())
     {
-        auto headerArea = bounds.removeFromTop(20.0f).reduced(10.0f, 4.0f);
+        auto headerArea = bounds.removeFromTop(20.0f).reduced(8.0f, 2.0f);
 
-        g.setFont(getMonospaceFont(10.0f));
+        // Small section indicator dot
+        float dotY = headerArea.getCentreY();
+        g.setColour(accentColour.withAlpha(0.70f));
+        g.fillEllipse(headerArea.getX(), dotY - 2.0f, 4.0f, 4.0f);
+
+        auto textRect = headerArea.withTrimmedLeft(8);
+        g.setFont(getJetBrainsMono(11.8f, true));
         g.setColour(textMainColour);
-        g.drawText(headerText.toUpperCase(), headerArea, juce::Justification::left, true);
+        g.drawText(headerText.toUpperCase(), textRect, juce::Justification::left, true);
 
         if (subheaderText.isNotEmpty())
         {
             g.setFont(getMonospaceFont(8.5f));
-            g.setColour(accentColour.withAlpha(0.85f));
+            g.setColour(accentColour);
             g.drawText(subheaderText.toUpperCase(), headerArea, juce::Justification::right, true);
         }
     }
@@ -223,59 +324,106 @@ void SpectralUILookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, in
 
     auto knobRect = juce::Rectangle<float>(centreX - radius, centreY - radius, diameter, diameter);
     auto angle = rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
+    bool isHot = slider.isMouseOverOrDragging();
 
     // 1. Soft Ambient Drop Shadow under knob
-    g.setColour(juce::Colour(0x00, 0x00, 0x00).withAlpha(0.12f));
-    g.fillEllipse(knobRect.translated(0.0f, 1.8f));
+    g.setColour(juce::Colour(0x00, 0x00, 0x00).withAlpha(0.10f));
+    g.fillEllipse(knobRect.translated(0.0f, 1.5f));
 
-    // 2. Knob Base Cylinder (Dark Metallic Radial Gradient)
-    juce::ColourGradient knobGrad(juce::Colour::fromRGB(0x28, 0x2A, 0x34), centreX - radius * 0.3f, centreY - radius * 0.3f,
-                                  knobBodyColour, centreX + radius, centreY + radius, true);
-    g.setGradientFill(knobGrad);
-    g.fillEllipse(knobRect);
-
-    // 3. Beveled Rim Ring
-    g.setColour(juce::Colour::fromRGB(0x38, 0x3B, 0x48));
-    g.drawEllipse(knobRect, 1.0f);
-
-    // 4. Inner Dark Face Disc
-    auto insetRect = knobRect.reduced(3.0f);
-    g.setColour(knobInsetColour);
-    g.fillEllipse(insetRect);
-
-    // 5. Inactive Background Track Arc
-    float arcRadius = radius - 1.2f;
-    juce::Path trackBg;
-    trackBg.addCentredArc(centreX, centreY, arcRadius, arcRadius, 0.0f, rotaryStartAngle, rotaryEndAngle, true);
-    g.setColour(juce::Colour::fromRGB(0x2E, 0x30, 0x3C));
-    g.strokePath(trackBg, juce::PathStrokeType(1.4f));
-
-    // 6. Active 'Burple' Arc Ring Indicator
-    if (sliderPos > 0.001f)
+    // 2. Precision Calibration Tick Marks around perimeter
     {
-        juce::Path trackActive;
-        trackActive.addCentredArc(centreX, centreY, arcRadius, arcRadius, 0.0f, rotaryStartAngle, angle, true);
-
-        bool isHot = slider.isMouseOverOrDragging();
-        g.setColour(isHot ? accentBright : accentColour);
-        g.strokePath(trackActive, juce::PathStrokeType(1.8f));
-
-        // Subtle glow when hovering
-        if (isHot)
+        constexpr int numTicks = 11;
+        float tickOuterR = radius + 2.5f;
+        float tickInnerR = radius + 0.8f;
+        for (int i = 0; i < numTicks; ++i)
         {
-            g.setColour(accentColour.withAlpha(0.35f));
-            g.strokePath(trackActive, juce::PathStrokeType(3.5f));
+            float t = (float)i / (float)(numTicks - 1);
+            float a = rotaryStartAngle + t * (rotaryEndAngle - rotaryStartAngle);
+            float cosA = std::cos(a - juce::MathConstants<float>::halfPi);
+            float sinA = std::sin(a - juce::MathConstants<float>::halfPi);
+
+            bool isPastValue = (t <= sliderPos);
+            g.setColour(isPastValue ? accentColour.withAlpha(isHot ? 0.9f : 0.6f)
+                                    : dividerColour.withAlpha(0.6f));
+            g.drawLine(centreX + cosA * tickInnerR, centreY + sinA * tickInnerR,
+                       centreX + cosA * tickOuterR, centreY + sinA * tickOuterR, 0.8f);
         }
     }
 
-    // 7. Center Pointer Line (Crisp Technical Indicator)
-    float pointerLength = insetRect.getWidth() * 0.36f;
+    // 3. Machined Light-Silver Outer Cylinder Body
+    juce::ColourGradient knobGrad(juce::Colour::fromRGB(0xEB, 0xED, 0xF4), centreX - radius * 0.3f, centreY - radius * 0.3f,
+                                  juce::Colour::fromRGB(0xD0, 0xD4, 0xDF), centreX + radius, centreY + radius, true);
+    g.setGradientFill(knobGrad);
+    g.fillEllipse(knobRect);
+
+    // 4. Subtle Outer Bevel Rim
+    g.setColour(juce::Colour::fromRGB(0xBC, 0xC0, 0xCE));
+    g.drawEllipse(knobRect, 0.9f);
+
+    // 5. Deep Recessed Matte Dark Face Disc
+    auto insetRect = knobRect.reduced(3.2f);
+    g.setColour(knobInsetColour);
+    g.fillEllipse(insetRect);
+
+    // Inset rim shadow
+    g.setColour(juce::Colour(0x00, 0x00, 0x00).withAlpha(0.35f));
+    g.drawEllipse(insetRect, 0.8f);
+
+    // 6. Active Lavender Arc Track (subtle glowing arc on the dark face)
+    if (sliderPos > 0.001f)
+    {
+        float arcRadius = insetRect.getWidth() * 0.5f - 1.0f;
+        juce::Path trackActive;
+        trackActive.addCentredArc(centreX, centreY, arcRadius, arcRadius, 0.0f, rotaryStartAngle, angle, true);
+
+        g.setColour(isHot ? accentBright : accentColour);
+        g.strokePath(trackActive, juce::PathStrokeType(1.6f));
+
+        if (isHot)
+        {
+            g.setColour(accentColour.withAlpha(0.30f));
+            g.strokePath(trackActive, juce::PathStrokeType(3.2f));
+        }
+    }
+
+    // 7. Center Pointer Line (Ultra-Crisp Lavender Technical Indicator)
+    float pointerLength = insetRect.getWidth() * 0.40f;
     juce::Path p;
-    p.addRoundedRectangle(-0.85f, -pointerLength, 1.7f, pointerLength, 0.5f);
+    p.addRoundedRectangle(-0.80f, -pointerLength, 1.6f, pointerLength, 0.4f);
     p.applyTransform(juce::AffineTransform::rotation(angle).translated(centreX, centreY));
 
-    g.setColour(slider.isMouseOverOrDragging() ? accentBright : juce::Colour::fromRGB(0xEE, 0xEA, 0xF5));
+    g.setColour(isHot ? accentBright : accentColour);
     g.fillPath(p);
+}
+
+juce::Slider::SliderLayout SpectralUILookAndFeel::getSliderLayout(juce::Slider& slider)
+{
+    if (slider.getName() == "VOLUME" ||
+        (slider.getSliderStyle() == juce::Slider::LinearHorizontal && slider.getTextBoxPosition() == juce::Slider::NoTextBox && slider.getWidth() >= 140))
+    {
+        juce::Slider::SliderLayout layout;
+        auto bounds = slider.getLocalBounds();
+        if (bounds.getWidth() > 110)
+        {
+            bounds.removeFromLeft(50);
+            bounds.removeFromRight(56);
+            bounds.reduce(6, 0);
+        }
+        layout.sliderBounds = bounds;
+        return layout;
+    }
+    return juce::LookAndFeel_V4::getSliderLayout(slider);
+}
+
+void SpectralUILookAndFeel::drawCornerResizer(juce::Graphics& g, int w, int h, bool isMouseOver, bool isMouseDragging)
+{
+    auto colour = (isMouseOver || isMouseDragging) ? accentColour : textMutedColour.withAlpha(0.6f);
+    g.setColour(colour);
+
+    float stroke = 1.2f;
+    g.drawLine((float)w - 11.0f, (float)h - 3.0f, (float)w - 3.0f, (float)h - 11.0f, stroke);
+    g.drawLine((float)w - 7.5f,  (float)h - 3.0f, (float)w - 3.0f, (float)h - 7.5f, stroke);
+    g.drawLine((float)w - 4.0f,  (float)h - 3.0f, (float)w - 3.0f, (float)h - 4.0f, stroke);
 }
 
 void SpectralUILookAndFeel::drawLinearSlider(juce::Graphics& g, int x, int y, int width, int height,
@@ -353,22 +501,24 @@ void SpectralUILookAndFeel::drawLinearSlider(juce::Graphics& g, int x, int y, in
     juce::ignoreUnused(minSliderPos, maxSliderPos, style);
 
     // Horizontal Sliders
+    bounds = juce::Rectangle<float>((float)x, (float)y, (float)width, (float)height);
     bool isVolumeSlider = (slider.getName() == "VOLUME" ||
-                           (slider.getTextBoxPosition() == juce::Slider::NoTextBox && bounds.getWidth() >= 140.0f));
+                           (slider.getSliderStyle() == juce::Slider::LinearHorizontal && slider.getTextBoxPosition() == juce::Slider::NoTextBox && slider.getWidth() >= 140));
 
     if (isVolumeSlider)
     {
         // Horizontal Volume Fader (Bottom Bar)
-        // 1. Label 'VOLUME' on left edge
-        if (bounds.getWidth() > 110.0f)
+        auto compBounds = slider.getLocalBounds().toFloat();
+        if (compBounds.getWidth() > 110.0f)
         {
-            auto labelArea = bounds.removeFromLeft(52.0f);
-            g.setFont(getMonospaceFont(9.5f));
+            // 1. Label 'VOLUME' on left edge
+            auto labelArea = compBounds.removeFromLeft(50.0f);
+            g.setFont(getJetBrainsMono(9.0f, true));
             g.setColour(textMutedColour);
-            g.drawText("VOLUME", labelArea, juce::Justification::left, true);
+            g.drawText("VOLUME", labelArea, juce::Justification::centredLeft, true);
 
             // 2. Numeric dB readout on right edge
-            auto readoutArea = bounds.removeFromRight(50.0f);
+            auto readoutArea = compBounds.removeFromRight(56.0f);
             float val = (float)slider.getValue();
             juce::String valStr;
             if (val <= -47.5f)
@@ -378,19 +528,18 @@ void SpectralUILookAndFeel::drawLinearSlider(juce::Graphics& g, int x, int y, in
             else
                 valStr = juce::String(val, 1) + " dB";
 
-            g.setFont(getMonospaceFont(9.5f));
+            g.setFont(getJetBrainsMono(9.0f, true));
             g.setColour(slider.isMouseOverOrDragging() ? accentColour : textMainColour);
-            g.drawText(valStr, readoutArea, juce::Justification::right, true);
+            g.drawText(valStr, readoutArea, juce::Justification::centredRight, true);
         }
 
-        // 3. Track area in center
-        bounds.reduce(4.0f, 0.0f);
-        if (bounds.getWidth() <= 4.0f)
+        // 3. Track area in center (matches sliderBounds passed via x, y, width, height)
+        if (width <= 4)
             return;
 
         float trackHeight = 5.0f;
-        float trackY = bounds.getCentreY() - trackHeight * 0.5f;
-        auto trackArea = juce::Rectangle<float>(bounds.getX(), trackY, bounds.getWidth(), trackHeight);
+        float trackY = (float)y + ((float)height - trackHeight) * 0.5f;
+        auto trackArea = juce::Rectangle<float>((float)x, trackY, (float)width, trackHeight);
 
         // Dark track background
         g.setColour(graphBgColour);
@@ -400,9 +549,9 @@ void SpectralUILookAndFeel::drawLinearSlider(juce::Graphics& g, int x, int y, in
         g.setColour(dividerColour);
         g.drawRoundedRectangle(trackArea, 2.5f, 1.0f);
 
-        // Horizontal progress fill
+        // Horizontal progress fill (sliderPos directly maps from x at min to x + width at +6 dB)
         float fillWidth = juce::jlimit(0.0f, trackArea.getWidth(), sliderPos - trackArea.getX());
-        if (fillWidth > 0.0f && isEnabled)
+        if (fillWidth > 0.0f && slider.isEnabled())
         {
             auto fillRect = trackArea.withWidth(fillWidth);
             g.setColour(slider.isMouseOverOrDragging() ? accentBright : accentColour);
@@ -415,9 +564,9 @@ void SpectralUILookAndFeel::drawLinearSlider(juce::Graphics& g, int x, int y, in
         float minHandleX = trackArea.getX();
         float maxHandleX = juce::jmax(minHandleX, trackArea.getRight() - handleWidth);
         float handleX = juce::jlimit(minHandleX, maxHandleX, sliderPos - handleWidth * 0.5f);
-        float handleY = bounds.getCentreY() - handleHeight * 0.5f;
+        float handleY = (float)y + ((float)height - handleHeight) * 0.5f;
 
-        g.setColour(isEnabled ? (slider.isMouseOverOrDragging() ? accentBright : textMainColour) : textMutedColour.withAlpha(0.4f));
+        g.setColour(slider.isEnabled() ? (slider.isMouseOverOrDragging() ? accentBright : textMainColour) : textMutedColour.withAlpha(0.4f));
         g.fillRoundedRectangle(handleX, handleY, handleWidth, handleHeight, 1.5f);
     }
     else
@@ -468,27 +617,27 @@ void SpectralUILookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button
 {
     juce::ignoreUnused(backgroundColour);
     auto bounds = button.getLocalBounds().toFloat();
-    float cornerRadius = 4.0f;
+    float cornerRadius = 3.5f;
 
-    juce::Colour bg = juce::Colour::fromRGB(0x20, 0x22, 0x2A);
+    juce::Colour bg = panelBgColour;
     if (button.getToggleState())
     {
-        bg = accentColour;
+        bg = accentColour.withAlpha(0.18f);
     }
     else if (shouldDrawButtonAsDown)
     {
-        bg = juce::Colour::fromRGB(0x16, 0x18, 0x20);
+        bg = juce::Colour::fromRGB(0xEA, 0xEC, 0xF4);
     }
     else if (shouldDrawButtonAsHighlighted)
     {
-        bg = juce::Colour::fromRGB(0x2C, 0x2E, 0x3A);
+        bg = juce::Colour::fromRGB(0xF2, 0xF4, 0xF9);
     }
 
     g.setColour(bg);
     g.fillRoundedRectangle(bounds, cornerRadius);
 
     // Hairline border
-    juce::Colour borderCol = button.getToggleState() ? accentBright : dividerColour;
+    juce::Colour borderCol = button.getToggleState() ? accentColour : dividerColour;
     g.setColour(borderCol);
     g.drawRoundedRectangle(bounds, cornerRadius, 1.0f);
 }
@@ -501,7 +650,7 @@ void SpectralUILookAndFeel::drawButtonText(juce::Graphics& g, juce::TextButton& 
     auto font = getTextButtonFont(button, button.getHeight());
     g.setFont(font);
 
-    juce::Colour textCol = button.getToggleState() ? juce::Colours::black : juce::Colour::fromRGB(0xEE, 0xEA, 0xF5);
+    juce::Colour textCol = button.getToggleState() ? accentColour : textMainColour;
     if (!button.isEnabled())
         textCol = textMutedColour.withAlpha(0.4f);
 
@@ -554,4 +703,39 @@ void SpectralUILookAndFeel::drawPopupMenuItem(juce::Graphics& g, const juce::Rec
         g.setColour(accentColour);
         g.fillEllipse(r.getRight() - 14.0f, r.getCentreY() - 3.0f, 6.0f, 6.0f);
     }
+}
+
+void SpectralUILookAndFeel::drawScrollbar(juce::Graphics& g, juce::ScrollBar& scrollbar,
+                                          int x, int y, int width, int height,
+                                          bool isScrollbarVertical,
+                                          int thumbStartPosition, int thumbSize,
+                                          bool isMouseOver, bool isMouseDown)
+{
+    juce::ignoreUnused(scrollbar);
+
+    if (thumbSize <= 0)
+        return;
+
+    juce::Rectangle<float> thumbBounds;
+    if (isScrollbarVertical)
+    {
+        float w = juce::jmin(4.0f, (float)width);
+        float thumbX = (float)x + ((float)width - w) * 0.5f;
+        thumbBounds = juce::Rectangle<float>(thumbX, (float)thumbStartPosition, w, (float)thumbSize);
+    }
+    else
+    {
+        float h = juce::jmin(4.0f, (float)height);
+        float thumbY = (float)y + ((float)height - h) * 0.5f;
+        thumbBounds = juce::Rectangle<float>((float)thumbStartPosition, thumbY, (float)thumbSize, h);
+    }
+
+    juce::Colour col = accentColour.withAlpha(0.55f);
+    if (isMouseDown)
+        col = accentBright;
+    else if (isMouseOver)
+        col = accentColour.withAlpha(0.90f);
+
+    g.setColour(col);
+    g.fillRoundedRectangle(thumbBounds, 2.0f);
 }

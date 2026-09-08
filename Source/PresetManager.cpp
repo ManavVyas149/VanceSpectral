@@ -3,6 +3,13 @@
 PresetManager::PresetManager()
 {
     ensureDirectoriesExist();
+    if (presetsFolder.exists())
+        lastPresetsFolderScanTime = presetsFolder.getLastModificationTime();
+    if (samplesFolder.exists())
+        lastSamplesFolderScanTime = samplesFolder.getLastModificationTime();
+    getAllPresets();
+    getAllBanks();
+    getAllSamples();
 }
 
 void PresetManager::ensureDirectoriesExist()
@@ -15,9 +22,10 @@ void PresetManager::ensureDirectoriesExist()
         appDir.createDirectory();
     }
 
-    // Migrate any legacy presets from AppData\Roaming\VanceSpectral if they exist
+    // Migrate any legacy presets from AppData\Roaming\VanceSpectral if they exist (ONE-TIME ONLY)
     auto legacyAppDataDir = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("VanceSpectral");
-    if (legacyAppDataDir.exists())
+    auto migrationMarker = appDir.getChildFile(".migrated_from_appdata");
+    if (legacyAppDataDir.exists() && !migrationMarker.existsAsFile())
     {
         auto legacyPresets = legacyAppDataDir.getChildFile("Presets");
         if (legacyPresets.exists())
@@ -29,6 +37,7 @@ void PresetManager::ensureDirectoriesExist()
         {
             legacySamples.copyDirectoryTo(appDir.getChildFile("Samples"));
         }
+        migrationMarker.create();
     }
 
     presetsFolder = appDir.getChildFile("Presets");
@@ -213,9 +222,12 @@ juce::Array<PresetInfo> PresetManager::getAllPresets() const
 
 juce::StringArray PresetManager::getAllBanks() const
 {
-    juce::StringArray banks;
-    banks.add("Factory");
-    banks.add("User");
+    if (isBanksCacheValid)
+        return cachedBanks;
+
+    cachedBanks.clear();
+    cachedBanks.add("Factory");
+    cachedBanks.add("User");
 
     if (presetsFolder.exists())
     {
@@ -226,34 +238,62 @@ juce::StringArray PresetManager::getAllBanks() const
             if (name.startsWith("."))
                 continue;
 
-            if (!banks.contains(name, true))
-                banks.add(name);
+            if (!cachedBanks.contains(name, true))
+                cachedBanks.add(name);
         }
     }
 
     auto presets = getAllPresets();
     for (const auto& p : presets)
     {
-        if (p.bank.isNotEmpty() && !p.bank.startsWith(".") && !banks.contains(p.bank, true))
-            banks.add(p.bank);
+        if (p.bank.isNotEmpty() && !p.bank.startsWith(".") && !cachedBanks.contains(p.bank, true))
+        {
+            // Only add if the bank directory actually exists on disk
+            if (p.bank.equalsIgnoreCase("Factory") || p.bank.equalsIgnoreCase("User") || presetsFolder.getChildFile(p.bank).isDirectory())
+                cachedBanks.add(p.bank);
+        }
     }
 
-    return banks;
+    isBanksCacheValid = true;
+    return cachedBanks;
+}
+
+juce::String PresetManager::getBankForPreset(const juce::File& presetFile) const
+{
+    auto presets = getAllPresets();
+    for (const auto& p : presets)
+    {
+        if (p.file == presetFile)
+            return p.bank;
+    }
+
+    juce::String folderBank = presetFile.getParentDirectory().getFileName();
+    if (folderBank.equalsIgnoreCase("Presets"))
+        folderBank = "User";
+
+    return folderBank.isEmpty() ? "Factory" : folderBank;
 }
 
 juce::Array<juce::File> PresetManager::getAllSamples() const
 {
-    juce::Array<juce::File> samples;
-    if (!samplesFolder.exists())
-        return samples;
+    if (isSamplesCacheValid)
+        return cachedSamples;
 
-    auto files = samplesFolder.findChildFiles(juce::File::TypesOfFileToFind::findFiles, false, "*.wav;*.mp3;*.flac;*.aiff;*.ogg;*.m4a");
-    for (const auto& file : files)
+    cachedSamples.clear();
+    if (!samplesFolder.exists())
     {
-        samples.add(file);
+        isSamplesCacheValid = true;
+        return cachedSamples;
     }
 
-    return samples;
+    auto files = samplesFolder.findChildFiles(juce::File::TypesOfFileToFind::findFiles, true, "*.wav;*.mp3;*.flac;*.aiff;*.ogg;*.m4a");
+    for (const auto& file : files)
+    {
+        cachedSamples.add(file);
+    }
+
+    isSamplesCacheValid = true;
+    return cachedSamples;
 }
 
 bool PresetManager::createBank(const juce::String& bankName)
@@ -269,12 +309,20 @@ bool PresetManager::createBank(const juce::String& bankName)
         dir.createDirectory();
     }
 
-    return dir.isDirectory() && dir.exists();
+    bool success = dir.isDirectory() && dir.exists();
+    if (success)
+    {
+        if (isBanksCacheValid && !cachedBanks.contains(clean, true))
+            cachedBanks.add(clean);
+        else
+            isBanksCacheValid = false;
+    }
+    return success;
 }
 
 bool PresetManager::renameBank(const juce::String& oldBankName, const juce::String& newBankName)
 {
-    if (oldBankName.equalsIgnoreCase("Factory") || newBankName.trim().isEmpty())
+    if (oldBankName.equalsIgnoreCase("Factory") || oldBankName.equalsIgnoreCase("User") || newBankName.trim().isEmpty())
         return false;
 
     juce::String cleanOld = juce::File::createLegalFileName(oldBankName.trim());
@@ -288,7 +336,7 @@ bool PresetManager::renameBank(const juce::String& oldBankName, const juce::Stri
 
     if (oldDir.moveFileTo(newDir))
     {
-        auto files = newDir.findChildFiles(juce::File::TypesOfFileToFind::findFiles, true, "*.json");
+        auto files = newDir.findChildFiles(juce::File::TypesOfFileToFind::findFiles, true, "*.vsts;*.vsfx;*.json");
         for (const auto& file : files)
         {
             juce::var parsed = juce::JSON::parse(file.loadFileAsString());
@@ -296,6 +344,25 @@ bool PresetManager::renameBank(const juce::String& oldBankName, const juce::Stri
             {
                 parsed.getDynamicObject()->setProperty("bank", cleanNew);
                 file.replaceWithText(juce::JSON::toString(parsed));
+            }
+        }
+        if (isBanksCacheValid)
+        {
+            int idx = cachedBanks.indexOf(cleanOld, true);
+            if (idx >= 0)
+                cachedBanks.set(idx, cleanNew);
+            else
+                cachedBanks.add(cleanNew);
+        }
+        if (isCacheValid)
+        {
+            for (auto& p : cachedPresets)
+            {
+                if (p.bank.equalsIgnoreCase(cleanOld))
+                {
+                    p.bank = cleanNew;
+                    p.file = newDir.getChildFile(p.file.getFileName());
+                }
             }
         }
         return true;
@@ -312,7 +379,21 @@ bool PresetManager::deleteBank(const juce::String& bankName)
     auto dir = presetsFolder.getChildFile(clean);
     if (dir.exists())
     {
-        return dir.deleteRecursively();
+        bool ok = dir.deleteRecursively();
+        if (ok)
+        {
+            if (isBanksCacheValid)
+                cachedBanks.removeString(clean, true);
+            if (isCacheValid)
+            {
+                for (int i = cachedPresets.size() - 1; i >= 0; --i)
+                {
+                    if (cachedPresets[i].bank.equalsIgnoreCase(clean))
+                        cachedPresets.remove(i);
+                }
+            }
+        }
+        return ok;
     }
     return false;
 }
@@ -435,7 +516,24 @@ bool PresetManager::toggleFavorite(const juce::File& presetFile)
         bool curFav = (bool)parsed.getProperty("isFavorite", false);
         parsed.getDynamicObject()->setProperty("isFavorite", !curFav);
         bool ok = presetFile.replaceWithText(juce::JSON::toString(parsed));
-        if (ok) invalidateCache();
+        if (ok)
+        {
+            if (isCacheValid)
+            {
+                for (auto& p : cachedPresets)
+                {
+                    if (p.file == presetFile)
+                    {
+                        p.isFavorite = !curFav;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                isCacheValid = false;
+            }
+        }
         return ok;
     }
     return false;
@@ -603,7 +701,44 @@ bool PresetManager::savePreset(const juce::String& presetName,
         bool verified = (presetFile.existsAsFile() && presetFile.getSize() > 0);
         DBG("[VanceSpectral SaveInstrumentation] Write Result: " << (verified ? "SUCCESS" : "FAILED")
             << " | Written Bytes: " << presetFile.getSize());
-        if (verified) invalidateCache();
+        if (verified)
+        {
+            if (isCacheValid)
+            {
+                bool found = false;
+                for (auto& p : cachedPresets)
+                {
+                    if (p.file == presetFile)
+                    {
+                        p.name = finalName;
+                        p.category = category;
+                        p.bank = finalBank;
+                        p.sampleFileName = sampleFileName;
+                        p.isFavorite = isFavorite;
+                        p.lastUsed = juce::Time::currentTimeMillis();
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    PresetInfo info;
+                    info.file = presetFile;
+                    info.name = finalName;
+                    info.category = category;
+                    info.bank = finalBank;
+                    info.sampleFileName = sampleFileName;
+                    info.isFavorite = isFavorite;
+                    info.isFactory = finalBank.equalsIgnoreCase("Factory");
+                    info.lastUsed = juce::Time::currentTimeMillis();
+                    cachedPresets.add(info);
+                }
+            }
+            else
+            {
+                isCacheValid = false;
+            }
+        }
         return verified;
     }
 
@@ -695,7 +830,24 @@ bool PresetManager::deletePreset(const juce::File& presetFile)
     }
 
     bool deleted = presetFile.deleteFile();
-    if (deleted) invalidateCache();
+    if (deleted)
+    {
+        if (isCacheValid)
+        {
+            for (int i = cachedPresets.size() - 1; i >= 0; --i)
+            {
+                if (cachedPresets[i].file == presetFile)
+                {
+                    cachedPresets.remove(i);
+                    break;
+                }
+            }
+        }
+        else
+        {
+            isCacheValid = false;
+        }
+    }
     return deleted;
 }
 
@@ -752,7 +904,11 @@ juce::File PresetManager::importSample(const juce::File& sourceFile, bool overwr
         }
 
         if (sourceFile.copyFileTo(targetFile))
+        {
+            if (isSamplesCacheValid && !cachedSamples.contains(targetFile))
+                cachedSamples.add(targetFile);
             return targetFile;
+        }
 
         return {};
     }
@@ -765,6 +921,8 @@ juce::File PresetManager::importSample(const juce::File& sourceFile, bool overwr
 
     if (sourceFile.copyFileTo(targetFile))
     {
+        if (isSamplesCacheValid && !cachedSamples.contains(targetFile))
+            cachedSamples.add(targetFile);
         return targetFile;
     }
 
@@ -784,16 +942,96 @@ bool PresetManager::renameSample(const juce::File& sampleFile, const juce::Strin
     if (targetFile == sampleFile)
         return true;
 
-    return sampleFile.moveFileTo(targetFile);
+    bool ok = sampleFile.moveFileTo(targetFile);
+    if (ok && isSamplesCacheValid)
+    {
+        for (auto& s : cachedSamples)
+        {
+            if (s == sampleFile)
+            {
+                s = targetFile;
+                break;
+            }
+        }
+    }
+    return ok;
+}
+
+bool PresetManager::isPresetDeletable(const juce::File& presetFile) const
+{
+    if (!presetFile.existsAsFile())
+        return false;
+
+    if (presetFile.getParentDirectory().getFileName().equalsIgnoreCase("Factory"))
+        return false;
+
+    juce::var parsed = juce::JSON::parse(presetFile.loadFileAsString());
+    if (parsed.isObject())
+    {
+        bool isFactory = (bool)parsed.getProperty("isFactory", false);
+        juce::String bank = parsed.getProperty("bank", "").toString();
+        if (isFactory || bank.equalsIgnoreCase("Factory"))
+            return false;
+    }
+
+    return true;
+}
+
+int PresetManager::getPresetCountForBank(const juce::String& bankName) const
+{
+    auto all = getAllPresets();
+    if (bankName.equalsIgnoreCase("ALL BANKS"))
+        return all.size();
+
+    int count = 0;
+    for (const auto& p : all)
+    {
+        if (p.bank.equalsIgnoreCase(bankName))
+            count++;
+    }
+    return count;
 }
 
 bool PresetManager::deleteSample(const juce::File& sampleFile)
 {
     if (sampleFile.existsAsFile())
     {
-        return sampleFile.deleteFile();
+        bool ok = sampleFile.deleteFile();
+        if (ok)
+        {
+            if (isSamplesCacheValid)
+                cachedSamples.removeAllInstancesOf(sampleFile);
+        }
+        return ok;
     }
     return false;
+}
+
+bool PresetManager::checkForExternalChanges()
+{
+    bool anyChanged = false;
+    if (presetsFolder.exists())
+    {
+        auto pMod = presetsFolder.getLastModificationTime();
+        if (pMod != lastPresetsFolderScanTime)
+        {
+            lastPresetsFolderScanTime = pMod;
+            isCacheValid = false;
+            isBanksCacheValid = false;
+            anyChanged = true;
+        }
+    }
+    if (samplesFolder.exists())
+    {
+        auto sMod = samplesFolder.getLastModificationTime();
+        if (sMod != lastSamplesFolderScanTime)
+        {
+            lastSamplesFolderScanTime = sMod;
+            isSamplesCacheValid = false;
+            anyChanged = true;
+        }
+    }
+    return anyChanged;
 }
 
 void PresetManager::createDefaultFactoryPresets(juce::AudioProcessorValueTreeState& apvts)

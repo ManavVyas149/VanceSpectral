@@ -58,9 +58,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout VancespectralAudioProcessor:
     params.push_back(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID("GLIDE", 1), "Glide Time", juce::NormalisableRange<float>(0.0f, 2.0f, 0.001f, 0.5f), 0.0f));
 
-    // Master Gain Parameter (-48.0 dB to +6.0 dB, default 0.0 dB)
+    // Master Gain Parameter (-48.0 dB to +6.0 dB, default 0.0 dB, center at -6.0 dB)
+    juce::NormalisableRange<float> gainRange(-48.0f, 6.0f, 0.1f);
+    gainRange.setSkewForCentre(-6.0f);
     params.push_back(std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID("GAIN", 1), "Master Gain", juce::NormalisableRange<float>(-48.0f, 6.0f, 0.1f), 0.0f));
+        juce::ParameterID("GAIN", 1), "Master Gain", gainRange, 0.0f));
 
     // Master Wet Effects (Sidechain, Chorus, Phaser, Delay, Drive)
     params.push_back(std::make_unique<juce::AudioParameterBool>(
@@ -355,8 +357,10 @@ void VancespectralAudioProcessor::getStateInformation(juce::MemoryBlock& destDat
     state.setProperty("regionEnd", (double)endRegionNormalized, nullptr);
     state.setProperty("loopEnabled", loopEnabled, nullptr);
     state.setProperty("currentPresetName", currentPresetName, nullptr);
+    state.setProperty("currentBankName", currentBankName, nullptr);
     state.setProperty("selectionsJson", juce::JSON::toString(selectionsVar), nullptr);
     state.setProperty("isInitialized", isInitialized, nullptr);
+    state.setProperty("editorScale", (double)editorScale, nullptr);
 
     std::unique_ptr<juce::XmlElement> xml (state.createXml());
     if (xml != nullptr)
@@ -377,9 +381,11 @@ void VancespectralAudioProcessor::setStateInformation(const void* data, int size
         endRegionNormalized = (float)(double)vt.getProperty("regionEnd", 1.0);
         loopEnabled = (bool)vt.getProperty("loopEnabled", false);
         currentPresetName = vt.getProperty("currentPresetName", "Custom / Unsaved").toString();
+        currentBankName = vt.getProperty("currentBankName", "Factory").toString();
         juce::String selectionsJson = vt.getProperty("selectionsJson", "[]").toString();
         selectionsVar = juce::JSON::parse(selectionsJson);
         isInitialized = (bool)vt.getProperty("isInitialized", true);
+        editorScale = (float)(double)vt.getProperty("editorScale", 1.0);
 
         // Attempt to locate and reload audio sample into DSP
         juce::File sampleFile(filePath);

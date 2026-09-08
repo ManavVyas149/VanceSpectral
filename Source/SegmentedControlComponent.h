@@ -6,11 +6,16 @@
 class SegmentedControlComponent : public juce::Component
 {
 public:
-    SegmentedControlComponent(const juce::String& sectionLabel, const juce::StringArray& options);
+    enum class LayoutMode { Horizontal, Vertical };
+
+    SegmentedControlComponent(const juce::String& sectionLabel, const juce::StringArray& options, LayoutMode mode = LayoutMode::Horizontal);
     ~SegmentedControlComponent() override = default;
 
     void paint(juce::Graphics& g) override;
     void resized() override;
+
+    void setLayoutMode(LayoutMode mode);
+    LayoutMode getLayoutMode() const { return layoutMode; }
 
     int getSelectedIndex() const { return selectedIndex; }
     void setSelectedIndex(int newIndex, bool sendNotification = true);
@@ -21,6 +26,7 @@ public:
 private:
     juce::String labelText;
     juce::StringArray optionsList;
+    LayoutMode layoutMode = LayoutMode::Horizontal;
     int selectedIndex = 0;
 
     class OptionButton : public juce::Button
@@ -39,18 +45,19 @@ private:
             if (isActive)
             {
                 g.setColour(SpectralUILookAndFeel::accentColour.withAlpha(0.20f));
-                g.fillRoundedRectangle(bounds.reduced(1.0f, 2.0f), 3.0f);
+                g.fillRoundedRectangle(bounds.reduced(1.0f, 1.5f), 3.0f);
 
                 g.setColour(SpectralUILookAndFeel::accentColour);
-                g.drawRoundedRectangle(bounds.reduced(1.0f, 2.0f), 3.0f, 1.2f);
+                g.drawRoundedRectangle(bounds.reduced(1.0f, 1.5f), 3.0f, 1.2f);
             }
             else if (isHighlighted)
             {
                 g.setColour(SpectralUILookAndFeel::dividerColour.withAlpha(0.35f));
-                g.fillRoundedRectangle(bounds.reduced(1.0f, 2.0f), 3.0f);
+                g.fillRoundedRectangle(bounds.reduced(1.0f, 1.5f), 3.0f);
             }
 
-            g.setFont(SpectralUILookAndFeel::getMonospaceFont(10.0f, isActive));
+            // Space Grotesk for mode button labels, centered and never wrapped
+            g.setFont(SpectralUILookAndFeel::getSpaceGrotesk(9.5f, isActive));
             g.setColour(isActive ? SpectralUILookAndFeel::accentColour
                                  : (isHighlighted ? SpectralUILookAndFeel::textMainColour
                                                   : SpectralUILookAndFeel::textMutedColour));

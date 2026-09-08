@@ -42,9 +42,15 @@ void HistoryManager::pruneOldest()
 
 juce::Array<HistoryEntry> HistoryManager::getHistoryEntries() const
 {
-    juce::Array<HistoryEntry> entries;
+    if (isHistoryCacheValid)
+        return cachedHistoryEntries;
+
+    cachedHistoryEntries.clear();
     if (!historyFolder.exists())
-        return entries;
+    {
+        isHistoryCacheValid = true;
+        return cachedHistoryEntries;
+    }
 
     auto files = historyFolder.findChildFiles(juce::File::TypesOfFileToFind::findFiles, false, "*.json");
 
@@ -68,16 +74,17 @@ juce::Array<HistoryEntry> HistoryManager::getHistoryEntries() const
             entry.loopEnabled = (bool)parsed.getProperty("loopEnabled", false);
             entry.selectionsVar = parsed.getProperty("selections", juce::var());
 
-            entries.add(entry);
+            cachedHistoryEntries.add(entry);
         }
     }
 
     // Sort newest first
-    std::sort(entries.begin(), entries.end(), [](const HistoryEntry& a, const HistoryEntry& b) {
+    std::sort(cachedHistoryEntries.begin(), cachedHistoryEntries.end(), [](const HistoryEntry& a, const HistoryEntry& b) {
         return a.timestampMs > b.timestampMs;
     });
 
-    return entries;
+    isHistoryCacheValid = true;
+    return cachedHistoryEntries;
 }
 
 bool HistoryManager::pushHistoryState(const juce::String& label,
@@ -97,14 +104,11 @@ bool HistoryManager::pushHistoryState(const juce::String& label,
     juce::String timeStr = nowTime.formatted("%b %d, %H:%M:%S");
 
     // Deduplication check against the most recent entry
-    auto existingEntries = getHistoryEntries();
-    if (!existingEntries.isEmpty())
-    {
-        const auto& newest = existingEntries[0];
-        // If snapshot taken less than 2 seconds ago with same sample, ignore
-        if (std::abs(nowMs - newest.timestampMs) < 2000 && newest.sampleFileName == sampleFileName)
-            return false;
-    }
+    if (std::abs(nowMs - lastSnapshotTimeMs) < 2000 && lastSnapshotSample == sampleFileName)
+        return false;
+
+    lastSnapshotTimeMs = nowMs;
+    lastSnapshotSample = sampleFileName;
 
     juce::String snapshotName = "hist_" + juce::String(nowMs) + ".json";
     juce::File snapshotFile = historyFolder.getChildFile(snapshotName);
@@ -169,6 +173,25 @@ bool HistoryManager::pushHistoryState(const juce::String& label,
         }
     });
 
+    HistoryEntry newEntry;
+    newEntry.id = "h_" + juce::String(nowMs);
+    newEntry.label = label;
+    newEntry.timestampMs = nowMs;
+    newEntry.formattedTime = timeStr;
+    newEntry.sampleFileName = sampleFileName;
+    newEntry.startRegion = startRegion;
+    newEntry.endRegion = endRegion;
+    newEntry.loopEnabled = loopEnabled;
+    newEntry.selectionsVar = selectionsVar;
+    newEntry.snapshotFile = snapshotFile;
+
+    if (isHistoryCacheValid)
+    {
+        cachedHistoryEntries.insert(0, newEntry);
+        while (cachedHistoryEntries.size() > MAX_HISTORY_ITEMS)
+            cachedHistoryEntries.removeLast();
+    }
+
     return true;
 }
 
@@ -230,4 +253,58 @@ void HistoryManager::clearHistory()
     auto files = historyFolder.findChildFiles(juce::File::TypesOfFileToFind::findFiles, false, "*.json");
     for (const auto& f : files)
         f.deleteFile();
+    cachedHistoryEntries.clear();
+    isHistoryCacheValid = true;
 }
+
+bool HistoryManager::deleteHistoryEntry(const juce::String& id)
+{
+    ensureHistoryFolderExists();
+    if (id.trim().isEmpty())
+        return false;
+
+    auto files = historyFolder.findChildFiles(juce::File::TypesOfFileToFind::findFiles, false, "*.json");
+    for (const auto& file : files)
+    {
+        juce::var parsed = juce::JSON::parse(file.loadFileAsString());
+        if (parsed.isObject() && parsed.getProperty("id", "").toString() == id)
+        {
+            bool ok = file.deleteFile();
+            if (ok && isHistoryCacheValid)
+            {
+                for (int i = cachedHistoryEntries.size() - 1; i >= 0; --i)
+                {
+                    if (cachedHistoryEntries[i].id == id)
+                    {
+                        cachedHistoryEntries.remove(i);
+                        break;
+                    }
+                }
+            }
+            return ok;
+        }
+    }
+    return false;
+}
+
+bool HistoryManager::deleteHistoryFile(const juce::File& snapshotFile)
+{
+    if (snapshotFile.existsAsFile())
+    {
+        bool ok = snapshotFile.deleteFile();
+        if (ok && isHistoryCacheValid)
+        {
+            for (int i = cachedHistoryEntries.size() - 1; i >= 0; --i)
+            {
+                if (cachedHistoryEntries[i].snapshotFile == snapshotFile)
+                {
+                    cachedHistoryEntries.remove(i);
+                    break;
+                }
+            }
+        }
+        return ok;
+    }
+    return false;
+}
+

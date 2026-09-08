@@ -39,6 +39,15 @@ void SampleEngine::loadSample(const juce::AudioBuffer<float>& buffer, double sam
     for (auto& v : voices)
         v.reset();
 
+    for (size_t i = 0; i < MAX_VOICES; ++i)
+    {
+        atomicVoicePlayheads[i].active.store(false, std::memory_order_relaxed);
+        atomicVoicePlayheads[i].positionNorm.store(-1.0f, std::memory_order_relaxed);
+    }
+    atomicActiveVoiceCount.store(0, std::memory_order_release);
+    atomicIsPlaying.store(false, std::memory_order_release);
+    atomicPrimaryPlayheadPosition.store(0.0f, std::memory_order_release);
+
     playing = false;
 
     updateFilteredSample();
@@ -381,6 +390,11 @@ void SampleEngine::initVoice(Voice& v, int noteNumber, float velocity)
     v.isQuickFadingOut = false;
     v.quickFadeOutSamplesLeft = 0;
     v.quickFadeOutTotalSamples = 0;
+    v.isRampingToZero = false;
+    v.rampSamplesLeft = 0;
+    v.rampTotalSamples = 0;
+    v.lastOutputL = 0.0f;
+    v.lastOutputR = 0.0f;
     v.noteNumber = noteNumber;
     v.velocity = velocity;
     v.voiceAge = ++voiceAgeCounter;
@@ -434,6 +448,7 @@ void SampleEngine::noteOn(int midiNoteNumber, float velocity)
 
     currentNoteNumber = midiNoteNumber;
     playing = true;
+    atomicIsPlaying.store(true, std::memory_order_release);
 
     float targetSemis = (float)(midiNoteNumber - rootNoteNumber.load());
     float glideMs = glideTimeMs.load();
@@ -455,20 +470,37 @@ void SampleEngine::noteOn(int midiNoteNumber, float velocity)
         }
         else
         {
-            // Staccato or Mono Non-Glide: start new note with quick fade-out of any sounding old voice
+            // Staccato or Mono Non-Glide: start new note with guaranteed smooth fade-out of any sounding old voice
             Voice* targetVoice = nullptr;
 
-            if (voices[0].active && voices[0].ampEnvelope.isActive() && !voices[0].isQuickFadingOut)
+            // Put any sounding active voice into a guaranteed smooth 4ms ramp to zero
+            for (auto& v : voices)
             {
-                // Voice 0 is active: put voice 0 into quick fade out and find a free voice for new note
-                voices[0].startQuickFadeOut(fadeSamples);
-
-                for (size_t i = 1; i < MAX_VOICES; ++i)
+                if (v.active && (v.ampEnvelope.isActive() || v.isQuickFadingOut) && !v.isRampingToZero)
                 {
-                    if (!voices[i].active && !voices[i].isQuickFadingOut)
+                    v.startRampToZero(fadeSamples);
+                }
+            }
+
+            // Find an inactive voice slot for the new note that is not currently ramping
+            for (size_t i = 0; i < MAX_VOICES; ++i)
+            {
+                if (!voices[i].active && !voices[i].isRampingToZero)
+                {
+                    targetVoice = &voices[i];
+                    break;
+                }
+            }
+
+            if (targetVoice == nullptr)
+            {
+                int minLeft = INT_MAX;
+                for (auto& v : voices)
+                {
+                    if (v.isRampingToZero && v.rampSamplesLeft < minLeft)
                     {
-                        targetVoice = &voices[i];
-                        break;
+                        minLeft = v.rampSamplesLeft;
+                        targetVoice = &v;
                     }
                 }
             }
@@ -493,34 +525,34 @@ void SampleEngine::noteOn(int midiNoteNumber, float velocity)
         bool isSimultaneousChord = (globalSampleCounter - lastNoteTriggerSample) < (uint64_t)(targetSampleRate.load() * 0.005);
         float startPitch = (isSimultaneousChord || glideMs <= 0.001f) ? targetSemis : lastPolyPitchSemitones;
 
-        // If note on midiNoteNumber is already active, quick fade it out to prevent click on retrigger
+        // If note on midiNoteNumber is already active, smooth fade it out to prevent click on retrigger
         for (auto& v : voices)
         {
-            if (v.active && v.noteNumber == midiNoteNumber && !v.isQuickFadingOut)
+            if (v.active && v.noteNumber == midiNoteNumber && !v.isRampingToZero)
             {
-                v.startQuickFadeOut(fadeSamples);
+                v.startRampToZero(fadeSamples);
             }
         }
 
         Voice* targetVoice = nullptr;
 
-        // Find an unallocated inactive voice
+        // Find an unallocated inactive voice that is not ramping
         for (auto& v : voices)
         {
-            if (!v.active && !v.ampEnvelope.isActive() && !v.isQuickFadingOut)
+            if (!v.active && !v.ampEnvelope.isActive() && !v.isQuickFadingOut && !v.isRampingToZero)
             {
                 targetVoice = &v;
                 break;
             }
         }
 
-        // Voice stealing: steal oldest non-fading voice if all 16 voices are busy
+        // Voice stealing: steal oldest non-fading voice if all voices are busy
         if (targetVoice == nullptr)
         {
             uint64_t oldestAge = UINT64_MAX;
             for (auto& v : voices)
             {
-                if (!v.isQuickFadingOut && v.voiceAge < oldestAge)
+                if (!v.isRampingToZero && v.voiceAge < oldestAge)
                 {
                     oldestAge = v.voiceAge;
                     targetVoice = &v;
@@ -528,11 +560,11 @@ void SampleEngine::noteOn(int midiNoteNumber, float velocity)
             }
             if (targetVoice != nullptr)
             {
-                targetVoice->startQuickFadeOut(fadeSamples);
+                targetVoice->startRampToZero(fadeSamples);
                 targetVoice = nullptr;
                 for (auto& v : voices)
                 {
-                    if (!v.active && !v.ampEnvelope.isActive())
+                    if (!v.active && !v.ampEnvelope.isActive() && !v.isRampingToZero)
                     {
                         targetVoice = &v;
                         break;
@@ -543,13 +575,14 @@ void SampleEngine::noteOn(int midiNoteNumber, float velocity)
 
         if (targetVoice == nullptr)
         {
-            // Pick fading voice closest to silence (minimal quickFadeOutSamplesLeft)
+            // Pick voice closest to zero
             int minLeft = INT_MAX;
             for (auto& v : voices)
             {
-                if (v.isQuickFadingOut && v.quickFadeOutSamplesLeft < minLeft)
+                int left = v.isRampingToZero ? v.rampSamplesLeft : v.quickFadeOutSamplesLeft;
+                if ((v.isRampingToZero || v.isQuickFadingOut) && left < minLeft)
                 {
-                    minLeft = v.quickFadeOutSamplesLeft;
+                    minLeft = left;
                     targetVoice = &v;
                 }
             }
@@ -601,10 +634,12 @@ void SampleEngine::noteOff(int midiNoteNumber)
 
 bool SampleEngine::isPlaying() const
 {
-    const juce::ScopedLock sl(lock);
-    for (const auto& v : voices)
+    if (atomicIsPlaying.load(std::memory_order_relaxed))
+        return true;
+
+    for (size_t i = 0; i < MAX_VOICES; ++i)
     {
-        if (v.active || v.ampEnvelope.isActive())
+        if (voices[i].active || voices[i].ampEnvelope.isActive() || voices[i].isRampingToZero)
             return true;
     }
     return false;
@@ -612,46 +647,46 @@ bool SampleEngine::isPlaying() const
 
 double SampleEngine::getPlayPositionNormalized() const
 {
-    const juce::ScopedLock sl(lock);
-    if (sample.getNumSamples() == 0)
-        return 0.0;
-
-    const Voice* newestVoice = nullptr;
-    uint64_t maxAge = 0;
-    for (const auto& v : voices)
-    {
-        if ((v.active || v.ampEnvelope.isActive()) && v.voiceAge > maxAge)
-        {
-            maxAge = v.voiceAge;
-            newestVoice = &v;
-        }
-    }
-
-    if (newestVoice != nullptr)
-        return juce::jlimit(0.0, 1.0, newestVoice->currentSample / (double)sample.getNumSamples());
-
-    return 0.0;
+    return (double)atomicPrimaryPlayheadPosition.load(std::memory_order_relaxed);
 }
 
 juce::Array<float> SampleEngine::getActiveVoicePositionsNormalized() const
 {
-    const juce::ScopedLock sl(lock);
     juce::Array<float> positions;
-    if (sample.getNumSamples() == 0)
+    int count = atomicActiveVoiceCount.load(std::memory_order_acquire);
+    if (count <= 0)
         return positions;
 
-    double totalSamples = (double)sample.getNumSamples();
-
-    for (const auto& v : voices)
+    positions.ensureStorageAllocated(count);
+    for (size_t i = 0; i < MAX_VOICES; ++i)
     {
-        if (v.active || v.ampEnvelope.isActive() || v.isQuickFadingOut)
+        if (atomicVoicePlayheads[i].active.load(std::memory_order_relaxed))
         {
-            float normPos = (float)juce::jlimit(0.0, 1.0, v.currentSample / totalSamples);
-            positions.add(normPos);
+            float pos = atomicVoicePlayheads[i].positionNorm.load(std::memory_order_relaxed);
+            if (pos >= 0.0f)
+                positions.add(pos);
         }
     }
 
     return positions;
+}
+
+int SampleEngine::getActiveVoicePositionsAtomic(float* outPositions, int maxPositions) const noexcept
+{
+    if (outPositions == nullptr || maxPositions <= 0)
+        return 0;
+
+    int written = 0;
+    for (size_t i = 0; i < MAX_VOICES && written < maxPositions; ++i)
+    {
+        if (atomicVoicePlayheads[i].active.load(std::memory_order_relaxed))
+        {
+            float pos = atomicVoicePlayheads[i].positionNorm.load(std::memory_order_relaxed);
+            if (pos >= 0.0f)
+                outPositions[written++] = pos;
+        }
+    }
+    return written;
 }
 
 juce::Array<ActiveVoiceVisualInfo> SampleEngine::getActiveVoiceVisualInfos() const
@@ -843,20 +878,30 @@ void SampleEngine::process(juce::AudioBuffer<float>& output,
 {
     juce::ScopedNoDenormals noDenormals;
 
-    const juce::ScopedTryLock sl(lock);
-    if (!sl.isLocked())
-        return;
+    const juce::ScopedLock sl(lock);
 
-    // Check if any voice is active or in envelope release
+    // Check if any voice is active, ramping to zero, or in envelope release
     int activeCount = 0;
     for (const auto& v : voices)
     {
-        if (v.active || v.ampEnvelope.isActive() || v.isQuickFadingOut)
+        if (v.active || v.ampEnvelope.isActive() || v.isQuickFadingOut || v.isRampingToZero)
             activeCount++;
     }
 
     if (activeCount == 0)
+    {
+        if (atomicIsPlaying.load(std::memory_order_relaxed))
+        {
+            for (size_t i = 0; i < MAX_VOICES; ++i)
+            {
+                atomicVoicePlayheads[i].active.store(false, std::memory_order_relaxed);
+                atomicVoicePlayheads[i].positionNorm.store(-1.0f, std::memory_order_relaxed);
+            }
+            atomicActiveVoiceCount.store(0, std::memory_order_release);
+            atomicIsPlaying.store(false, std::memory_order_release);
+        }
         return;
+    }
 
     const auto& srcBuffer = filteredSample.getNumSamples() > 0 ? filteredSample : sample;
     int totalSamples = srcBuffer.getNumSamples();
@@ -1032,8 +1077,39 @@ void SampleEngine::process(juce::AudioBuffer<float>& output,
 
     for (auto& v : voices)
     {
-        if (!v.active && !v.ampEnvelope.isActive() && !v.isQuickFadingOut)
+        if (!v.active && !v.ampEnvelope.isActive() && !v.isQuickFadingOut && !v.isRampingToZero)
             continue;
+
+        // 1. Guaranteed micro-ramp to zero state (active on voice termination, staccato steal, or sample end)
+        if (v.isRampingToZero)
+        {
+            for (int i = 0; i < curBlockSize; ++i)
+            {
+                if (v.rampSamplesLeft > 0)
+                {
+                    float factor = 0.5f * (1.0f + std::cos(juce::MathConstants<float>::pi * (1.0f - (float)v.rampSamplesLeft / (float)v.rampTotalSamples)));
+                    float outL = v.rampStartL * factor;
+                    float outR = v.rampStartR * factor;
+                    blockOutL[i] += outL;
+                    blockOutR[i] += outR;
+                    v.lastOutputL = outL;
+                    v.lastOutputR = outR;
+                    v.rampSamplesLeft--;
+                }
+                else
+                {
+                    v.lastOutputL = 0.0f;
+                    v.lastOutputR = 0.0f;
+                    v.active = false;
+                    v.isRampingToZero = false;
+                    v.releasing = false;
+                    v.ampEnvelope.reset();
+                    v.soundTouch.clear();
+                    break;
+                }
+            }
+            continue;
+        }
 
         // Sample-accurate exponential pitch interpolation towards target note
         v.currentPitchSemitones += glideAlpha * (v.targetPitchSemitones - v.currentPitchSemitones);
@@ -1043,36 +1119,182 @@ void SampleEngine::process(juce::AudioBuffer<float>& output,
         float noteSemis = v.currentPitchSemitones;
         float totalSemis = noteSemis + semis + voiceDriftSemis;
 
-        // Configure SoundTouch parameters
+        PlaybackMode effMode = (pMode == PlaybackMode::Random) ? v.effectivePlaybackMode : pMode;
+
+        // 2. Direct High-Quality Hermite Resampling Path (0-latency, bit-exact, zero SoundTouch buffering clicks)
         if (pitMode == PitchMode::Resample)
         {
             double rateRatio = std::pow(2.0, (double)totalSemis / 12.0) * baseSpeedRatio;
-            if (std::abs(rateRatio - v.lastAppliedRate) > 1e-5 || v.lastAppliedPitchMode != PitchMode::Resample)
+
+            for (int i = 0; i < curBlockSize; ++i)
             {
-                v.soundTouch.setRate(rateRatio);
-                v.soundTouch.setPitch(1.0);
-                v.soundTouch.setTempo(1.0);
-                v.lastAppliedRate = rateRatio;
-                v.lastAppliedPitchMode = PitchMode::Resample;
+                if (v.isRampingToZero)
+                {
+                    if (v.rampSamplesLeft > 0)
+                    {
+                        float factor = 0.5f * (1.0f + std::cos(juce::MathConstants<float>::pi * (1.0f - (float)v.rampSamplesLeft / (float)v.rampTotalSamples)));
+                        float outL = v.rampStartL * factor;
+                        float outR = v.rampStartR * factor;
+                        blockOutL[i] += outL;
+                        blockOutR[i] += outR;
+                        v.lastOutputL = outL;
+                        v.lastOutputR = outR;
+                        v.rampSamplesLeft--;
+                    }
+                    else
+                    {
+                        v.lastOutputL = 0.0f;
+                        v.lastOutputR = 0.0f;
+                        v.active = false;
+                        v.isRampingToZero = false;
+                        v.releasing = false;
+                        v.ampEnvelope.reset();
+                        v.soundTouch.clear();
+                        break;
+                    }
+                    continue;
+                }
+
+                // Sample Boundary check
+                if (effMode == PlaybackMode::Forward)
+                {
+                    if (v.currentSample >= (double)rEnd)
+                    {
+                        if (isLooping)
+                        {
+                            int loopFade = juce::jmax(1, juce::jmin((int)(targetSampleRate.load() * 0.010), rLen / 2));
+                            v.currentSample = (double)rStart + (double)loopFade;
+                        }
+                        else
+                        {
+                            v.startRampToZero(fadeSamples);
+                            continue;
+                        }
+                    }
+                }
+                else if (effMode == PlaybackMode::Backward)
+                {
+                    if (v.currentSample <= (double)rStart)
+                    {
+                        if (isLooping)
+                        {
+                            int loopFade = juce::jmax(1, juce::jmin((int)(targetSampleRate.load() * 0.010), rLen / 2));
+                            v.currentSample = (double)(rEnd - loopFade);
+                        }
+                        else
+                        {
+                            v.startRampToZero(fadeSamples);
+                            continue;
+                        }
+                    }
+                }
+                else if (effMode == PlaybackMode::ForwBackw)
+                {
+                    if (v.playDirectionForward && v.currentSample >= (double)rEnd)
+                    {
+                        int loopFade = juce::jmax(1, juce::jmin((int)(targetSampleRate.load() * 0.010), rLen / 2));
+                        v.currentSample = (double)(rEnd - loopFade);
+                        v.playDirectionForward = false;
+                    }
+                    else if (!v.playDirectionForward && v.currentSample <= (double)rStart)
+                    {
+                        if (isLooping)
+                        {
+                            int loopFade = juce::jmax(1, juce::jmin((int)(targetSampleRate.load() * 0.010), rLen / 2));
+                            v.currentSample = (double)rStart + (double)loopFade;
+                            v.playDirectionForward = true;
+                        }
+                        else
+                        {
+                            v.startRampToZero(fadeSamples);
+                            continue;
+                        }
+                    }
+                }
+                else if (effMode == PlaybackMode::BackForw)
+                {
+                    if (!v.playDirectionForward && v.currentSample <= (double)rStart)
+                    {
+                        int loopFade = juce::jmax(1, juce::jmin((int)(targetSampleRate.load() * 0.010), rLen / 2));
+                        v.currentSample = (double)rStart + (double)loopFade;
+                        v.playDirectionForward = true;
+                    }
+                    else if (v.playDirectionForward && v.currentSample >= (double)rEnd)
+                    {
+                        if (isLooping)
+                        {
+                            int loopFade = juce::jmax(1, juce::jmin((int)(targetSampleRate.load() * 0.010), rLen / 2));
+                            v.currentSample = (double)(rEnd - loopFade);
+                            v.playDirectionForward = false;
+                        }
+                        else
+                        {
+                            v.startRampToZero(fadeSamples);
+                            continue;
+                        }
+                    }
+                }
+
+                float rawL = readLoopCrossfadedSample(v, 0, v.currentSample, effMode);
+                float rawR = readLoopCrossfadedSample(v, 1, v.currentSample, effMode);
+
+                if (effMode == PlaybackMode::Backward || (!v.playDirectionForward && (effMode == PlaybackMode::ForwBackw || effMode == PlaybackMode::BackForw)))
+                    v.currentSample -= rateRatio;
+                else
+                    v.currentSample += rateRatio;
+
+                float ampVal = v.ampEnvelope.getNextSample() * v.velocity;
+                float antiClickGain = 1.0f;
+
+                if (v.samplesProcessed < fadeSamples)
+                {
+                    float t = (float)v.samplesProcessed / (float)fadeSamples;
+                    antiClickGain = 0.5f * (1.0f - std::cos(juce::MathConstants<float>::pi * t));
+                }
+                v.samplesProcessed++;
+
+                if (v.isQuickFadingOut)
+                {
+                    if (v.quickFadeOutTotalSamples > 0)
+                    {
+                        float t = (float)v.quickFadeOutSamplesLeft / (float)v.quickFadeOutTotalSamples;
+                        antiClickGain *= 0.5f * (1.0f + std::cos(juce::MathConstants<float>::pi * (1.0f - t)));
+                    }
+                    v.quickFadeOutSamplesLeft--;
+                    if (v.quickFadeOutSamplesLeft <= 0)
+                    {
+                        v.startRampToZero(fadeSamples);
+                    }
+                }
+
+                float outL = rawL * ampVal * antiClickGain;
+                float outR = rawR * ampVal * antiClickGain;
+                blockOutL[i] += outL;
+                blockOutR[i] += outR;
+                v.lastOutputL = outL;
+                v.lastOutputR = outR;
+
+                if (!v.ampEnvelope.isActive() && v.releasing && !v.isQuickFadingOut && !v.isRampingToZero)
+                {
+                    v.startRampToZero(fadeSamples);
+                }
             }
+            continue;
         }
-        else // PitchMode::Stretch
+
+        // 3. SoundTouch Stretch Path (Time-Stretching / Independent Pitch Shifting)
+        if (std::abs(totalSemis - v.lastAppliedPitchSemitones) > 1e-4f || std::abs(baseSpeedRatio - v.lastAppliedRate) > 1e-5 || v.lastAppliedPitchMode != PitchMode::Stretch)
         {
-            if (std::abs(totalSemis - v.lastAppliedPitchSemitones) > 1e-4f || std::abs(baseSpeedRatio - v.lastAppliedRate) > 1e-5 || v.lastAppliedPitchMode != PitchMode::Stretch)
-            {
-                v.soundTouch.setPitchSemiTones((double)totalSemis);
-                v.soundTouch.setRate(baseSpeedRatio);
-                v.soundTouch.setTempo(1.0);
-                v.lastAppliedPitchSemitones = totalSemis;
-                v.lastAppliedRate = baseSpeedRatio;
-                v.lastAppliedPitchMode = PitchMode::Stretch;
-            }
+            v.soundTouch.setPitchSemiTones((double)totalSemis);
+            v.soundTouch.setRate(baseSpeedRatio);
+            v.soundTouch.setTempo(1.0);
+            v.lastAppliedPitchSemitones = totalSemis;
+            v.lastAppliedRate = baseSpeedRatio;
+            v.lastAppliedPitchMode = PitchMode::Stretch;
         }
 
-        PlaybackMode effMode = (pMode == PlaybackMode::Random) ? v.effectivePlaybackMode : pMode;
-
-        // Feed SoundTouch pipeline from source buffer until it has enough samples for this block
-        while (v.soundTouch.numSamples() < (uint)curBlockSize && v.active)
+        // Feed SoundTouch pipeline from source buffer
+        while (v.soundTouch.numSamples() < (uint)curBlockSize && v.active && !v.isRampingToZero)
         {
             int samplesToFeed = 256;
             int samplesFed = 0;
@@ -1080,7 +1302,6 @@ void SampleEngine::process(juce::AudioBuffer<float>& output,
 
             for (int s = 0; s < samplesToFeed; ++s)
             {
-                // Boundary check
                 if (effMode == PlaybackMode::Forward)
                 {
                     if (v.currentSample >= (double)rEnd)
@@ -1178,7 +1399,9 @@ void SampleEngine::process(juce::AudioBuffer<float>& output,
 
             if (hitEnd)
             {
-                v.soundTouch.flush();
+                // Smoothly drain SoundTouch without allocating heap memory:
+                float silence[128 * 2] = { 0.0f };
+                v.soundTouch.putSamples(silence, 128);
                 break;
             }
         }
@@ -1186,30 +1409,42 @@ void SampleEngine::process(juce::AudioBuffer<float>& output,
         uint received = v.soundTouch.receiveSamples(voiceOutInterleaved, (uint)curBlockSize);
         if (received < (uint)curBlockSize)
         {
-            // Smoothly micro-fade out the tail of the received audio before zeroing remaining frames
-            if (received > 0)
-            {
-                int tailFade = juce::jmin((int)received, 64);
-                int fadeStart = (int)received - tailFade;
-                for (int i = 0; i < tailFade; ++i)
-                {
-                    float factor = 0.5f * (1.0f + std::cos(juce::MathConstants<float>::pi * (float)i / (float)tailFade));
-                    voiceOutInterleaved[2 * (fadeStart + i)]     *= factor;
-                    voiceOutInterleaved[2 * (fadeStart + i) + 1] *= factor;
-                }
-            }
-
             std::fill(voiceOutInterleaved + received * 2, voiceOutInterleaved + curBlockSize * 2, 0.0f);
-            if (received == 0 && !isLooping)
+            if (received == 0 && !isLooping && !v.isRampingToZero)
             {
-                v.active = false;
-                v.soundTouch.clear();
+                v.startRampToZero(fadeSamples);
             }
         }
 
-        // Apply Envelope, Anti-Click and Quick Fade Out across the block
         for (int i = 0; i < curBlockSize; ++i)
         {
+            if (v.isRampingToZero)
+            {
+                if (v.rampSamplesLeft > 0)
+                {
+                    float factor = 0.5f * (1.0f + std::cos(juce::MathConstants<float>::pi * (1.0f - (float)v.rampSamplesLeft / (float)v.rampTotalSamples)));
+                    float outL = v.rampStartL * factor;
+                    float outR = v.rampStartR * factor;
+                    blockOutL[i] += outL;
+                    blockOutR[i] += outR;
+                    v.lastOutputL = outL;
+                    v.lastOutputR = outR;
+                    v.rampSamplesLeft--;
+                }
+                else
+                {
+                    v.lastOutputL = 0.0f;
+                    v.lastOutputR = 0.0f;
+                    v.active = false;
+                    v.isRampingToZero = false;
+                    v.releasing = false;
+                    v.ampEnvelope.reset();
+                    v.soundTouch.clear();
+                    break;
+                }
+                continue;
+            }
+
             float rawL = voiceOutInterleaved[2 * i];
             float rawR = voiceOutInterleaved[2 * i + 1];
 
@@ -1218,7 +1453,8 @@ void SampleEngine::process(juce::AudioBuffer<float>& output,
 
             if (v.samplesProcessed < fadeSamples)
             {
-                antiClickGain *= (float)v.samplesProcessed / (float)fadeSamples;
+                float t = (float)v.samplesProcessed / (float)fadeSamples;
+                antiClickGain = 0.5f * (1.0f - std::cos(juce::MathConstants<float>::pi * t));
             }
             v.samplesProcessed++;
 
@@ -1226,26 +1462,26 @@ void SampleEngine::process(juce::AudioBuffer<float>& output,
             {
                 if (v.quickFadeOutTotalSamples > 0)
                 {
-                    float qGain = (float)v.quickFadeOutSamplesLeft / (float)v.quickFadeOutTotalSamples;
-                    antiClickGain *= juce::jlimit(0.0f, 1.0f, qGain);
+                    float t = (float)v.quickFadeOutSamplesLeft / (float)v.quickFadeOutTotalSamples;
+                    antiClickGain *= 0.5f * (1.0f + std::cos(juce::MathConstants<float>::pi * (1.0f - t)));
                 }
                 v.quickFadeOutSamplesLeft--;
                 if (v.quickFadeOutSamplesLeft <= 0)
                 {
-                    v.active = false;
-                    v.isQuickFadingOut = false;
-                    v.ampEnvelope.reset();
-                    v.soundTouch.clear();
+                    v.startRampToZero(fadeSamples);
                 }
             }
 
-            blockOutL[i] += rawL * ampVal * antiClickGain;
-            blockOutR[i] += rawR * ampVal * antiClickGain;
+            float outL = rawL * ampVal * antiClickGain;
+            float outR = rawR * ampVal * antiClickGain;
+            blockOutL[i] += outL;
+            blockOutR[i] += outR;
+            v.lastOutputL = outL;
+            v.lastOutputR = outR;
 
-            if (!v.ampEnvelope.isActive() && v.releasing && !v.isQuickFadingOut)
+            if (!v.ampEnvelope.isActive() && v.releasing && !v.isQuickFadingOut && !v.isRampingToZero)
             {
-                v.active = false;
-                v.soundTouch.clear();
+                v.startRampToZero(fadeSamples);
             }
         }
     }
@@ -1285,4 +1521,47 @@ void SampleEngine::process(juce::AudioBuffer<float>& output,
         if (output.getNumChannels() > 1)
             output.addSample(1, startSample + i, sumR);
     }
+
+    // Lock-free atomic playhead state update (0 locks, 0 allocations, 0 GUI calls)
+    int activeCountAtomic = 0;
+    bool anyActiveAtomic = false;
+    float newestNormPos = 0.0f;
+    uint64_t newestAge = 0;
+    double sampleTotalSamples = (double)totalSamples;
+
+    for (size_t voiceIdx = 0; voiceIdx < MAX_VOICES; ++voiceIdx)
+    {
+        const auto& v = voices[voiceIdx];
+        bool vActive = (v.active || v.ampEnvelope.isActive() || v.isQuickFadingOut || v.isRampingToZero);
+        if (vActive && sampleTotalSamples > 0.0)
+        {
+            float normPos = (float)juce::jlimit(0.0, 1.0, v.currentSample / sampleTotalSamples);
+            atomicVoicePlayheads[voiceIdx].positionNorm.store(normPos, std::memory_order_relaxed);
+            atomicVoicePlayheads[voiceIdx].envLevel.store(v.ampEnvelope.getCurrentLevel(), std::memory_order_relaxed);
+            atomicVoicePlayheads[voiceIdx].isForward.store(v.playDirectionForward, std::memory_order_relaxed);
+            atomicVoicePlayheads[voiceIdx].noteNumber.store(v.noteNumber, std::memory_order_relaxed);
+            atomicVoicePlayheads[voiceIdx].active.store(true, std::memory_order_relaxed);
+
+            activeCountAtomic++;
+            anyActiveAtomic = true;
+
+            if (v.voiceAge >= newestAge)
+            {
+                newestAge = v.voiceAge;
+                newestNormPos = normPos;
+            }
+        }
+        else
+        {
+            atomicVoicePlayheads[voiceIdx].active.store(false, std::memory_order_relaxed);
+            atomicVoicePlayheads[voiceIdx].positionNorm.store(-1.0f, std::memory_order_relaxed);
+        }
+    }
+
+    if (anyActiveAtomic)
+        atomicPrimaryPlayheadPosition.store(newestNormPos, std::memory_order_relaxed);
+
+    atomicActiveVoiceCount.store(activeCountAtomic, std::memory_order_release);
+    atomicIsPlaying.store(anyActiveAtomic, std::memory_order_release);
+    atomicBlockSequence.fetch_add(1, std::memory_order_release);
 }

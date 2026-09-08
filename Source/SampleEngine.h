@@ -83,6 +83,7 @@ public:
     bool isPlaying() const;
     double getPlayPositionNormalized() const;
     juce::Array<float> getActiveVoicePositionsNormalized() const;
+    int getActiveVoicePositionsAtomic(float* outPositions, int maxPositions) const noexcept;
     juce::Array<ActiveVoiceVisualInfo> getActiveVoiceVisualInfos() const;
     double getRegionStartNormalized() const;
     double getRegionEndNormalized() const;
@@ -134,9 +135,32 @@ public:
 
         EnvelopeData ampEnvelope{ EnvelopeCategory::AmplifierEnvelope };
 
+        // Output tracking & guaranteed micro-fade ramp to zero
+        float lastOutputL = 0.0f;
+        float lastOutputR = 0.0f;
+        bool isRampingToZero = false;
+        float rampStartL = 0.0f;
+        float rampStartR = 0.0f;
+        int rampSamplesLeft = 0;
+        int rampTotalSamples = 0;
+
+        void startRampToZero(int totalSamples)
+        {
+            if (active && !isRampingToZero)
+            {
+                rampStartL = lastOutputL;
+                rampStartR = lastOutputR;
+                rampTotalSamples = juce::jmax(1, totalSamples);
+                rampSamplesLeft = rampTotalSamples;
+                isRampingToZero = true;
+                isQuickFadingOut = false;
+                releasing = true;
+            }
+        }
+
         void startQuickFadeOut(int totalSamples)
         {
-            if (active && !isQuickFadingOut)
+            if (active && !isQuickFadingOut && !isRampingToZero)
             {
                 isQuickFadingOut = true;
                 quickFadeOutTotalSamples = juce::jmax(1, totalSamples);
@@ -151,6 +175,13 @@ public:
             isQuickFadingOut = false;
             quickFadeOutSamplesLeft = 0;
             quickFadeOutTotalSamples = 0;
+            lastOutputL = 0.0f;
+            lastOutputR = 0.0f;
+            isRampingToZero = false;
+            rampStartL = 0.0f;
+            rampStartR = 0.0f;
+            rampSamplesLeft = 0;
+            rampTotalSamples = 0;
             noteNumber = 60;
             velocity = 1.0f;
             currentPitchSemitones = 0.0f;
@@ -193,6 +224,25 @@ private:
     juce::AudioBuffer<float> filteredSample; // Pre-filtered source audio (spectral regions/bands applied first)
 
     std::array<Voice, MAX_VOICES> voices;
+
+    struct AtomicVoicePlayhead {
+        std::atomic<float> positionNorm{ -1.0f };
+        std::atomic<float> envLevel{ 0.0f };
+        std::atomic<bool> active{ false };
+        std::atomic<bool> isForward{ true };
+        std::atomic<int> noteNumber{ 60 };
+
+        AtomicVoicePlayhead() = default;
+        AtomicVoicePlayhead(const AtomicVoicePlayhead&) = delete;
+        AtomicVoicePlayhead& operator=(const AtomicVoicePlayhead&) = delete;
+    };
+
+    std::array<AtomicVoicePlayhead, MAX_VOICES> atomicVoicePlayheads;
+    std::atomic<float> atomicPrimaryPlayheadPosition{ 0.0f };
+    std::atomic<int> atomicActiveVoiceCount{ 0 };
+    std::atomic<bool> atomicIsPlaying{ false };
+    std::atomic<uint32_t> atomicBlockSequence{ 0 };
+
     std::atomic<bool> polyMode{ false };
     std::atomic<float> glideTimeMs{ 0.0f };
     uint64_t voiceAgeCounter = 0;

@@ -1,583 +1,711 @@
 #include "PresetBrowserOverlay.h"
 #include "SpectrogramComponent.h"
 
-PresetBrowserOverlay::PresetBrowserOverlay(PresetManager& manager, juce::AudioProcessorValueTreeState& state, HistoryManager* historyMgr)
-    : presetManager(manager), apvts(state), historyManager(historyMgr)
+//==============================================================================
+// ModernBrowserLookAndFeel Implementation
+//==============================================================================
+PresetBrowserOverlay::ModernBrowserLookAndFeel::ModernBrowserLookAndFeel()
 {
-    // Close Button
-    addAndMakeVisible(closeButton);
-    closeButton.setColour(juce::TextButton::buttonColourId, juce::Colour(200, 45, 55));
-    closeButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
-    closeButton.onClick = [this]() {
-        if (onClose) onClose();
-        setVisible(false);
-    };
+    setColour(juce::ScrollBar::thumbColourId, juce::Colour(0xC4, 0xB5, 0xFD).withAlpha(0.6f));
+    setColour(juce::ScrollBar::backgroundColourId, juce::Colours::transparentBlack);
+    setColour(juce::ComboBox::backgroundColourId, juce::Colour(0xF4, 0xF4, 0xF5));
+    setColour(juce::ComboBox::outlineColourId, juce::Colour(0xE4, 0xE4, 0xE7));
+    setColour(juce::ComboBox::textColourId, juce::Colour(0x18, 0x18, 0x1B));
+    setColour(juce::PopupMenu::backgroundColourId, juce::Colour(0xFA, 0xFA, 0xFA));
+    setColour(juce::PopupMenu::textColourId, juce::Colour(0x18, 0x18, 0x1B));
+    setColour(juce::PopupMenu::highlightedBackgroundColourId, juce::Colour(0x8B, 0x5C, 0xF6).withAlpha(0.12f));
+    setColour(juce::PopupMenu::highlightedTextColourId, juce::Colour(0x18, 0x18, 0x1B));
+}
 
-    // Bank Selector & Actions Button
-    addAndMakeVisible(bankSelector);
-    bankSelector.setColour(juce::ComboBox::backgroundColourId, juce::Colour(0x18, 0x18, 0x22));
-    bankSelector.setColour(juce::ComboBox::textColourId, SpectralUILookAndFeel::accentColour);
-    bankSelector.setColour(juce::ComboBox::outlineColourId, juce::Colour(0x2A, 0x2A, 0x36));
-    bankSelector.onChange = [this]() {
-        juce::String selected = bankSelector.getText();
-        if (selected.isNotEmpty())
+juce::Font PresetBrowserOverlay::ModernBrowserLookAndFeel::getTextButtonFont(juce::TextButton&, int)
+{
+    return SpectralUILookAndFeel::getSpaceGrotesk(10.0f, true);
+}
+
+void PresetBrowserOverlay::ModernBrowserLookAndFeel::drawButtonBackground(
+    juce::Graphics& g, juce::Button& button,
+    const juce::Colour& backgroundColour,
+    bool shouldDrawButtonAsHighlighted,
+    bool shouldDrawButtonAsDown)
+{
+    juce::ignoreUnused(backgroundColour);
+    auto bounds = button.getLocalBounds().toFloat().reduced(0.5f);
+    float cornerRadius = 4.0f;
+
+    bool isPrimary = button.getName() == "PRIMARY";
+    bool isDanger  = button.getName() == "DANGER";
+    bool isPill    = button.getClickingTogglesState();
+    bool isToggled = button.getToggleState();
+
+    juce::Colour fillColour;
+    juce::Colour borderColour;
+
+    if (isPrimary)
+    {
+        fillColour = shouldDrawButtonAsDown ? juce::Colour(0x7C, 0x3A, 0xED)
+                   : shouldDrawButtonAsHighlighted ? juce::Colour(0x90, 0x61, 0xF9)
+                   : SpectralUILookAndFeel::accentColour;
+        borderColour = fillColour.darker(0.1f);
+    }
+    else if (isDanger)
+    {
+        fillColour = shouldDrawButtonAsDown ? juce::Colour(0xDC, 0x26, 0x26)
+                   : shouldDrawButtonAsHighlighted ? juce::Colour(0xEF, 0x44, 0x44).withAlpha(0.15f)
+                   : juce::Colour(0xFE, 0xF2, 0xF2);
+        borderColour = shouldDrawButtonAsDown ? juce::Colour(0xDC, 0x26, 0x26) : juce::Colour(0xFE, 0xCA, 0xCA);
+    }
+    else if (isPill)
+    {
+        if (isToggled)
         {
-            if (selected != activeBankFilter)
-            {
-                lastShuffledPresetFile = juce::File();
-                lastShuffledBank = selected;
-            }
-            activeBankFilter = selected;
-            filterPresets();
-        }
-    };
-
-    addAndMakeVisible(shuffleFxBtn);
-    shuffleFxBtn.setColour(juce::TextButton::buttonColourId, juce::Colour(0x24, 0x24, 0x30));
-    shuffleFxBtn.setColour(juce::TextButton::textColourOffId, SpectralUILookAndFeel::accentColour);
-    shuffleFxBtn.onClick = [this]() { executeShuffleFx(); };
-
-    addAndMakeVisible(bankActionsBtn);
-    bankActionsBtn.setColour(juce::TextButton::buttonColourId, juce::Colour(0x24, 0x24, 0x30));
-    bankActionsBtn.setColour(juce::TextButton::textColourOffId, SpectralUILookAndFeel::accentColour);
-    bankActionsBtn.onClick = [this]() { showBankActionsMenu(); };
-
-    // Search Box
-    addAndMakeVisible(searchBox);
-    searchBox.setTextToShowWhenEmpty("Search presets...", SpectralUILookAndFeel::textMutedColour);
-    searchBox.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0x16, 0x16, 0x1C));
-    searchBox.setColour(juce::TextEditor::textColourId, juce::Colours::white);
-    searchBox.setColour(juce::TextEditor::outlineColourId, juce::Colour(0x2A, 0x2A, 0x34));
-    searchBox.setColour(juce::TextEditor::focusedOutlineColourId, SpectralUILookAndFeel::accentColour);
-    searchBox.onTextChange = [this]() { filterPresets(); };
-
-    // Sort Selector
-    addAndMakeVisible(sortSelector);
-    sortSelector.addItem("Sort: A to Z", 1);
-    sortSelector.addItem("Sort: Favorites First", 2);
-    sortSelector.addItem("Sort: Recently Used", 3);
-    sortSelector.setSelectedId(1, juce::dontSendNotification);
-    sortSelector.setColour(juce::ComboBox::backgroundColourId, juce::Colour(0x18, 0x18, 0x22));
-    sortSelector.setColour(juce::ComboBox::textColourId, juce::Colour(0xD0, 0xCC, 0xC0));
-    sortSelector.setColour(juce::ComboBox::outlineColourId, juce::Colour(0x2A, 0x2A, 0x36));
-    sortSelector.onChange = [this]() {
-        activeSortMode = sortSelector.getSelectedItemIndex();
-        filterPresets();
-    };
-
-    // Favorites Filter Button
-    addAndMakeVisible(favoriteFilterBtn);
-    favoriteFilterBtn.setButtonText(juce::String::fromUTF8("\xe2\x98\x85 FAVS"));
-    favoriteFilterBtn.setColour(juce::TextButton::buttonColourId, juce::Colour(0x22, 0x22, 0x2A));
-    favoriteFilterBtn.setColour(juce::TextButton::textColourOffId, juce::Colour(0xA0, 0x9E, 0x96));
-    favoriteFilterBtn.onClick = [this]() {
-        onlyFavoritesFilter = !onlyFavoritesFilter;
-        favoriteFilterBtn.setColour(juce::TextButton::buttonColourId, onlyFavoritesFilter ? SpectralUILookAndFeel::accentColour : juce::Colour(0x22, 0x22, 0x2A));
-        favoriteFilterBtn.setColour(juce::TextButton::textColourOffId, onlyFavoritesFilter ? juce::Colours::black : juce::Colour(0xA0, 0x9E, 0x96));
-        filterPresets();
-    };
-
-    // Filter Buttons (ALL, SYNTH, LEAD, BASS, PAD, FX, STATES) in Scrollable Viewport
-    auto setupFilterBtn = [this](juce::TextButton& btn, const juce::String& cat) {
-        categoryContainer.addAndMakeVisible(btn);
-        bool isActive = (activeCategoryFilter == cat);
-        btn.setColour(juce::TextButton::buttonColourId, isActive ? SpectralUILookAndFeel::accentColour : juce::Colour(0x22, 0x22, 0x2A));
-        btn.setColour(juce::TextButton::textColourOffId, isActive ? juce::Colours::black : juce::Colour(0xA0, 0x9E, 0x96));
-        btn.onClick = [this, cat]() {
-            activeCategoryFilter = cat;
-            auto updateCatBtn = [this](juce::TextButton& b, const juce::String& c) {
-                bool active = (activeCategoryFilter == c);
-                b.setColour(juce::TextButton::buttonColourId, active ? SpectralUILookAndFeel::accentColour : juce::Colour(0x22, 0x22, 0x2A));
-                b.setColour(juce::TextButton::textColourOffId, active ? juce::Colours::black : juce::Colour(0xA0, 0x9E, 0x96));
-            };
-            updateCatBtn(filterAllBtn, "ALL");
-            updateCatBtn(filterSynthBtn, "SYNTH");
-            updateCatBtn(filterLeadBtn, "LEAD");
-            updateCatBtn(filterBassBtn, "BASS");
-            updateCatBtn(filterPadBtn, "PAD");
-            updateCatBtn(filterFxBtn, "FX");
-            updateCatBtn(filterStatesBtn, "STATES");
-            filterPresets();
-        };
-    };
-
-    setupFilterBtn(filterAllBtn, "ALL");
-    setupFilterBtn(filterSynthBtn, "SYNTH");
-    setupFilterBtn(filterLeadBtn, "LEAD");
-    setupFilterBtn(filterBassBtn, "BASS");
-    setupFilterBtn(filterPadBtn, "PAD");
-    setupFilterBtn(filterFxBtn, "FX");
-    setupFilterBtn(filterStatesBtn, "STATES");
-
-    categoryViewport.setScrollBarsShown(false, false, false, false);
-    categoryViewport.setViewedComponent(&categoryContainer, false);
-    addAndMakeVisible(categoryViewport);
-
-    // Presets ListBox
-    addAndMakeVisible(presetListBox);
-    presetListBox.setModel(this);
-    presetListBox.setColour(juce::ListBox::backgroundColourId, juce::Colour(0x12, 0x12, 0x17));
-    presetListBox.setColour(juce::ListBox::outlineColourId, juce::Colour(0x2A, 0x2A, 0x35));
-    presetListBox.setRowHeight(40);
-
-    // Selected Preset Header / Status Labels
-    addAndMakeVisible(selectedPresetTitle);
-    selectedPresetTitle.setText("No Preset Selected", juce::dontSendNotification);
-    selectedPresetTitle.setFont(SpectralUILookAndFeel::getGeometricFont(15.0f, true));
-    selectedPresetTitle.setColour(juce::Label::textColourId, SpectralUILookAndFeel::accentColour);
-
-    addAndMakeVisible(statusLabel);
-    statusLabel.setText("Click a preset to inspect or load", juce::dontSendNotification);
-    statusLabel.setFont(SpectralUILookAndFeel::getGeometricFont(11.5f, false));
-    statusLabel.setColour(juce::Label::textColourId, SpectralUILookAndFeel::textMutedColour);
-
-    // Load & Delete Buttons
-    addAndMakeVisible(loadPresetBtn);
-    loadPresetBtn.setColour(juce::TextButton::buttonColourId, SpectralUILookAndFeel::accentColour);
-    loadPresetBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::black);
-    loadPresetBtn.onClick = [this]() { executeLoadSelectedPreset(); };
-
-    addAndMakeVisible(deletePresetBtn);
-    deletePresetBtn.setColour(juce::TextButton::buttonColourId, juce::Colour(200, 45, 55));
-    deletePresetBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
-    deletePresetBtn.onClick = [this]() {
-        int r = presetListBox.getSelectedRow();
-        if (r >= 0 && r < filteredPresets.size())
-        {
-            auto preset = filteredPresets[r];
-            if (preset.isFactory || preset.bank.equalsIgnoreCase("Factory"))
-            {
-                statusLabel.setText("Factory presets cannot be deleted!", juce::dontSendNotification);
-                return;
-            }
-
-            if (!confirmDeletePresetPending)
-            {
-                confirmDeletePresetPending = true;
-                deletePresetBtn.setButtonText("CONFIRM DELETE?");
-                statusLabel.setText("Click DELETE PRESET again to confirm deletion of '" + preset.name + "'", juce::dontSendNotification);
-                return;
-            }
-
-            confirmDeletePresetPending = false;
-            deletePresetBtn.setButtonText("DELETE PRESET");
-            if (presetManager.deletePreset(preset.file))
-            {
-                statusLabel.setText("Deleted preset: " + preset.name, juce::dontSendNotification);
-                refreshPresetList();
-            }
-        }
-    };
-
-    // Save Section Inputs
-    addAndMakeVisible(saveNameInput);
-    saveNameInput.setTextToShowWhenEmpty("New Preset Name (e.g. My Lead)", SpectralUILookAndFeel::textMutedColour);
-    saveNameInput.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0x16, 0x16, 0x1C));
-    saveNameInput.setColour(juce::TextEditor::textColourId, juce::Colours::white);
-    saveNameInput.setColour(juce::TextEditor::outlineColourId, juce::Colour(0x2A, 0x2A, 0x34));
-    saveNameInput.setColour(juce::TextEditor::focusedOutlineColourId, SpectralUILookAndFeel::accentColour);
-
-    addAndMakeVisible(saveCategoryInput);
-    saveCategoryInput.setEditableText(true);
-    saveCategoryInput.addItem("Synth", 1);
-    saveCategoryInput.addItem("Lead", 2);
-    saveCategoryInput.addItem("Bass", 3);
-    saveCategoryInput.addItem("Pad", 4);
-    saveCategoryInput.addItem("FX", 5);
-    saveCategoryInput.addItem("States", 6);
-    saveCategoryInput.setSelectedId(5, juce::dontSendNotification);
-    saveCategoryInput.setColour(juce::ComboBox::backgroundColourId, juce::Colour(0x16, 0x16, 0x1C));
-    saveCategoryInput.setColour(juce::ComboBox::textColourId, juce::Colours::white);
-    saveCategoryInput.setColour(juce::ComboBox::arrowColourId, SpectralUILookAndFeel::accentColour);
-    saveCategoryInput.setColour(juce::ComboBox::outlineColourId, juce::Colour(0x2A, 0x2A, 0x34));
-
-    addAndMakeVisible(saveBankSelector);
-    saveBankSelector.setEditableText(true);
-    saveBankSelector.setColour(juce::ComboBox::backgroundColourId, juce::Colour(0x16, 0x16, 0x1C));
-    saveBankSelector.setColour(juce::ComboBox::textColourId, juce::Colours::white);
-    saveBankSelector.setColour(juce::ComboBox::arrowColourId, SpectralUILookAndFeel::accentColour);
-    saveBankSelector.setColour(juce::ComboBox::outlineColourId, juce::Colour(0x2A, 0x2A, 0x34));
-
-    addAndMakeVisible(savePresetBtn);
-    savePresetBtn.setColour(juce::TextButton::buttonColourId, juce::Colour(0x2B, 0x8A, 0x5A)); // Emerald accent
-    savePresetBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
-    savePresetBtn.onClick = [this]() {
-        juce::String name = saveNameInput.getText().trim();
-        juce::String cat = saveCategoryInput.getText().trim();
-        juce::String bank = saveBankSelector.getText().trim();
-
-        if (name.isEmpty())
-        {
-            statusLabel.setText("Validation Error: Preset name cannot be empty!", juce::dontSendNotification);
-            return;
-        }
-
-        if (bank.equalsIgnoreCase("Factory"))
-        {
-            statusLabel.setText("Validation Error: Factory bank is read-only! Please save to 'User' or a custom bank.", juce::dontSendNotification);
-            return;
-        }
-
-        if (cat.isEmpty())
-            cat = "FX";
-
-        if (bank.isEmpty())
-            bank = "User";
-
-        auto executeSave = [this, name, cat, bank]() {
-            float startReg = spectrogram ? spectrogram->getStartRegion() : 0.0f;
-            float endReg = spectrogram ? spectrogram->getEndRegion() : 1.0f;
-            juce::var selectionsVar = spectrogram ? spectrogram->getSelectionsAsVar() : juce::var();
-            bool loopEnabled = spectrogram ? spectrogram->isLoopEnabled() : false;
-
-            juce::String sampleFileToSave = currentSampleName;
-            if (sampleFileToSave.isEmpty() && spectrogram && spectrogram->isFileLoaded())
-                sampleFileToSave = spectrogram->getLoadedFile().getFileName();
-
-            // Pass nullptr for sampleAudioBuffer: 'SAVE CURRENT PRESET' saves settings ONLY (no base64 audio bundled)
-            if (presetManager.savePreset(name, cat, bank, sampleFileToSave, apvts, startReg, endReg, selectionsVar, false, loopEnabled, nullptr))
-            {
-                activeLoadedPresetName = name;
-                saveNameInput.clear();
-                statusLabel.setText("FX Preset '" + name + "' Saved to Bank '" + bank + "' Successfully!", juce::dontSendNotification);
-                if (historyManager != nullptr)
-                {
-                    historyManager->pushHistoryState("Preset Saved: " + name, sampleFileToSave, apvts, startReg, endReg, loopEnabled, selectionsVar, juce::AudioBuffer<float>(), 44100.0);
-                    refreshHistoryList();
-                }
-                refreshBankList();
-                refreshPresetList();
-            }
-            else
-            {
-                auto* errDialog = new juce::AlertWindow("SAVE FAILED", "Failed to write preset file '" + name + ".vsfx' to disk in bank '" + bank + "'. Please check folder permissions.", juce::AlertWindow::WarningIcon);
-                errDialog->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
-                errDialog->enterModalState(true, nullptr, true);
-                statusLabel.setText("Error: Failed to write preset file to disk!", juce::dontSendNotification);
-            }
-        };
-
-        juce::String cleanBank = juce::File::createLegalFileName(bank);
-        juce::String cleanName = juce::File::createLegalFileName(name);
-        juce::File targetFile = presetManager.getPresetsFolder().getChildFile(cleanBank).getChildFile(cleanName + ".vsfx");
-
-        if (targetFile.existsAsFile())
-        {
-            auto* confirmDialog = new juce::AlertWindow("PRESET ALREADY EXISTS", "A preset named '" + name + "' already exists in bank '" + bank + "'. Overwrite existing file on disk?", juce::AlertWindow::QuestionIcon);
-            confirmDialog->addButton("Overwrite", 1, juce::KeyPress(juce::KeyPress::returnKey));
-            confirmDialog->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
-
-            confirmDialog->enterModalState(true, juce::ModalCallbackFunction::create([executeSave](int button) {
-                if (button == 1)
-                {
-                    executeSave();
-                }
-            }), true);
+            fillColour = juce::Colour(0x18, 0x18, 0x1B);
+            borderColour = juce::Colour(0x18, 0x18, 0x1B);
         }
         else
         {
-            executeSave();
+            fillColour = shouldDrawButtonAsHighlighted ? juce::Colour(0xF4, 0xF4, 0xF5) : juce::Colours::white;
+            borderColour = shouldDrawButtonAsHighlighted ? juce::Colour(0xA1, 0xA1, 0xAA) : juce::Colour(0xE4, 0xE4, 0xE7);
         }
+    }
+    else
+    {
+        fillColour = shouldDrawButtonAsDown ? juce::Colour(0xE4, 0xE4, 0xE7)
+                   : shouldDrawButtonAsHighlighted ? juce::Colour(0xF4, 0xF4, 0xF5)
+                   : juce::Colours::white;
+        borderColour = shouldDrawButtonAsHighlighted ? juce::Colour(0x8B, 0x5C, 0xF6).withAlpha(0.6f) : juce::Colour(0xE4, 0xE4, 0xE7);
+    }
+
+    if (!button.isEnabled())
+    {
+        fillColour = juce::Colour(0xF4, 0xF4, 0xF5);
+        borderColour = juce::Colour(0xE4, 0xE4, 0xE7);
+    }
+
+    g.setColour(fillColour);
+    g.fillRoundedRectangle(bounds, cornerRadius);
+
+    g.setColour(borderColour);
+    g.drawRoundedRectangle(bounds, cornerRadius, 1.0f);
+}
+
+void PresetBrowserOverlay::ModernBrowserLookAndFeel::drawButtonText(
+    juce::Graphics& g, juce::TextButton& button,
+    bool shouldDrawButtonAsHighlighted,
+    bool shouldDrawButtonAsDown)
+{
+    juce::ignoreUnused(shouldDrawButtonAsHighlighted, shouldDrawButtonAsDown);
+    bool isPrimary = button.getName() == "PRIMARY";
+    bool isDanger  = button.getName() == "DANGER";
+    bool isPill    = button.getClickingTogglesState();
+    bool isToggled = button.getToggleState();
+
+    juce::Colour textCol;
+    if (!button.isEnabled())
+        textCol = juce::Colour(0xA1, 0xA1, 0xAA);
+    else if (isPrimary)
+        textCol = juce::Colours::white;
+    else if (isDanger)
+        textCol = shouldDrawButtonAsDown ? juce::Colours::white : juce::Colour(0xDC, 0x26, 0x26);
+    else if (isPill && isToggled)
+        textCol = juce::Colours::white;
+    else
+        textCol = juce::Colour(0x27, 0x27, 0x2A);
+
+    g.setColour(textCol);
+    g.setFont(getTextButtonFont(button, button.getHeight()));
+    g.drawText(button.getButtonText(), button.getLocalBounds(), juce::Justification::centred, false);
+}
+
+void PresetBrowserOverlay::ModernBrowserLookAndFeel::drawComboBox(
+    juce::Graphics& g, int width, int height, bool isButtonDown,
+    int, int, int, int, juce::ComboBox& box)
+{
+    juce::ignoreUnused(isButtonDown);
+    auto bounds = juce::Rectangle<float>(0.5f, 0.5f, (float)width - 1.0f, (float)height - 1.0f);
+
+    g.setColour(juce::Colours::white);
+    g.fillRoundedRectangle(bounds, 4.0f);
+
+    g.setColour(box.hasKeyboardFocus(true) ? SpectralUILookAndFeel::accentColour : juce::Colour(0xE4, 0xE4, 0xE7));
+    g.drawRoundedRectangle(bounds, 4.0f, 1.0f);
+
+    // Chevron down arrow
+    float arrowX = (float)width - 14.0f;
+    float arrowY = (float)height * 0.5f - 2.0f;
+    juce::Path p;
+    p.startNewSubPath(arrowX - 4.0f, arrowY);
+    p.lineTo(arrowX, arrowY + 4.0f);
+    p.lineTo(arrowX + 4.0f, arrowY);
+    g.setColour(juce::Colour(0x71, 0x71, 0x7A));
+    g.strokePath(p, juce::PathStrokeType(1.2f));
+}
+
+juce::Font PresetBrowserOverlay::ModernBrowserLookAndFeel::getComboBoxFont(juce::ComboBox&)
+{
+    return SpectralUILookAndFeel::getSpaceGrotesk(10.0f, false);
+}
+
+void PresetBrowserOverlay::ModernBrowserLookAndFeel::positionComboBoxText(juce::ComboBox& box, juce::Label& label)
+{
+    label.setBounds(6, 0, box.getWidth() - 22, box.getHeight());
+    label.setFont(getComboBoxFont(box));
+    label.setColour(juce::Label::textColourId, juce::Colour(0x18, 0x18, 0x1B));
+    label.setJustificationType(juce::Justification::centredLeft);
+}
+
+juce::Font PresetBrowserOverlay::ModernBrowserLookAndFeel::getLabelFont(juce::Label&)
+{
+    return SpectralUILookAndFeel::getSpaceGrotesk(10.5f, false);
+}
+
+void PresetBrowserOverlay::ModernBrowserLookAndFeel::drawScrollbar(
+    juce::Graphics& g, juce::ScrollBar& scrollbar,
+    int x, int y, int width, int height,
+    bool isScrollbarVertical, int thumbStartPosition,
+    int thumbSize, bool isMouseOver, bool isMouseDown)
+{
+    juce::ignoreUnused(scrollbar);
+    if (thumbSize <= 0) return;
+
+    juce::Colour thumbCol = juce::Colour(0xC4, 0xB5, 0xFD).withAlpha(0.70f);
+    if (isMouseDown) thumbCol = juce::Colour(0x8B, 0x5C, 0xF6);
+    else if (isMouseOver) thumbCol = juce::Colour(0xA7, 0x8B, 0xFA);
+
+    g.setColour(thumbCol);
+    if (isScrollbarVertical)
+    {
+        float w = 3.5f;
+        float rx = (float)x + ((float)width - w) * 0.5f;
+        g.fillRoundedRectangle(rx, (float)thumbStartPosition, w, (float)thumbSize, w * 0.5f);
+    }
+    else
+    {
+        float h = 3.5f;
+        float ry = (float)y + ((float)height - h) * 0.5f;
+        g.fillRoundedRectangle((float)thumbStartPosition, ry, (float)thumbSize, h, h * 0.5f);
+    }
+}
+
+//==============================================================================
+// CategoryBarContainer
+//==============================================================================
+void PresetBrowserOverlay::CategoryBarContainer::resized()
+{
+    auto area = getLocalBounds();
+    juce::TextButton* buttons[] = {
+        &owner.filterAllBtn, &owner.filterSynthBtn, &owner.filterLeadBtn,
+        &owner.filterBassBtn, &owner.filterPadBtn, &owner.filterFxBtn,
+        &owner.filterStatesBtn
     };
 
-    // Column 3 Tabs (SAMPLES | EDIT HISTORY)
-    auto updateTabButtons = [this]() {
-        bool isSampleTab = (activeSampleStorageTab == 0);
-        sampleStorageTabBtn.setColour(juce::TextButton::buttonColourId, isSampleTab ? SpectralUILookAndFeel::accentColour : juce::Colour(0x22, 0x22, 0x2A));
-        sampleStorageTabBtn.setColour(juce::TextButton::textColourOffId, isSampleTab ? juce::Colours::black : juce::Colour(0xA0, 0x9E, 0x96));
+    int x = 0;
+    int gap = 4;
+    int h = area.getHeight();
 
-        historyTabBtn.setColour(juce::TextButton::buttonColourId, !isSampleTab ? SpectralUILookAndFeel::accentColour : juce::Colour(0x22, 0x22, 0x2A));
-        historyTabBtn.setColour(juce::TextButton::textColourOffId, !isSampleTab ? juce::Colours::black : juce::Colour(0xA0, 0x9E, 0x96));
+    for (auto* btn : buttons)
+    {
+        int textW = juce::GlyphArrangement::getStringWidthInt(SpectralUILookAndFeel::getSpaceGrotesk(9.5f, true), btn->getButtonText());
+        int w = textW + 16;
+        btn->setBounds(x, 0, w, h);
+        x += w + gap;
+    }
+}
 
-        sampleListBox.setVisible(isSampleTab);
-        importSampleBtn.setVisible(isSampleTab);
-        loadSampleToEngineBtn.setVisible(isSampleTab);
-        renameSampleBtn.setVisible(isSampleTab);
-        deleteSampleBtn.setVisible(isSampleTab);
+void PresetBrowserOverlay::CategoryBarContainer::mouseWheelMove(const juce::MouseEvent&, const juce::MouseWheelDetails& wheel)
+{
+    owner.categoryViewport.setViewPosition(
+        juce::jlimit(0,
+                     juce::jmax(0, getWidth() - owner.categoryViewport.getWidth()),
+                     owner.categoryViewport.getViewPositionX() - (int)(wheel.deltaX * 40.0f - wheel.deltaY * 40.0f)),
+        0);
+}
 
-        historyListBox.setVisible(!isSampleTab);
-        restoreHistoryBtn.setVisible(!isSampleTab);
-        clearHistoryBtn.setVisible(!isSampleTab);
+//==============================================================================
+// DropImportZone
+//==============================================================================
+void PresetBrowserOverlay::DropImportZone::paint(juce::Graphics& g)
+{
+    auto bounds = getLocalBounds().toFloat().reduced(1.0f);
+    g.setColour(juce::Colour(0xF4, 0xF4, 0xF5));
+    g.fillRoundedRectangle(bounds, 4.0f);
+
+    float dashLengths[2] = { 4.0f, 3.0f };
+    g.setColour(juce::Colour(0xD4, 0xD4, 0xD8));
+    g.drawRoundedRectangle(bounds, 4.0f, 1.0f);
+    g.drawDashedLine(juce::Line<float>(bounds.getX(), bounds.getY(), bounds.getRight(), bounds.getY()), dashLengths, 2);
+
+    g.setFont(SpectralUILookAndFeel::getSpaceGrotesk(9.5f, false));
+    g.setColour(juce::Colour(0x71, 0x71, 0x7A));
+    g.drawText(juce::String::fromUTF8("+ DROP AUDIO FILE OR CLICK TO IMPORT"), bounds, juce::Justification::centred, false);
+}
+
+void PresetBrowserOverlay::DropImportZone::mouseUp(const juce::MouseEvent&)
+{
+    owner.fileChooser = std::make_unique<juce::FileChooser>(
+        "Select Audio Sample to Import",
+        juce::File::getSpecialLocation(juce::File::userMusicDirectory),
+        "*.wav;*.mp3;*.flac;*.aiff;*.ogg;*.m4a");
+
+    auto chooserFlags = juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles;
+    owner.fileChooser->launchAsync(chooserFlags, [this](const juce::FileChooser& fc) {
+        auto file = fc.getResult();
+        if (file.existsAsFile())
+        {
+            auto existingDest = owner.presetManager.findMatchingSample(file);
+            if (existingDest.existsAsFile())
+                owner.promptDuplicateSampleImport(file, existingDest);
+            else
+            {
+                owner.presetManager.importSample(file, false);
+                owner.refreshSampleList();
+            }
+        }
+    });
+}
+
+//==============================================================================
+// PresetBrowserOverlay Constructor / Destructor
+//==============================================================================
+PresetBrowserOverlay::PresetBrowserOverlay(PresetManager& manager, juce::AudioProcessorValueTreeState& state, HistoryManager* historyMgr)
+    : presetManager(manager), apvts(state), historyManager(historyMgr)
+{
+    setLookAndFeel(&modernLookAndFeel);
+    setWantsKeyboardFocus(true);
+
+    // Header
+    addAndMakeVisible(closeButton);
+    closeButton.onClick = [this]() {
+        if (onClose) onClose();
+        else setVisible(false);
     };
 
-    addAndMakeVisible(sampleStorageTabBtn);
-    sampleStorageTabBtn.onClick = [this, updateTabButtons]() {
-        activeSampleStorageTab = 0;
-        updateTabButtons();
+    addAndMakeVisible(libraryIndexedBadge);
+    libraryIndexedBadge.setFont(SpectralUILookAndFeel::getSpaceGrotesk(9.5f, false));
+    libraryIndexedBadge.setColour(juce::Label::textColourId, juce::Colour(0x71, 0x71, 0x7A));
+    libraryIndexedBadge.setColour(juce::Label::backgroundColourId, juce::Colour(0xF4, 0xF4, 0xF5));
+    libraryIndexedBadge.setJustificationType(juce::Justification::centred);
+
+    //==========================================================================
+    // PANEL 1: PRESETS (Left)
+    //==========================================================================
+    addAndMakeVisible(presetsHeaderLabel);
+    presetsHeaderLabel.setText("01 / PRESETS", juce::dontSendNotification);
+    presetsHeaderLabel.setFont(SpectralUILookAndFeel::getSpaceGrotesk(10.5f, true));
+    presetsHeaderLabel.setColour(juce::Label::textColourId, juce::Colour(0x18, 0x18, 0x1B));
+
+    addAndMakeVisible(presetsCountLabel);
+    presetsCountLabel.setFont(SpectralUILookAndFeel::getSpaceGrotesk(9.5f, false));
+    presetsCountLabel.setColour(juce::Label::textColourId, juce::Colour(0x71, 0x71, 0x7A));
+    presetsCountLabel.setJustificationType(juce::Justification::centredRight);
+
+    addAndMakeVisible(searchBox);
+    searchBox.setFont(SpectralUILookAndFeel::getSpaceGrotesk(10.5f, false));
+    searchBox.setTextToShowWhenEmpty("Search presets by name or tag", juce::Colour(0xA1, 0xA1, 0xAA));
+    searchBox.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xF4, 0xF4, 0xF5));
+    searchBox.setColour(juce::TextEditor::outlineColourId, juce::Colour(0xE4, 0xE4, 0xE7));
+    searchBox.setColour(juce::TextEditor::focusedOutlineColourId, SpectralUILookAndFeel::accentColour);
+    searchBox.setColour(juce::TextEditor::textColourId, juce::Colour(0x18, 0x18, 0x1B));
+    searchBox.onTextChange = [this]() { filterPresets(); };
+
+    // Category Filter Pills
+    categoryViewport.setViewedComponent(&categoryContainer, false);
+    categoryViewport.setScrollBarsShown(false, false);
+    addAndMakeVisible(categoryViewport);
+
+    juce::TextButton* catBtns[] = {
+        &filterAllBtn, &filterSynthBtn, &filterLeadBtn,
+        &filterBassBtn, &filterPadBtn, &filterFxBtn,
+        &filterStatesBtn
+    };
+    for (auto* btn : catBtns)
+    {
+        btn->setClickingTogglesState(true);
+        btn->setRadioGroupId(1001);
+        categoryContainer.addAndMakeVisible(btn);
+    }
+    filterAllBtn.setToggleState(true, juce::dontSendNotification);
+
+    auto handleCategoryClick = [this](const juce::String& cat) {
+        activeCategoryFilter = cat;
+        filterPresets();
+    };
+    filterAllBtn.onClick    = [handleCategoryClick]() { handleCategoryClick("ALL"); };
+    filterSynthBtn.onClick  = [handleCategoryClick]() { handleCategoryClick("SYNTH"); };
+    filterLeadBtn.onClick   = [handleCategoryClick]() { handleCategoryClick("LEAD"); };
+    filterBassBtn.onClick   = [handleCategoryClick]() { handleCategoryClick("BASS"); };
+    filterPadBtn.onClick    = [handleCategoryClick]() { handleCategoryClick("PAD"); };
+    filterFxBtn.onClick     = [handleCategoryClick]() { handleCategoryClick("FX"); };
+    filterStatesBtn.onClick = [handleCategoryClick]() { handleCategoryClick("STATES"); };
+
+    addAndMakeVisible(shuffleFxBtn);
+    shuffleFxBtn.onClick = [this]() { executeShuffleFx(); };
+
+    addAndMakeVisible(sortSelector);
+    sortSelector.addItem("SORT: A TO Z", 1);
+    sortSelector.addItem("SORT: FAVORITES", 2);
+    sortSelector.addItem("SORT: RECENT", 3);
+    sortSelector.setSelectedId(1, juce::dontSendNotification);
+    sortSelector.onChange = [this]() {
+        activeSortMode = sortSelector.getSelectedId() - 1;
+        filterPresets();
+    };
+
+    addAndMakeVisible(favoriteFilterBtn);
+    favoriteFilterBtn.setClickingTogglesState(true);
+    favoriteFilterBtn.onClick = [this]() {
+        onlyFavoritesFilter = favoriteFilterBtn.getToggleState();
+        filterPresets();
+    };
+
+    presetListBox.setModel(this);
+    presetListBox.setRowHeight(32);
+    presetListBox.setColour(juce::ListBox::backgroundColourId, juce::Colours::transparentBlack);
+    presetListBox.setColour(juce::ListBox::outlineColourId, juce::Colours::transparentBlack);
+    addAndMakeVisible(presetListBox);
+
+    //==========================================================================
+    // PANEL 2: BANKS (Middle)
+    //==========================================================================
+    addAndMakeVisible(banksHeaderLabel);
+    banksHeaderLabel.setText("02 / BANKS", juce::dontSendNotification);
+    banksHeaderLabel.setFont(SpectralUILookAndFeel::getSpaceGrotesk(10.5f, true));
+    banksHeaderLabel.setColour(juce::Label::textColourId, juce::Colour(0x18, 0x18, 0x1B));
+
+    addAndMakeVisible(banksCountLabel);
+    banksCountLabel.setFont(SpectralUILookAndFeel::getSpaceGrotesk(9.5f, false));
+    banksCountLabel.setColour(juce::Label::textColourId, juce::Colour(0x71, 0x71, 0x7A));
+    banksCountLabel.setJustificationType(juce::Justification::centredRight);
+
+    addAndMakeVisible(newBankBtn);
+    newBankBtn.onClick = [this]() { showNewBankDialog(); };
+
+    addAndMakeVisible(bankActionsBtn);
+    bankActionsBtn.onClick = [this]() { showBankActionsMenu(); };
+
+    bankListBox.setModel(&bankListModel);
+    bankListBox.setRowHeight(48);
+    bankListBox.setColour(juce::ListBox::backgroundColourId, juce::Colours::transparentBlack);
+    bankListBox.setColour(juce::ListBox::outlineColourId, juce::Colours::transparentBlack);
+    addAndMakeVisible(bankListBox);
+
+    //==========================================================================
+    // PANEL 3: SAMPLES & HISTORY (Right)
+    //==========================================================================
+    addAndMakeVisible(panel3HeaderLabel);
+    panel3HeaderLabel.setText("03 / LIBRARY", juce::dontSendNotification);
+    panel3HeaderLabel.setFont(SpectralUILookAndFeel::getSpaceGrotesk(10.5f, true));
+    panel3HeaderLabel.setColour(juce::Label::textColourId, juce::Colour(0x18, 0x18, 0x1B));
+
+    addAndMakeVisible(samplesTabBtn);
+    samplesTabBtn.setClickingTogglesState(true);
+    samplesTabBtn.setRadioGroupId(1002);
+    samplesTabBtn.setToggleState(true, juce::dontSendNotification);
+    samplesTabBtn.onClick = [this]() {
+        isHistoryViewActive = false;
+        sampleListBox.setVisible(true);
+        sampleSortSelector.setVisible(true);
+        dropImportZone.setVisible(true);
+        historyListBox.setVisible(false);
+        restoreHistoryBtn.setVisible(false);
+        clearHistoryBtn.setVisible(false);
+        currentSelectionType = (selectedSampleIndex >= 0 && selectedSampleIndex < allSamples.size()) ? SelectedViewType::Sample : SelectedViewType::None;
+        updateBottomBar();
         resized();
     };
 
     addAndMakeVisible(historyTabBtn);
-    historyTabBtn.onClick = [this, updateTabButtons]() {
-        activeSampleStorageTab = 1;
+    historyTabBtn.setClickingTogglesState(true);
+    historyTabBtn.setRadioGroupId(1002);
+    historyTabBtn.onClick = [this]() {
+        isHistoryViewActive = true;
+        sampleListBox.setVisible(false);
+        sampleSortSelector.setVisible(false);
+        dropImportZone.setVisible(false);
+        historyListBox.setVisible(true);
+        restoreHistoryBtn.setVisible(true);
+        clearHistoryBtn.setVisible(true);
         refreshHistoryList();
-        updateTabButtons();
+        currentSelectionType = (selectedHistoryIndex >= 0 && selectedHistoryIndex < allHistoryEntries.size()) ? SelectedViewType::History : SelectedViewType::None;
+        updateBottomBar();
         resized();
     };
 
-    // Sample ListBox
-    addAndMakeVisible(sampleListBox);
+    addAndMakeVisible(sampleSortSelector);
+    sampleSortSelector.addItem("SORT: RELEVANCE", 1);
+    sampleSortSelector.addItem("SORT: NAME A-Z", 2);
+    sampleSortSelector.setSelectedId(1, juce::dontSendNotification);
+    sampleSortSelector.onChange = [this]() { refreshSampleList(); };
+
     sampleListBox.setModel(&sampleListModel);
-    sampleListBox.setColour(juce::ListBox::backgroundColourId, juce::Colour(0x12, 0x12, 0x17));
-    sampleListBox.setColour(juce::ListBox::outlineColourId, juce::Colour(0x2A, 0x2A, 0x35));
-    sampleListBox.setRowHeight(34);
+    sampleListBox.setRowHeight(32);
+    sampleListBox.setColour(juce::ListBox::backgroundColourId, juce::Colours::transparentBlack);
+    sampleListBox.setColour(juce::ListBox::outlineColourId, juce::Colours::transparentBlack);
+    addAndMakeVisible(sampleListBox);
 
-    // Sample Action Buttons
-    addAndMakeVisible(importSampleBtn);
-    importSampleBtn.setColour(juce::TextButton::buttonColourId, juce::Colour(0x24, 0x24, 0x2E));
-    importSampleBtn.setColour(juce::TextButton::textColourOffId, SpectralUILookAndFeel::accentColour);
-    importSampleBtn.onClick = [this]() {
-        if (fileChooser != nullptr)
-            return;
+    addAndMakeVisible(dropImportZone);
 
-        fileChooser = std::make_unique<juce::FileChooser>(
-            "Select Audio Sample to Store in Library",
-            juce::File::getSpecialLocation(juce::File::userHomeDirectory),
-            "*.wav;*.mp3;*.flac;*.aiff;*.ogg;*.m4a");
-
-        auto chooserFlags = juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles;
-        fileChooser->launchAsync(chooserFlags, [this](const juce::FileChooser& fc) {
-            auto result = fc.getResult();
-            if (result.existsAsFile())
-            {
-                juce::File existingDuplicate = presetManager.findMatchingSample(result);
-
-                if (existingDuplicate.existsAsFile())
-                {
-                    // Duplicate detected! Show confirmation dialog box
-                    auto* dialog = new juce::AlertWindow(
-                        "Duplicate Sample Detected",
-                        "A sample named \"" + existingDuplicate.getFileName() + "\" already exists in your library. Replace it?",
-                        juce::AlertWindow::QuestionIcon);
-
-                    dialog->addButton("Replace", 1, juce::KeyPress(juce::KeyPress::returnKey));
-                    dialog->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
-
-                    dialog->enterModalState(true, juce::ModalCallbackFunction::create([this, result, existingDuplicate](int button) {
-                        if (button == 1) // Replace chosen
-                        {
-                            auto imported = presetManager.importSample(result, true, existingDuplicate); // true = overwrite in place, replace existingDuplicate
-                            refreshSampleList();
-                            if (imported.existsAsFile())
-                            {
-                                currentSampleName = imported.getFileName();
-                                if (onSampleSelected)
-                                    onSampleSelected(imported);
-                                statusLabel.setText("Sample Replaced: " + imported.getFileName(), juce::dontSendNotification);
-                            }
-                        }
-                        else // Cancel or dismissed
-                        {
-                            statusLabel.setText("Import cancelled. Original sample kept.", juce::dontSendNotification);
-                        }
-                    }), true);
-                }
-                else
-                {
-                    // Non-matching sample: import normally
-                    auto imported = presetManager.importSample(result, false);
-                    refreshSampleList();
-                    if (imported.existsAsFile())
-                    {
-                        currentSampleName = imported.getFileName();
-                        if (onSampleSelected)
-                            onSampleSelected(imported);
-                        statusLabel.setText("Sample Imported: " + imported.getFileName(), juce::dontSendNotification);
-                    }
-                }
-            }
-        });
-    };
-
-    addAndMakeVisible(loadSampleToEngineBtn);
-    loadSampleToEngineBtn.setColour(juce::TextButton::buttonColourId, juce::Colour(0x24, 0x24, 0x2E));
-    loadSampleToEngineBtn.setColour(juce::TextButton::textColourOffId, SpectralUILookAndFeel::accentColour);
-    loadSampleToEngineBtn.onClick = [this]() {
-        int r = sampleListBox.getSelectedRow();
-        if (r >= 0 && r < allSamples.size())
-        {
-            auto sampleFile = allSamples[r];
-            currentSampleName = sampleFile.getFileName();
-            if (onSampleSelected)
-                onSampleSelected(sampleFile);
-            statusLabel.setText("Loaded Sample into Engine: " + sampleFile.getFileName(), juce::dontSendNotification);
-        }
-    };
-
-    addAndMakeVisible(renameSampleBtn);
-    renameSampleBtn.setColour(juce::TextButton::buttonColourId, juce::Colour(0x24, 0x24, 0x2E));
-    renameSampleBtn.setColour(juce::TextButton::textColourOffId, juce::Colour(0x38, 0xBD, 0xF8));
-    renameSampleBtn.onClick = [this]() {
-        int r = sampleListBox.getSelectedRow();
-        if (r >= 0 && r < allSamples.size())
-        {
-            showRenameSampleDialog(r);
-        }
-    };
-
-    addAndMakeVisible(deleteSampleBtn);
-    deleteSampleBtn.setColour(juce::TextButton::buttonColourId, juce::Colour(200, 45, 55));
-    deleteSampleBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
-    deleteSampleBtn.onClick = [this]() {
-        int r = sampleListBox.getSelectedRow();
-        if (r >= 0 && r < allSamples.size())
-        {
-            auto sampleFile = allSamples[r];
-            if (!confirmDeleteSamplePending)
-            {
-                confirmDeleteSamplePending = true;
-                deleteSampleBtn.setButtonText("CONFIRM?");
-                statusLabel.setText("Click DELETE SAMPLE again to delete '" + sampleFile.getFileName() + "'", juce::dontSendNotification);
-                return;
-            }
-
-            confirmDeleteSamplePending = false;
-            deleteSampleBtn.setButtonText("DELETE SAMPLE");
-            if (presetManager.deleteSample(sampleFile))
-            {
-                statusLabel.setText("Deleted sample: " + sampleFile.getFileName(), juce::dontSendNotification);
-                refreshSampleList();
-            }
-        }
-    };
-
-    // History ListBox & Action Buttons
-    addAndMakeVisible(historyListBox);
     historyListBox.setModel(&historyListModel);
-    historyListBox.setColour(juce::ListBox::backgroundColourId, juce::Colour(0x12, 0x12, 0x17));
-    historyListBox.setColour(juce::ListBox::outlineColourId, juce::Colour(0x2A, 0x2A, 0x35));
-    historyListBox.setRowHeight(42);
+    historyListBox.setRowHeight(32);
+    historyListBox.setColour(juce::ListBox::backgroundColourId, juce::Colours::transparentBlack);
+    historyListBox.setColour(juce::ListBox::outlineColourId, juce::Colours::transparentBlack);
+    addChildComponent(historyListBox);
 
-    addAndMakeVisible(restoreHistoryBtn);
-    restoreHistoryBtn.setColour(juce::TextButton::buttonColourId, juce::Colour(0x2B, 0x8A, 0x5A));
-    restoreHistoryBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+    addChildComponent(restoreHistoryBtn);
     restoreHistoryBtn.onClick = [this]() { executeRestoreSelectedHistory(); };
 
-    addAndMakeVisible(clearHistoryBtn);
-    clearHistoryBtn.setColour(juce::TextButton::buttonColourId, juce::Colour(200, 45, 55));
-    clearHistoryBtn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+    addChildComponent(clearHistoryBtn);
+    clearHistoryBtn.setName("DANGER");
     clearHistoryBtn.onClick = [this]() {
-        if (historyManager != nullptr)
+        if (historyManager)
         {
-            historyManager->clearHistory();
-            refreshHistoryList();
-            statusLabel.setText("Cleared edit history stack.", juce::dontSendNotification);
+            dismissActiveDialog();
+
+            auto* win = new juce::AlertWindow("CLEAR HISTORY", "Clear all edit snapshots permanently?", juce::AlertWindow::QuestionIcon);
+            win->addButton("Clear All", 1);
+            win->addButton("Cancel", 0);
+            activeAlertWindow = win;
+            win->enterModalState(true, juce::ModalCallbackFunction::create([this, win](int res) {
+                if (activeAlertWindow == win)
+                    activeAlertWindow = nullptr;
+
+                if (res == 1 && historyManager)
+                {
+                    historyManager->clearHistory();
+                    selectedHistoryIndex = -1;
+                    historyListBox.deselectAllRows();
+                    refreshHistoryList();
+                    currentSelectionType = SelectedViewType::None;
+                    updateBottomBar();
+                }
+            }), true);
         }
     };
 
-    updateTabButtons();
+    //==========================================================================
+    // FOOTER STRIP
+    //==========================================================================
+    addAndMakeVisible(bottomStatusLabel);
+    bottomStatusLabel.setFont(SpectralUILookAndFeel::getSpaceGrotesk(10.0f, false));
+    bottomStatusLabel.setColour(juce::Label::textColourId, juce::Colour(0x71, 0x71, 0x7A));
+    bottomStatusLabel.setJustificationType(juce::Justification::centredLeft);
 
+    addAndMakeVisible(revealFileBtn);
+    revealFileBtn.onClick = [this]() {
+        if (currentSelectionType == SelectedViewType::Preset && activePresetFile.existsAsFile())
+            activePresetFile.revealToUser();
+        else if (currentSelectionType == SelectedViewType::Sample && selectedSampleFile.existsAsFile())
+            selectedSampleFile.revealToUser();
+        else if (currentSelectionType == SelectedViewType::Bank)
+        {
+            auto dir = presetManager.getAllPresets();
+            for (const auto& p : dir)
+            {
+                if (p.bank.equalsIgnoreCase(activeBankName) && p.file.existsAsFile())
+                {
+                    p.file.getParentDirectory().revealToUser();
+                    return;
+                }
+            }
+        }
+    };
+
+    addAndMakeVisible(saveAsBtn);
+    saveAsBtn.onClick = [this]() { showSavePresetDialog(); };
+
+    addAndMakeVisible(loadMainBtn);
+    loadMainBtn.setName("PRIMARY");
+    loadMainBtn.onClick = [this]() { executeLoadCurrentSelection(); };
+
+    addAndMakeVisible(deleteBtn);
+    deleteBtn.setName("DANGER");
+    deleteBtn.onClick = [this]() { executeDeleteCurrentSelection(); };
+
+    // Initial Load & Populate
     refreshBankList();
     refreshPresetList();
     refreshSampleList();
     refreshHistoryList();
+    updateShuffleFxButtonState();
+
+    // Default select first preset if available
+    if (filteredPresets.size() > 0)
+    {
+        selectedPresetIndex = 0;
+        activePresetFile = filteredPresets[0].file;
+        currentSelectionType = SelectedViewType::Preset;
+        presetListBox.selectRow(0);
+    }
+
+    updateBottomBar();
 }
 
 PresetBrowserOverlay::~PresetBrowserOverlay()
 {
-    presetListBox.setModel(nullptr);
-    sampleListBox.setModel(nullptr);
-    historyListBox.setModel(nullptr);
+    dismissActiveDialog();
+    setLookAndFeel(nullptr);
 }
 
+void PresetBrowserOverlay::visibilityChanged()
+{
+    if (!isVisible())
+        dismissActiveDialog();
+}
+
+void PresetBrowserOverlay::dismissActiveDialog()
+{
+    if (activeAlertWindow != nullptr)
+    {
+        activeAlertWindow->exitModalState(0);
+        activeAlertWindow = nullptr;
+    }
+}
+
+//==============================================================================
+// Refresh Methods
+//==============================================================================
 void PresetBrowserOverlay::refreshBankList()
 {
-    juce::String currentBankSel = bankSelector.getText();
-    bankSelector.clear();
-    saveBankSelector.clear();
+    presetManager.invalidateBanksCache();
+    allBanks.clear();
+    allBanks.add("ALL BANKS");
 
-    auto banks = presetManager.getAllBanks();
-    bankSelector.addItem("ALL BANKS", 1);
-
-    int id = 2;
-    for (const auto& b : banks)
+    auto managerBanks = presetManager.getAllBanks();
+    for (const auto& b : managerBanks)
     {
-        bankSelector.addItem(b, id);
-        saveBankSelector.addItem(b, id - 1);
-        id++;
+        if (!allBanks.contains(b, true))
+            allBanks.add(b);
     }
 
-    if (currentBankSel.isNotEmpty())
-    {
-        for (int i = 0; i < bankSelector.getNumItems(); ++i)
-        {
-            if (bankSelector.getItemText(i).equalsIgnoreCase(currentBankSel))
-            {
-                bankSelector.setSelectedItemIndex(i, juce::dontSendNotification);
-                break;
-            }
-        }
-    }
+    banksCountLabel.setText(juce::String::formatted("%d BANKS", allBanks.size() - 1), juce::dontSendNotification);
+    bankListBox.updateContent();
+    bankListBox.repaint();
 
-    if (bankSelector.getSelectedId() <= 0)
+    // Re-validate selected bank
+    int bankIdx = allBanks.indexOf(activeBankFilter, true);
+    if (bankIdx >= 0)
     {
-        bankSelector.setSelectedId(1, juce::dontSendNotification);
+        selectedBankIndex = bankIdx;
+        bankListBox.selectRow(selectedBankIndex);
+    }
+    else
+    {
+        selectedBankIndex = 0;
         activeBankFilter = "ALL BANKS";
-    }
-
-    if (saveBankSelector.getSelectedId() <= 0 && saveBankSelector.getNumItems() > 0)
-    {
-        saveBankSelector.setSelectedId(1, juce::dontSendNotification);
+        bankListBox.selectRow(0);
     }
 }
 
 void PresetBrowserOverlay::refreshPresetList()
 {
+    presetManager.invalidatePresetsCache();
     allPresets = presetManager.getAllPresets();
     filterPresets();
+    libraryIndexedBadge.setText(juce::String::fromUTF8("   LIBRARY INDEXED \xc2\xb7 ") + juce::String(allPresets.size() + allSamples.size()) + " ITEMS", juce::dontSendNotification);
+    updateShuffleFxButtonState();
 }
 
 void PresetBrowserOverlay::refreshSampleList()
 {
+    presetManager.invalidateSamplesCache();
     allSamples = presetManager.getAllSamples();
+    if (sampleSortSelector.getSelectedId() == 2)
+    {
+        std::sort(allSamples.begin(), allSamples.end(), [](const juce::File& a, const juce::File& b) {
+            return a.getFileName().compareIgnoreCase(b.getFileName()) < 0;
+        });
+    }
+
     sampleListBox.updateContent();
     sampleListBox.repaint();
+    libraryIndexedBadge.setText(juce::String::fromUTF8("   LIBRARY INDEXED \xc2\xb7 ") + juce::String(allPresets.size() + allSamples.size()) + " ITEMS", juce::dontSendNotification);
+    samplesTabBtn.setButtonText(juce::String::formatted("SAMPLES (%d)", allSamples.size()));
 }
 
-void PresetBrowserOverlay::syncActivePresetFromProcessor(const juce::String& loadedPresetName)
+void PresetBrowserOverlay::refreshHistoryList()
 {
-    activeLoadedPresetName = loadedPresetName;
-    activePresetFile = juce::File();
-
-    if (activeLoadedPresetName.isNotEmpty())
+    if (historyManager)
     {
-        for (const auto& p : allPresets)
-        {
-            if (p.name.equalsIgnoreCase(activeLoadedPresetName))
-            {
-                activePresetFile = p.file;
-                break;
-            }
-        }
+        historyManager->invalidateHistoryCache();
+        allHistoryEntries = historyManager->getHistoryEntries();
     }
+    else
+    {
+        allHistoryEntries.clear();
+    }
+
+    historyListBox.updateContent();
+    historyListBox.repaint();
+    historyTabBtn.setButtonText(juce::String::formatted("HISTORY (%d)", allHistoryEntries.size()));
 }
 
+void PresetBrowserOverlay::checkForExternalLibraryChangesAsync()
+{
+    juce::Thread::launch([this]() {
+        if (presetManager.checkForExternalChanges())
+        {
+            juce::MessageManager::callAsync([safeThis = juce::Component::SafePointer<PresetBrowserOverlay>(this)]() {
+                if (safeThis != nullptr)
+                {
+                    safeThis->refreshBankList();
+                    safeThis->refreshPresetList();
+                    safeThis->refreshSampleList();
+                }
+            });
+        }
+    });
+}
+
+//==============================================================================
+// Filter Logic
+//==============================================================================
 void PresetBrowserOverlay::filterPresets()
 {
-    filteredPresets.clear();
     juce::String query = searchBox.getText().trim().toLowerCase();
+    filteredPresets.clear();
 
     for (const auto& p : allPresets)
     {
-        bool matchesBank = (activeBankFilter == "ALL BANKS" || p.bank.equalsIgnoreCase(activeBankFilter));
-        bool matchesCat = (activeCategoryFilter == "ALL" || p.category.equalsIgnoreCase(activeCategoryFilter));
-        bool matchesFav = (!onlyFavoritesFilter || p.isFavorite);
-        bool matchesQuery = (query.isEmpty() ||
-                             p.name.toLowerCase().contains(query) ||
-                             p.category.toLowerCase().contains(query) ||
-                             p.bank.toLowerCase().contains(query));
+        if (onlyFavoritesFilter && !p.isFavorite)
+            continue;
 
-        if (matchesBank && matchesCat && matchesFav && matchesQuery)
+        if (activeCategoryFilter != "ALL")
         {
-            filteredPresets.add(p);
+            if (activeCategoryFilter == "STATES")
+            {
+                if (!p.file.getFileExtension().equalsIgnoreCase(".vsts") && !p.category.equalsIgnoreCase("STATES"))
+                    continue;
+            }
+            else if (activeCategoryFilter == "FX")
+            {
+                if (!p.category.equalsIgnoreCase("FX"))
+                    continue;
+            }
+            else if (!p.category.equalsIgnoreCase(activeCategoryFilter))
+                continue;
         }
+
+        if (activeBankFilter != "ALL BANKS")
+        {
+            if (!p.bank.equalsIgnoreCase(activeBankFilter))
+                continue;
+        }
+
+        if (query.isNotEmpty())
+        {
+            bool nameMatch = p.name.toLowerCase().contains(query);
+            bool catMatch  = p.category.toLowerCase().contains(query);
+            bool bankMatch = p.bank.toLowerCase().contains(query);
+            if (!nameMatch && !catMatch && !bankMatch)
+                continue;
+        }
+
+        filteredPresets.add(p);
     }
 
-    // Sort presets
-    if (activeSortMode == 0) // A to Z
+    if (activeSortMode == 0) // A-Z
     {
         std::sort(filteredPresets.begin(), filteredPresets.end(), [](const PresetInfo& a, const PresetInfo& b) {
-            return a.name.toLowerCase() < b.name.toLowerCase();
+            return a.name.compareIgnoreCase(b.name) < 0;
         });
     }
     else if (activeSortMode == 1) // Favorites First
@@ -585,455 +713,580 @@ void PresetBrowserOverlay::filterPresets()
         std::sort(filteredPresets.begin(), filteredPresets.end(), [](const PresetInfo& a, const PresetInfo& b) {
             if (a.isFavorite != b.isFavorite)
                 return a.isFavorite > b.isFavorite;
-            return a.name.toLowerCase() < b.name.toLowerCase();
+            return a.name.compareIgnoreCase(b.name) < 0;
         });
     }
-    else if (activeSortMode == 2) // Recently Used
+    else if (activeSortMode == 2) // Recent
     {
         std::sort(filteredPresets.begin(), filteredPresets.end(), [](const PresetInfo& a, const PresetInfo& b) {
             return a.lastUsed > b.lastUsed;
         });
     }
 
+    presetsCountLabel.setText(juce::String::formatted("%d RESULTS", filteredPresets.size()), juce::dontSendNotification);
     presetListBox.updateContent();
-
-    int activeIndex = -1;
-    if (activeLoadedPresetName.isNotEmpty())
-    {
-        for (int i = 0; i < filteredPresets.size(); ++i)
-        {
-            if (filteredPresets[i].name.equalsIgnoreCase(activeLoadedPresetName) ||
-               (activePresetFile.existsAsFile() && filteredPresets[i].file == activePresetFile))
-            {
-                activeIndex = i;
-                activePresetFile = filteredPresets[i].file;
-                break;
-            }
-        }
-    }
-
-    if (activeIndex >= 0 && activeIndex < filteredPresets.size())
-    {
-        presetListBox.selectRow(activeIndex);
-        selectedPresetIndex = activeIndex;
-    }
-    else
-    {
-        presetListBox.deselectAllRows();
-        selectedPresetIndex = -1;
-    }
-
     presetListBox.repaint();
-    updateSelectedPresetDetails();
-    updateShuffleFxButtonState();
-}
 
-void PresetBrowserOverlay::updateShuffleFxButtonState()
-{
-    int fxPresetCount = 0;
-    for (const auto& p : allPresets)
+    // Validate selectedPresetIndex
+    if (selectedPresetIndex >= 0 && selectedPresetIndex < filteredPresets.size())
     {
-        bool isFx = !p.category.equalsIgnoreCase("STATES") && !p.file.hasFileExtension(".vsts");
-        bool matchesBank = (activeBankFilter == "ALL BANKS" || p.bank.equalsIgnoreCase(activeBankFilter));
-        if (isFx && matchesBank)
-        {
-            fxPresetCount++;
-        }
+        activePresetFile = filteredPresets[selectedPresetIndex].file;
+        presetListBox.selectRow(selectedPresetIndex);
+    }
+    else if (filteredPresets.size() > 0 && currentSelectionType == SelectedViewType::Preset)
+    {
+        selectedPresetIndex = 0;
+        activePresetFile = filteredPresets[0].file;
+        presetListBox.selectRow(0);
+    }
+    else if (filteredPresets.isEmpty() && currentSelectionType == SelectedViewType::Preset)
+    {
+        clearActivePresetSelection();
     }
 
-    if (fxPresetCount == 0)
-    {
-        shuffleFxBtn.setEnabled(false);
-        shuffleFxBtn.setAlpha(0.4f);
-        shuffleFxBtn.setTooltip("No FX presets in this bank");
-    }
-    else
-    {
-        shuffleFxBtn.setEnabled(true);
-        shuffleFxBtn.setAlpha(1.0f);
-        shuffleFxBtn.setTooltip("Randomly load FX preset settings in current bank");
-    }
-}
-
-void PresetBrowserOverlay::executeShuffleFx()
-{
-    juce::Array<PresetInfo> candidates;
-    for (const auto& p : allPresets)
-    {
-        bool isFx = !p.category.equalsIgnoreCase("STATES") && !p.file.hasFileExtension(".vsts");
-        bool matchesBank = (activeBankFilter == "ALL BANKS" || p.bank.equalsIgnoreCase(activeBankFilter));
-        if (isFx && matchesBank)
-        {
-            candidates.add(p);
-        }
-    }
-
-    if (candidates.isEmpty())
-    {
-        statusLabel.setText("No FX presets in this bank", juce::dontSendNotification);
-        updateShuffleFxButtonState();
-        return;
-    }
-
-    PresetInfo chosenPreset;
-
-    if (candidates.size() == 1)
-    {
-        chosenPreset = candidates[0];
-    }
-    else
-    {
-        juce::Array<PresetInfo> pool;
-        for (const auto& p : candidates)
-        {
-            if (lastShuffledPresetFile.existsAsFile() && p.file == lastShuffledPresetFile)
-                continue;
-            pool.add(p);
-        }
-
-        if (pool.isEmpty())
-        {
-            pool = candidates;
-        }
-
-        int randIdx = juce::Random::getSystemRandom().nextInt(pool.size());
-        chosenPreset = pool[randIdx];
-    }
-
-    lastShuffledPresetFile = chosenPreset.file;
-    lastShuffledBank = activeBankFilter;
-
-    if (activeCategoryFilter != "ALL" && !chosenPreset.category.equalsIgnoreCase(activeCategoryFilter))
-    {
-        activeCategoryFilter = "ALL";
-        auto updateCatBtn = [this](juce::TextButton& b, const juce::String& c) {
-            bool active = (activeCategoryFilter == c);
-            b.setColour(juce::TextButton::buttonColourId, active ? SpectralUILookAndFeel::accentColour : juce::Colour(0x22, 0x22, 0x2A));
-            b.setColour(juce::TextButton::textColourOffId, active ? juce::Colours::black : juce::Colour(0xA0, 0x9E, 0x96));
-        };
-        updateCatBtn(filterAllBtn, "ALL");
-        updateCatBtn(filterSynthBtn, "SYNTH");
-        updateCatBtn(filterLeadBtn, "LEAD");
-        updateCatBtn(filterBassBtn, "BASS");
-        updateCatBtn(filterPadBtn, "PAD");
-        updateCatBtn(filterFxBtn, "FX");
-        updateCatBtn(filterStatesBtn, "STATES");
-        filterPresets();
-    }
-
-    int targetRow = -1;
-    for (int i = 0; i < filteredPresets.size(); ++i)
-    {
-        if (filteredPresets[i].file == chosenPreset.file)
-        {
-            targetRow = i;
-            break;
-        }
-    }
-
-    if (targetRow >= 0)
-    {
-        presetListBox.selectRow(targetRow);
-        selectedPresetIndex = targetRow;
-        presetListBox.scrollToEnsureRowIsOnscreen(targetRow);
-    }
-
-    activePresetFile = chosenPreset.file;
-    activeLoadedPresetName = chosenPreset.name;
-
-    juce::String sampleFile;
-    float startReg = 0.0f;
-    float endReg = 1.0f;
-    juce::var selectionsVar;
-    bool loopEnabled = false;
-    juce::AudioBuffer<float> loadedBuf;
-    double loadedSr = 44100.0;
-
-    if (presetManager.loadPreset(chosenPreset.file, apvts, sampleFile, startReg, endReg, selectionsVar, loopEnabled, &loadedBuf, &loadedSr))
-    {
-        if (spectrogram != nullptr)
-        {
-            spectrogram->setLoopEnabled(loopEnabled);
-            spectrogram->restorePresetSnapshot(startReg, endReg, selectionsVar);
-        }
-
-        if (onPresetSelected)
-            onPresetSelected(chosenPreset.file, sampleFile);
-
-        if (historyManager != nullptr)
-        {
-            historyManager->pushHistoryState("Shuffle FX: " + chosenPreset.name, currentSampleName, apvts, startReg, endReg, loopEnabled, selectionsVar, juce::AudioBuffer<float>(), 44100.0);
-            refreshHistoryList();
-        }
-
-        selectedPresetTitle.setText(chosenPreset.name, juce::dontSendNotification);
-        statusLabel.setText("Shuffled FX Preset: " + chosenPreset.name + " (Bank: " + chosenPreset.bank + ")", juce::dontSendNotification);
-    }
+    updateBottomBar();
 }
 
 void PresetBrowserOverlay::clearActivePresetSelection()
 {
-    activePresetFile = juce::File();
-    activeLoadedPresetName = "Custom / Unsaved";
-    presetListBox.deselectAllRows();
     selectedPresetIndex = -1;
-    updateSelectedPresetDetails();
-    repaint();
+    activePresetFile = juce::File();
+    activeLoadedPresetName = "";
+    presetListBox.deselectAllRows();
+    if (currentSelectionType == SelectedViewType::Preset)
+        currentSelectionType = SelectedViewType::None;
+    updateBottomBar();
 }
 
-void PresetBrowserOverlay::updateSelectedPresetDetails()
+void PresetBrowserOverlay::syncActivePresetFromProcessor(const juce::String& loadedPresetName)
 {
-    confirmDeletePresetPending = false;
-    deletePresetBtn.setButtonText("DELETE PRESET");
-
-    int r = presetListBox.getSelectedRow();
-    if (r >= 0 && r < filteredPresets.size())
+    activeLoadedPresetName = loadedPresetName;
+    for (int i = 0; i < filteredPresets.size(); ++i)
     {
-        auto preset = filteredPresets[r];
-        selectedPresetTitle.setText(preset.name, juce::dontSendNotification);
-        statusLabel.setText("Bank: " + preset.bank + " | Category: " + preset.category +
-                           (preset.sampleFileName.isNotEmpty() ? " | Sample: " + preset.sampleFileName : ""),
-                           juce::dontSendNotification);
-
-        if (preset.isFactory || preset.bank.equalsIgnoreCase("Factory"))
+        if (filteredPresets[i].name.equalsIgnoreCase(loadedPresetName))
         {
-            deletePresetBtn.setEnabled(false);
-            deletePresetBtn.setAlpha(0.4f);
+            selectedPresetIndex = i;
+            activePresetFile = filteredPresets[i].file;
+            currentSelectionType = SelectedViewType::Preset;
+            presetListBox.selectRow(i);
+            break;
         }
-        else
+    }
+    updateBottomBar();
+}
+
+void PresetBrowserOverlay::updateShuffleFxButtonState()
+{
+    int fxCount = 0;
+    for (const auto& p : allPresets)
+    {
+        if (p.file.getFileExtension().equalsIgnoreCase(".vsfx") || p.category.equalsIgnoreCase("FX"))
+            fxCount++;
+    }
+    shuffleFxBtn.setEnabled(fxCount > 1);
+}
+
+void PresetBrowserOverlay::executeShuffleFx()
+{
+    juce::Array<PresetInfo> fxPresets;
+    for (const auto& p : allPresets)
+    {
+        if (p.file.getFileExtension().equalsIgnoreCase(".vsfx") || p.category.equalsIgnoreCase("FX"))
+            fxPresets.add(p);
+    }
+
+    if (fxPresets.size() < 2) return;
+
+    juce::Random rng;
+    int idx = rng.nextInt(fxPresets.size());
+    if (fxPresets[idx].file == lastShuffledPresetFile && fxPresets.size() > 1)
+        idx = (idx + 1) % fxPresets.size();
+
+    auto chosen = fxPresets[idx];
+    lastShuffledPresetFile = chosen.file;
+    lastShuffledBank = chosen.bank;
+
+    if (onPresetSelected)
+        onPresetSelected(chosen.file, chosen.sampleFileName);
+
+    syncActivePresetFromProcessor(chosen.name);
+}
+
+juce::Array<PresetInfo> PresetBrowserOverlay::getNavigablePresetsForBank(const juce::String& bankName) const
+{
+    juce::Array<PresetInfo> list;
+    for (const auto& p : filteredPresets)
+    {
+        if (bankName.equalsIgnoreCase("ALL BANKS") || p.bank.equalsIgnoreCase(bankName))
+            list.add(p);
+    }
+    return list;
+}
+
+//==============================================================================
+// Bottom Bar & Context Status
+//==============================================================================
+void PresetBrowserOverlay::updateBottomBar()
+{
+    if (currentSelectionType == SelectedViewType::Preset && activePresetFile.existsAsFile())
+    {
+        juce::String name = activePresetFile.getFileNameWithoutExtension();
+        juce::String bank = "USER";
+        for (const auto& p : allPresets)
         {
-            deletePresetBtn.setEnabled(true);
-            deletePresetBtn.setAlpha(1.0f);
+            if (p.file == activePresetFile) { bank = p.bank; break; }
         }
 
-        // Auto-populate Save fields for easy editing
-        saveNameInput.setText(preset.name, juce::dontSendNotification);
-        saveCategoryInput.setText(preset.category, juce::dontSendNotification);
-        saveBankSelector.setText(preset.bank, juce::dontSendNotification);
+        bottomStatusLabel.setText(juce::String::fromUTF8("\xe2\x97\x8f PRESET: ") + name.toUpperCase() + " [" + bank.toUpperCase() + juce::String::fromUTF8("] \xc2\xb7 DOUBLE-CLICK OR ENTER TO LOAD"), juce::dontSendNotification);
+        revealFileBtn.setVisible(true);
+        loadMainBtn.setButtonText(juce::String::fromUTF8("LOAD PRESET \xe2\x9c\x93"));
+        loadMainBtn.setEnabled(true);
+
+        bool canDel = presetManager.isPresetDeletable(activePresetFile);
+        deleteBtn.setVisible(true);
+        deleteBtn.setEnabled(canDel);
+        deleteBtn.setButtonText(canDel ? "DELETE PRESET" : "FACTORY LOCKED");
+    }
+    else if (currentSelectionType == SelectedViewType::Bank)
+    {
+        int count = presetManager.getPresetCountForBank(activeBankName);
+        bottomStatusLabel.setText(juce::String::fromUTF8("\xe2\x97\x8f BANK: ") + activeBankName.toUpperCase() + juce::String::fromUTF8(" \xc2\xb7 ") + juce::String(count) + " PRESETS AVAILABLE", juce::dontSendNotification);
+        revealFileBtn.setVisible(!activeBankName.equalsIgnoreCase("ALL BANKS"));
+        loadMainBtn.setEnabled(false);
+
+        bool canDel = !activeBankName.equalsIgnoreCase("ALL BANKS") && !activeBankName.equalsIgnoreCase("Factory") && !activeBankName.equalsIgnoreCase("User");
+        deleteBtn.setVisible(true);
+        deleteBtn.setEnabled(canDel);
+        deleteBtn.setButtonText(canDel ? "DELETE BANK" : "PROTECTED BANK");
+    }
+    else if (currentSelectionType == SelectedViewType::Sample && selectedSampleFile.existsAsFile())
+    {
+        bottomStatusLabel.setText(juce::String::fromUTF8("\xe2\x97\x8f SAMPLE: ") + selectedSampleFile.getFileName().toUpperCase() + juce::String::fromUTF8(" \xc2\xb7 DOUBLE-CLICK TO LOAD INTO ENGINE"), juce::dontSendNotification);
+        revealFileBtn.setVisible(true);
+        loadMainBtn.setButtonText(juce::String::fromUTF8("LOAD SAMPLE \xe2\x9c\x93"));
+        loadMainBtn.setEnabled(true);
+
+        deleteBtn.setVisible(true);
+        deleteBtn.setEnabled(true);
+        deleteBtn.setButtonText("DELETE SAMPLE");
+    }
+    else if (currentSelectionType == SelectedViewType::History && selectedHistoryIndex >= 0 && selectedHistoryIndex < allHistoryEntries.size())
+    {
+        const auto& h = allHistoryEntries[selectedHistoryIndex];
+        bottomStatusLabel.setText(juce::String::fromUTF8("\xe2\x97\x8f SNAPSHOT: ") + h.label.toUpperCase() + " (" + h.formattedTime + ")", juce::dontSendNotification);
+        revealFileBtn.setVisible(false);
+        loadMainBtn.setButtonText(juce::String::fromUTF8("RESTORE SNAPSHOT"));
+        loadMainBtn.setEnabled(true);
+
+        deleteBtn.setVisible(true);
+        deleteBtn.setEnabled(true);
+        deleteBtn.setButtonText("DELETE SNAPSHOT");
     }
     else
     {
-        selectedPresetTitle.setText("No Preset Selected", juce::dontSendNotification);
-        statusLabel.setText("Select a preset from the list", juce::dontSendNotification);
-        deletePresetBtn.setEnabled(false);
-        deletePresetBtn.setAlpha(0.4f);
+        bottomStatusLabel.setText(juce::String::fromUTF8("\xe2\x97\x8f NO ITEM SELECTED \xc2\xb7 SELECT A PRESET, BANK OR SAMPLE"), juce::dontSendNotification);
+        revealFileBtn.setVisible(false);
+        loadMainBtn.setEnabled(false);
+        deleteBtn.setVisible(false);
     }
 }
 
-void PresetBrowserOverlay::refreshHistoryList()
+//==============================================================================
+// Execution Commands
+//==============================================================================
+void PresetBrowserOverlay::executeLoadCurrentSelection()
 {
-    if (historyManager != nullptr)
+    if (currentSelectionType == SelectedViewType::Preset && activePresetFile.existsAsFile())
     {
-        allHistoryEntries = historyManager->getHistoryEntries();
+        juce::String sampleFile;
+        for (const auto& p : allPresets)
+        {
+            if (p.file == activePresetFile) { sampleFile = p.sampleFileName; break; }
+        }
+
+        if (onPresetSelected)
+            onPresetSelected(activePresetFile, sampleFile);
+
+        syncActivePresetFromProcessor(activePresetFile.getFileNameWithoutExtension());
     }
-    else
+    else if (currentSelectionType == SelectedViewType::Sample && selectedSampleFile.existsAsFile())
     {
-        allHistoryEntries.clear();
+        if (onSampleSelected)
+            onSampleSelected(selectedSampleFile);
     }
-    historyTabBtn.setButtonText("EDIT HISTORY (" + juce::String(allHistoryEntries.size()) + ")");
-    historyListBox.updateContent();
-    historyListBox.repaint();
+    else if (currentSelectionType == SelectedViewType::History)
+    {
+        executeRestoreSelectedHistory();
+    }
 }
 
 void PresetBrowserOverlay::executeRestoreSelectedHistory()
 {
-    if (historyManager == nullptr)
-        return;
-
-    int r = historyListBox.getSelectedRow();
-    if (r >= 0 && r < allHistoryEntries.size())
+    if (historyManager && selectedHistoryIndex >= 0 && selectedHistoryIndex < allHistoryEntries.size())
     {
-        auto entry = allHistoryEntries[r];
-        juce::String sampleFile;
-        float startReg = 0.0f;
-        float endReg = 1.0f;
-        juce::var selectionsVar;
-        bool loopEnabled = false;
-        juce::AudioBuffer<float> audioBuf;
-        double sr = 44100.0;
-
-        if (historyManager->restoreHistoryEntry(entry, apvts, sampleFile, startReg, endReg, selectionsVar, loopEnabled, audioBuf, sr))
-        {
-            if (spectrogram != nullptr && audioBuf.getNumSamples() > 0)
-            {
-                spectrogram->loadDirectAudioBuffer(audioBuf, sr, sampleFile, loopEnabled);
-                spectrogram->restorePresetSnapshot(startReg, endReg, selectionsVar);
-            }
-            if (onHistoryEntryRestored)
-                onHistoryEntryRestored(entry);
-
-            statusLabel.setText("Restored State from History: " + entry.label + " (" + entry.formattedTime + ")", juce::dontSendNotification);
-            setVisible(false);
-        }
+        const auto& entry = allHistoryEntries[selectedHistoryIndex];
+        if (onHistoryEntryRestored)
+            onHistoryEntryRestored(entry);
     }
 }
 
-void PresetBrowserOverlay::executeLoadSelectedPreset()
+void PresetBrowserOverlay::selectSampleRow(int row)
 {
-    int r = presetListBox.getSelectedRow();
-    if (r >= 0 && r < filteredPresets.size())
+    if (row >= 0 && row < allSamples.size())
     {
-        auto preset = filteredPresets[r];
-        activePresetFile = preset.file;
-        activeLoadedPresetName = preset.name;
-        juce::String sampleFile;
-        float startReg = 0.0f;
-        float endReg = 1.0f;
-        juce::var selectionsVar;
-        bool loopEnabled = false;
-        juce::AudioBuffer<float> loadedBuf;
-        double loadedSr = 44100.0;
-
-        if (presetManager.loadPreset(preset.file, apvts, sampleFile, startReg, endReg, selectionsVar, loopEnabled, &loadedBuf, &loadedSr))
-        {
-            if (spectrogram != nullptr && loadedBuf.getNumSamples() > 0)
-            {
-                spectrogram->loadDirectAudioBuffer(loadedBuf, loadedSr, sampleFile, loopEnabled);
-                spectrogram->restorePresetSnapshot(startReg, endReg, selectionsVar);
-            }
-            if (onPresetSelected)
-                onPresetSelected(preset.file, sampleFile);
-
-            if (historyManager != nullptr)
-            {
-                historyManager->pushHistoryState("Preset Loaded: " + preset.name, sampleFile, apvts, startReg, endReg, loopEnabled, selectionsVar, loadedBuf, loadedSr);
-                refreshHistoryList();
-            }
-
-            statusLabel.setText("Loaded Preset: " + preset.name, juce::dontSendNotification);
-            setVisible(false);
-        }
+        selectedSampleIndex = row;
+        selectedSampleFile = allSamples[row];
+        currentSelectionType = SelectedViewType::Sample;
+        selectedPresetIndex = -1;
+        presetListBox.deselectAllRows();
+        sampleListBox.selectRow(row);
+        updateBottomBar();
     }
 }
 
-void PresetBrowserOverlay::showBankActionsMenu()
+void PresetBrowserOverlay::executeDeleteCurrentSelection()
 {
-    juce::PopupMenu menu;
-    menu.addItem(1, "Create New Bank...");
-    menu.addItem(2, "Rename Selected Bank...", activeBankFilter != "ALL BANKS" && !activeBankFilter.equalsIgnoreCase("Factory"));
-    menu.addItem(3, "Delete Selected Bank", activeBankFilter != "ALL BANKS" && !activeBankFilter.equalsIgnoreCase("Factory") && !activeBankFilter.equalsIgnoreCase("User"));
-    menu.addSeparator();
-    menu.addItem(4, "Import Bank Package (.zip / folder)...");
+    if (currentSelectionType == SelectedViewType::Preset && activePresetFile.existsAsFile())
+    {
+        if (!presetManager.isPresetDeletable(activePresetFile))
+            return;
 
-    menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(bankActionsBtn), [this](int result) {
-        if (result == 1) // Create New Bank
-        {
-            auto* dialog = new juce::AlertWindow("Create New Preset Bank", "Enter a name for the new Bank:", juce::AlertWindow::NoIcon);
-            dialog->addTextEditor("bankName", "", "Bank Name");
-            dialog->addButton("Create", 1, juce::KeyPress(juce::KeyPress::returnKey));
-            dialog->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+        dismissActiveDialog();
 
-            dialog->enterModalState(true, juce::ModalCallbackFunction::create([this, dialog](int button) {
-                if (button == 1)
-                {
-                    juce::String name = dialog->getTextEditorContents("bankName").trim();
-                    if (presetManager.createBank(name))
-                    {
-                        refreshBankList();
-                        activeBankFilter = name;
-                        for (int i = 0; i < bankSelector.getNumItems(); ++i)
-                        {
-                            if (bankSelector.getItemText(i).equalsIgnoreCase(name))
-                            {
-                                bankSelector.setSelectedItemIndex(i, juce::dontSendNotification);
-                                break;
-                            }
-                        }
-                        filterPresets();
-                        statusLabel.setText("Created Bank: " + name, juce::dontSendNotification);
-                    }
-                }
-            }), true);
-        }
-        else if (result == 2) // Rename Selected Bank
-        {
-            auto* dialog = new juce::AlertWindow("Rename Bank", "Enter new name for Bank '" + activeBankFilter + "':", juce::AlertWindow::NoIcon);
-            dialog->addTextEditor("bankName", activeBankFilter, "New Bank Name");
-            dialog->addButton("Rename", 1, juce::KeyPress(juce::KeyPress::returnKey));
-            dialog->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+        auto* win = new juce::AlertWindow("DELETE PRESET", "Delete preset '" + activePresetFile.getFileNameWithoutExtension() + "' permanently?", juce::AlertWindow::QuestionIcon);
+        win->addButton("Delete", 1);
+        win->addButton("Cancel", 0);
+        activeAlertWindow = win;
+        auto fileToDelete = activePresetFile;
 
-            dialog->enterModalState(true, juce::ModalCallbackFunction::create([this, dialog](int button) {
-                if (button == 1)
-                {
-                    juce::String newName = dialog->getTextEditorContents("bankName").trim();
-                    if (presetManager.renameBank(activeBankFilter, newName))
-                    {
-                        activeBankFilter = newName;
-                        refreshBankList();
-                        refreshPresetList();
-                        statusLabel.setText("Renamed Bank to: " + newName, juce::dontSendNotification);
-                    }
-                }
-            }), true);
-        }
-        else if (result == 3) // Delete Selected Bank
-        {
-            auto* dialog = new juce::AlertWindow("Delete Bank", "Are you sure you want to delete Bank '" + activeBankFilter + "' and all presets inside it?", juce::AlertWindow::WarningIcon);
-            dialog->addButton("Delete", 1);
-            dialog->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+        win->enterModalState(true, juce::ModalCallbackFunction::create([this, win, fileToDelete](int res) {
+            if (activeAlertWindow == win)
+                activeAlertWindow = nullptr;
 
-            dialog->enterModalState(true, juce::ModalCallbackFunction::create([this, dialog](int button) {
-                if (button == 1)
-                {
-                    if (presetManager.deleteBank(activeBankFilter))
-                    {
-                        statusLabel.setText("Deleted Bank: " + activeBankFilter, juce::dontSendNotification);
-                        activeBankFilter = "ALL BANKS";
-                        refreshBankList();
-                        refreshPresetList();
-                    }
-                }
-            }), true);
-        }
-        else if (result == 4) // Import Bank Package
-        {
-            fileChooser = std::make_unique<juce::FileChooser>(
-                "Select Preset Bank Package (.zip or Folder)",
-                juce::File::getSpecialLocation(juce::File::userHomeDirectory),
-                "*.zip");
-
-            auto chooserFlags = juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles | juce::FileBrowserComponent::canSelectDirectories;
-            fileChooser->launchAsync(chooserFlags, [this](const juce::FileChooser& fc) {
-                auto resultFile = fc.getResult();
-                if (resultFile.exists())
-                {
-                    if (presetManager.importBankPackage(resultFile))
-                    {
-                        refreshBankList();
-                        refreshPresetList();
-                        refreshSampleList();
-                        statusLabel.setText("Imported Bank Package: " + resultFile.getFileName(), juce::dontSendNotification);
-                    }
-                }
-            });
-        }
-    });
-}
-
-void PresetBrowserOverlay::showRenameSampleDialog(int sampleRow)
-{
-    if (sampleRow < 0 || sampleRow >= allSamples.size())
-        return;
-
-    auto sampleFile = allSamples[sampleRow];
-    auto* dialog = new juce::AlertWindow("Rename Sample", "Enter new filename for sample:", juce::AlertWindow::NoIcon);
-    dialog->addTextEditor("sampleName", sampleFile.getFileNameWithoutExtension(), "New Sample Name");
-    dialog->addButton("Rename", 1, juce::KeyPress(juce::KeyPress::returnKey));
-    dialog->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
-
-    dialog->enterModalState(true, juce::ModalCallbackFunction::create([this, sampleFile, dialog](int button) {
-        if (button == 1)
-        {
-            juce::String newName = dialog->getTextEditorContents("sampleName").trim();
-            if (presetManager.renameSample(sampleFile, newName))
+            if (res == 1)
             {
+                presetManager.deletePreset(fileToDelete);
+                clearActivePresetSelection();
+                refreshPresetList();
+            }
+        }), true);
+    }
+    else if (currentSelectionType == SelectedViewType::Bank)
+    {
+        if (activeBankName.equalsIgnoreCase("ALL BANKS") || activeBankName.equalsIgnoreCase("Factory") || activeBankName.equalsIgnoreCase("User"))
+            return;
+
+        showBankActionsMenu();
+    }
+    else if (currentSelectionType == SelectedViewType::Sample && selectedSampleFile.existsAsFile())
+    {
+        dismissActiveDialog();
+
+        auto* win = new juce::AlertWindow("DELETE SAMPLE", "Delete sample '" + selectedSampleFile.getFileName() + "' permanently?", juce::AlertWindow::QuestionIcon);
+        win->addButton("Delete", 1);
+        win->addButton("Cancel", 0);
+        activeAlertWindow = win;
+        auto fileToDelete = selectedSampleFile;
+
+        win->enterModalState(true, juce::ModalCallbackFunction::create([this, win, fileToDelete](int res) {
+            if (activeAlertWindow == win)
+                activeAlertWindow = nullptr;
+
+            if (res == 1)
+            {
+                presetManager.deleteSample(fileToDelete);
+                selectedSampleIndex = -1;
+                selectedSampleFile = juce::File();
+                sampleListBox.deselectAllRows();
                 refreshSampleList();
-                statusLabel.setText("Renamed sample successfully!", juce::dontSendNotification);
+                currentSelectionType = SelectedViewType::None;
+                updateBottomBar();
+            }
+        }), true);
+    }
+    else if (currentSelectionType == SelectedViewType::History && selectedHistoryIndex >= 0 && selectedHistoryIndex < allHistoryEntries.size())
+    {
+        const auto& entry = allHistoryEntries[selectedHistoryIndex];
+        dismissActiveDialog();
+
+        auto* win = new juce::AlertWindow("DELETE SNAPSHOT", "Delete history snapshot '" + entry.label + "' permanently?", juce::AlertWindow::QuestionIcon);
+        win->addButton("Delete", 1);
+        win->addButton("Cancel", 0);
+        activeAlertWindow = win;
+
+        win->enterModalState(true, juce::ModalCallbackFunction::create([this, win, entry](int res) {
+            if (activeAlertWindow == win)
+                activeAlertWindow = nullptr;
+
+            if (res == 1 && historyManager)
+            {
+                historyManager->deleteHistoryFile(entry.snapshotFile);
+                selectedHistoryIndex = -1;
+                historyListBox.deselectAllRows();
+                refreshHistoryList();
+                currentSelectionType = SelectedViewType::None;
+                updateBottomBar();
+            }
+        }), true);
+    }
+}
+
+//==============================================================================
+// Bank Dialogs
+//==============================================================================
+void PresetBrowserOverlay::showNewBankDialog()
+{
+    dismissActiveDialog();
+
+    auto* dialog = new juce::AlertWindow("NEW PRESET BANK", "Enter a name for the new bank:", juce::AlertWindow::NoIcon);
+    dialog->addTextEditor("bankName", "", "Bank Name");
+    dialog->addButton("Create", 1);
+    dialog->addButton("Cancel", 0);
+    activeAlertWindow = dialog;
+
+    dialog->enterModalState(true, juce::ModalCallbackFunction::create([this, dialog](int res) {
+        if (activeAlertWindow == dialog)
+            activeAlertWindow = nullptr;
+
+        if (res == 1)
+        {
+            juce::String name = dialog->getTextEditorContents("bankName").trim();
+            if (name.isNotEmpty())
+            {
+                if (presetManager.createBank(name))
+                {
+                    refreshBankList();
+                    activeBankFilter = name;
+                    activeBankName = name;
+                    int idx = allBanks.indexOf(name, true);
+                    if (idx >= 0)
+                    {
+                        selectedBankIndex = idx;
+                        bankListBox.selectRow(idx);
+                    }
+                    filterPresets();
+                    currentSelectionType = SelectedViewType::Bank;
+                    updateBottomBar();
+                }
             }
         }
     }), true);
 }
 
+void PresetBrowserOverlay::showBankActionsMenu()
+{
+    juce::PopupMenu menu;
+    menu.addItem("Create New Bank...", [this]() { showNewBankDialog(); });
+
+    if (!activeBankName.equalsIgnoreCase("ALL BANKS") && !activeBankName.equalsIgnoreCase("Factory") && !activeBankName.equalsIgnoreCase("User"))
+    {
+        menu.addItem("Rename Bank ('" + activeBankName + "')...", [this]() {
+            showRenameBankDialog(activeBankName);
+        });
+
+        menu.addItem("Delete Bank ('" + activeBankName + "')", [this]() {
+            dismissActiveDialog();
+
+            auto* dialog = new juce::AlertWindow("DELETE BANK", "Delete bank '" + activeBankName + "' and all its presets permanently?", juce::AlertWindow::QuestionIcon);
+            dialog->addButton("Delete", 1);
+            dialog->addButton("Cancel", 0);
+            activeAlertWindow = dialog;
+
+            dialog->enterModalState(true, juce::ModalCallbackFunction::create([this, dialog](int res) {
+                if (activeAlertWindow == dialog)
+                    activeAlertWindow = nullptr;
+
+                if (res == 1)
+                {
+                    presetManager.deleteBank(activeBankName);
+                    activeBankFilter = "ALL BANKS";
+                    activeBankName = "ALL BANKS";
+                    selectedBankIndex = 0;
+                    refreshBankList();
+                    filterPresets();
+                    currentSelectionType = SelectedViewType::None;
+                    updateBottomBar();
+                }
+            }), true);
+        });
+    }
+
+    menu.addSeparator();
+    menu.addItem("Import Bank Folder / Archive...", [this]() {
+        fileChooser = std::make_unique<juce::FileChooser>(
+            "Select Bank Folder or Package",
+            juce::File::getSpecialLocation(juce::File::userDocumentsDirectory),
+            "*");
+        auto chooserFlags = juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories | juce::FileBrowserComponent::canSelectFiles;
+        fileChooser->launchAsync(chooserFlags, [this](const juce::FileChooser& fc) {
+            auto res = fc.getResult();
+            if (res.exists())
+            {
+                presetManager.importBankPackage(res);
+                refreshBankList();
+                refreshPresetList();
+            }
+        });
+    });
+
+    menu.showMenuAsync(juce::PopupMenu::Options());
+}
+
+void PresetBrowserOverlay::showRenameBankDialog(const juce::String& bankName)
+{
+    dismissActiveDialog();
+
+    auto* dialog = new juce::AlertWindow("RENAME BANK", "Enter new name for bank '" + bankName + "':", juce::AlertWindow::NoIcon);
+    dialog->addTextEditor("newBankName", bankName, "Bank Name");
+    dialog->addButton("Rename", 1);
+    dialog->addButton("Cancel", 0);
+    activeAlertWindow = dialog;
+
+    dialog->enterModalState(true, juce::ModalCallbackFunction::create([this, bankName, dialog](int res) {
+        if (activeAlertWindow == dialog)
+            activeAlertWindow = nullptr;
+
+        if (res == 1)
+        {
+            juce::String newName = dialog->getTextEditorContents("newBankName").trim();
+            if (newName.isNotEmpty() && !newName.equalsIgnoreCase(bankName))
+            {
+                if (presetManager.renameBank(bankName, newName))
+                {
+                    refreshBankList();
+                    activeBankFilter = newName;
+                    activeBankName = newName;
+                    int idx = allBanks.indexOf(newName, true);
+                    if (idx >= 0)
+                    {
+                        selectedBankIndex = idx;
+                        bankListBox.selectRow(idx);
+                    }
+                    filterPresets();
+                    updateBottomBar();
+                }
+            }
+        }
+    }), true);
+}
+
+void PresetBrowserOverlay::showSavePresetDialog()
+{
+    dismissActiveDialog();
+
+    juce::String defaultName = activePresetFile.existsAsFile() ? activePresetFile.getFileNameWithoutExtension() : "New Preset";
+    auto* dialog = new juce::AlertWindow("SAVE PRESET", "Save current instrument state as a preset:", juce::AlertWindow::NoIcon);
+    dialog->addTextEditor("presetName", defaultName, "Preset Name");
+
+    juce::StringArray cats = { "Synth", "Lead", "Bass", "Pad", "FX", "States" };
+    dialog->addComboBox("category", cats, "Category");
+    dialog->getComboBoxComponent("category")->setSelectedItemIndex(0);
+
+    auto banks = presetManager.getAllBanks();
+    dialog->addComboBox("bank", banks, "Bank");
+    dialog->getComboBoxComponent("bank")->setText(!activeBankName.equalsIgnoreCase("ALL BANKS") ? activeBankName : "User");
+
+    dialog->addButton("Save Preset", 1);
+    dialog->addButton("Cancel", 0);
+    activeAlertWindow = dialog;
+
+    dialog->enterModalState(true, juce::ModalCallbackFunction::create([this, dialog](int res) {
+        if (activeAlertWindow == dialog)
+            activeAlertWindow = nullptr;
+
+        if (res == 1)
+        {
+            juce::String name = dialog->getTextEditorContents("presetName").trim();
+            juce::String cat  = dialog->getComboBoxComponent("category")->getText();
+            juce::String bank = dialog->getComboBoxComponent("bank")->getText();
+
+            if (name.isNotEmpty())
+            {
+                juce::String sampleFile = currentSampleName;
+                float startR = 0.0f, endR = 1.0f;
+                juce::var selVar;
+                bool loopEn = false;
+                const juce::AudioBuffer<float>* buf = nullptr;
+                double sr = 44100.0;
+
+                if (spectrogram)
+                {
+                    startR = spectrogram->getStartRegion();
+                    endR = spectrogram->getEndRegion();
+                    selVar = spectrogram->getSelectionsAsVar();
+                    loopEn = spectrogram->isLoopEnabled();
+                    if (spectrogram->isFileLoaded())
+                    {
+                        buf = &spectrogram->getAudioBuffer();
+                        sr = 44100.0;
+                    }
+                }
+
+                presetManager.savePreset(name, cat, bank, sampleFile, apvts, startR, endR, selVar, false, loopEn, buf, sr);
+                refreshPresetList();
+                syncActivePresetFromProcessor(name);
+            }
+        }
+    }), true);
+}
+
+void PresetBrowserOverlay::showRenameSampleDialog(int sampleRow)
+{
+    if (sampleRow < 0 || sampleRow >= allSamples.size()) return;
+    auto file = allSamples[sampleRow];
+
+    dismissActiveDialog();
+
+    auto* dialog = new juce::AlertWindow("RENAME SAMPLE", "Enter new name for sample:", juce::AlertWindow::NoIcon);
+    dialog->addTextEditor("sampleName", file.getFileNameWithoutExtension(), "Sample Name");
+    dialog->addButton("Rename", 1);
+    dialog->addButton("Cancel", 0);
+    activeAlertWindow = dialog;
+
+    dialog->enterModalState(true, juce::ModalCallbackFunction::create([this, file, dialog](int res) {
+        if (activeAlertWindow == dialog)
+            activeAlertWindow = nullptr;
+
+        if (res == 1)
+        {
+            juce::String newName = dialog->getTextEditorContents("sampleName").trim();
+            if (newName.isNotEmpty())
+            {
+                presetManager.renameSample(file, newName);
+                refreshSampleList();
+            }
+        }
+    }), true);
+}
+
+void PresetBrowserOverlay::promptDuplicateSampleImport(const juce::File& sourceFile, const juce::File& existingDest)
+{
+    dismissActiveDialog();
+
+    auto* dialog = new juce::AlertWindow("DUPLICATE SAMPLE DETECTED",
+        "A sample with identical name or content already exists:\n" + existingDest.getFileName() + "\n\nChoose an action:",
+        juce::AlertWindow::QuestionIcon);
+
+    dialog->addButton("Keep Existing", 1);
+    dialog->addButton("Overwrite", 2);
+    dialog->addButton("Cancel", 0);
+    activeAlertWindow = dialog;
+
+    dialog->enterModalState(true, juce::ModalCallbackFunction::create([this, dialog, sourceFile, existingDest](int res) {
+        if (activeAlertWindow == dialog)
+            activeAlertWindow = nullptr;
+
+        if (res == 2)
+        {
+            presetManager.importSample(sourceFile, true, existingDest);
+            refreshSampleList();
+        }
+    }), true);
+}
+
+//==============================================================================
+// Preset ListBoxModel (Panel 1)
+//==============================================================================
 int PresetBrowserOverlay::getNumRows()
 {
     return filteredPresets.size();
@@ -1044,405 +1297,687 @@ void PresetBrowserOverlay::paintListBoxItem(int rowNumber, juce::Graphics& g, in
     if (rowNumber < 0 || rowNumber >= filteredPresets.size())
         return;
 
-    auto preset = filteredPresets[rowNumber];
-    bool isCurrentlyLoaded = (activePresetFile.existsAsFile() && preset.file == activePresetFile)
-                          || (activeLoadedPresetName.isNotEmpty() && preset.name.equalsIgnoreCase(activeLoadedPresetName));
+    const auto& p = filteredPresets[rowNumber];
 
-    if (rowIsSelected && isCurrentlyLoaded)
+    juce::Rectangle<int> bounds(0, 0, width, height);
+
+    if (rowIsSelected)
     {
-        // Currently Loaded in Engine AND Selected (Full Orange Active Highlight)
-        g.setColour(SpectralUILookAndFeel::accentColour.withAlpha(0.22f));
-        g.fillRoundedRectangle(2, 2, (float)width - 4, (float)height - 4, 4.0f);
-        g.setColour(SpectralUILookAndFeel::accentColour);
-        g.drawRoundedRectangle(2, 2, (float)width - 4, (float)height - 4, 4.0f, 1.5f);
-    }
-    else if (isCurrentlyLoaded)
-    {
-        // Loaded in Engine, but user is inspecting another preset in Column 2 (Amber Outline)
         g.setColour(SpectralUILookAndFeel::accentColour.withAlpha(0.12f));
-        g.fillRoundedRectangle(2, 2, (float)width - 4, (float)height - 4, 4.0f);
-        g.setColour(SpectralUILookAndFeel::accentColour.withAlpha(0.85f));
-        g.drawRoundedRectangle(2, 2, (float)width - 4, (float)height - 4, 4.0f, 1.2f);
+        g.fillRect(bounds);
+        g.setColour(SpectralUILookAndFeel::accentColour);
+        g.fillRect(0, 0, 3, height);
     }
-    else if (rowIsSelected)
+    else if (rowNumber % 2 == 1)
     {
-        // Inspecting preset in Column 2 (Browsing selection fill - Slate/Dark Cyan)
-        g.setColour(juce::Colour(0x28, 0x28, 0x36));
-        g.fillRoundedRectangle(2, 2, (float)width - 4, (float)height - 4, 4.0f);
-        g.setColour(juce::Colour(0x4A, 0x4A, 0x5D));
-        g.drawRoundedRectangle(2, 2, (float)width - 4, (float)height - 4, 4.0f, 1.0f);
+        g.setColour(juce::Colour(0xFA, 0xFA, 0xFA));
+        g.fillRect(bounds);
+    }
+
+    // Favorite Star (clickable icon)
+    float starX = 8.0f;
+    float starY = ((float)height - 14.0f) * 0.5f;
+    if (p.isFavorite)
+    {
+        g.setFont(SpectralUILookAndFeel::getSpaceGrotesk(11.0f, true));
+        g.setColour(juce::Colour(0xF5, 0x9E, 0x0B)); // Amber
+        g.drawText(juce::String::fromUTF8("\xe2\x98\x85"), (int)starX, (int)starY, 14, 14, juce::Justification::centred, false);
     }
     else
     {
-        g.setColour(rowNumber % 2 == 0 ? juce::Colour(0x14, 0x14, 0x1A) : juce::Colour(0x18, 0x18, 0x20));
-        g.fillRect(0, 0, width, height);
+        g.setFont(SpectralUILookAndFeel::getSpaceGrotesk(11.0f, false));
+        g.setColour(juce::Colour(0xD4, 0xD4, 0xD8));
+        g.drawText(juce::String::fromUTF8("\xe2\x98\x86"), (int)starX, (int)starY, 14, 14, juce::Justification::centred, false);
     }
 
-    // Favorite Star (x: 8 to 28)
-    g.setFont(SpectralUILookAndFeel::getGeometricFont(14.0f, true));
-    g.setColour(preset.isFavorite ? juce::Colour(0xFF, 0xC1, 0x07) : juce::Colour(0x4A, 0x4A, 0x56));
-    g.drawText(preset.isFavorite ? juce::String::fromUTF8("\xe2\x98\x85") : juce::String::fromUTF8("\xe2\x98\x86"), 8, 0, 20, height, juce::Justification::centred);
+    // Preset Name
+    g.setFont(SpectralUILookAndFeel::getSpaceGrotesk(10.5f, rowIsSelected));
+    g.setColour(rowIsSelected ? juce::Colour(0x18, 0x18, 0x1B) : juce::Colour(0x27, 0x27, 0x2A));
+    int nameW = width - 130;
+    g.drawText(p.name, 26, 2, nameW, height - 4, juce::Justification::centredLeft, true);
 
-    // Preset Name & Bank Subtext
-    g.setFont(SpectralUILookAndFeel::getGeometricFont(13.0f, true));
-    g.setColour((rowIsSelected || isCurrentlyLoaded) ? juce::Colours::white : juce::Colour(0xE0, 0xDC, 0xD0));
-    g.drawText(preset.name, 32, 2, width - 125, height / 2, juce::Justification::bottomLeft);
+    // Category Badge
+    g.setFont(SpectralUILookAndFeel::getSpaceGrotesk(8.5f, true));
+    juce::Colour catCol = p.category.equalsIgnoreCase("STATES") ? juce::Colour(0x8B, 0x5C, 0xF6) : juce::Colour(0x71, 0x71, 0x7A);
+    g.setColour(catCol);
+    g.drawText(p.category.toUpperCase(), width - 100, 0, 45, height, juce::Justification::centred, false);
 
-    g.setFont(SpectralUILookAndFeel::getMonospaceFont(9.5f));
-    g.setColour(SpectralUILookAndFeel::textMutedColour);
-    g.drawText("[" + preset.bank + "]", 32, height / 2, width - 125, height / 2 - 2, juce::Justification::topLeft);
-
-    // Category Tag Badge Color Pill
-    juce::Colour catBadgeCol(0x7E, 0x7B, 0x75);
-    juce::String catUp = preset.category.toUpperCase();
-    if (catUp == "SYNTH") catBadgeCol = SpectralUILookAndFeel::accentColour; // Amber
-    else if (catUp == "LEAD") catBadgeCol = juce::Colour(0x38, 0xBD, 0xF8); // Sky Cyan
-    else if (catUp == "BASS") catBadgeCol = juce::Colour(0x2D, 0xD4, 0xBF); // Emerald
-    else if (catUp == "PAD") catBadgeCol = juce::Colour(0xA8, 0x55, 0xF7); // Purple
-    else if (catUp == "FX") catBadgeCol = juce::Colour(0xF4, 0x3F, 0x5E);  // Rose
-    else if (catUp == "STATES") catBadgeCol = juce::Colour(0x3B, 0x82, 0xF6); // Vibrant Blue
-
-    g.setFont(SpectralUILookAndFeel::getMonospaceFont(9.5f));
-    auto badgeArea = juce::Rectangle<float>((float)width - 85.0f, (float)height * 0.5f - 9.0f, 75.0f, 18.0f);
-    g.setColour(catBadgeCol.withAlpha(0.15f));
-    g.fillRoundedRectangle(badgeArea, 4.0f);
-    g.setColour(catBadgeCol);
-    g.drawRoundedRectangle(badgeArea, 4.0f, 1.0f);
-    g.drawText(catUp, badgeArea, juce::Justification::centred, false);
+    // Bank
+    juce::String bankCol = p.bank.equalsIgnoreCase("Factory") ? juce::String::fromUTF8("\xe2\x80\x94") : p.bank.toUpperCase();
+    g.setFont(SpectralUILookAndFeel::getSpaceGrotesk(9.0f, false));
+    g.setColour(juce::Colour(0xA1, 0xA1, 0xAA));
+    g.drawText(bankCol, width - 50, 0, 46, height, juce::Justification::centredRight, true);
 }
 
 void PresetBrowserOverlay::listBoxItemClicked(int row, const juce::MouseEvent& e)
 {
-    if (row < 0 || row >= filteredPresets.size())
-        return;
-
-    auto preset = filteredPresets[row];
-
-    // Star icon click (x < 30)
-    if (e.x < 30)
+    if (row >= 0 && row < filteredPresets.size())
     {
-        presetManager.toggleFavorite(preset.file);
-        refreshPresetList();
-        return;
-    }
+        // Check if clicking star
+        if (e.x >= 6 && e.x <= 24)
+        {
+            presetManager.toggleFavorite(filteredPresets[row].file);
+            refreshPresetList();
+            return;
+        }
 
-    // Tag badge pill click (x > width - 90)
-    if (e.x > presetListBox.getWidth() - 90)
-    {
-        activeCategoryFilter = preset.category.toUpperCase();
-        auto updateCatBtn = [this](juce::TextButton& b, const juce::String& c) {
-            bool active = (activeCategoryFilter == c);
-            b.setColour(juce::TextButton::buttonColourId, active ? SpectralUILookAndFeel::accentColour : juce::Colour(0x22, 0x22, 0x2A));
-            b.setColour(juce::TextButton::textColourOffId, active ? juce::Colours::black : juce::Colour(0xA0, 0x9E, 0x96));
-        };
-        updateCatBtn(filterAllBtn, "ALL");
-        updateCatBtn(filterSynthBtn, "SYNTH");
-        updateCatBtn(filterLeadBtn, "LEAD");
-        updateCatBtn(filterBassBtn, "BASS");
-        updateCatBtn(filterPadBtn, "PAD");
-        updateCatBtn(filterFxBtn, "FX");
-        updateCatBtn(filterStatesBtn, "STATES");
-        filterPresets();
-        return;
-    }
+        if (e.mods.isPopupMenu())
+        {
+            juce::PopupMenu menu;
+            menu.addItem("Load Preset", [this, row]() {
+                selectedPresetIndex = row;
+                activePresetFile = filteredPresets[row].file;
+                executeLoadCurrentSelection();
+            });
+            menu.addItem("Reveal in Explorer", [this, row]() {
+                filteredPresets[row].file.revealToUser();
+            });
+            if (presetManager.isPresetDeletable(filteredPresets[row].file))
+            {
+                menu.addSeparator();
+                menu.addItem("Delete Preset...", [this, row]() {
+                    selectedPresetIndex = row;
+                    activePresetFile = filteredPresets[row].file;
+                    currentSelectionType = SelectedViewType::Preset;
+                    presetListBox.selectRow(row);
+                    updateBottomBar();
+                    executeDeleteCurrentSelection();
+                });
+            }
+            menu.showMenuAsync(juce::PopupMenu::Options());
+            return;
+        }
 
-    selectedPresetIndex = row;
-    updateSelectedPresetDetails();
+        selectedPresetIndex = row;
+        activePresetFile = filteredPresets[row].file;
+        currentSelectionType = SelectedViewType::Preset;
+
+        // Deselect other panels
+        selectedSampleIndex = -1;
+        sampleListBox.deselectAllRows();
+        selectedHistoryIndex = -1;
+        historyListBox.deselectAllRows();
+
+        updateBottomBar();
+    }
 }
 
 void PresetBrowserOverlay::listBoxItemDoubleClicked(int row, const juce::MouseEvent&)
 {
-    selectedPresetIndex = row;
-    executeLoadSelectedPreset();
+    if (row >= 0 && row < filteredPresets.size())
+    {
+        selectedPresetIndex = row;
+        activePresetFile = filteredPresets[row].file;
+        currentSelectionType = SelectedViewType::Preset;
+        executeLoadCurrentSelection();
+    }
 }
 
+//==============================================================================
+// Bank ListBoxModel (Panel 2)
+//==============================================================================
+void PresetBrowserOverlay::BankListModel::paintListBoxItem(int rowNumber, juce::Graphics& g, int width, int height, bool rowIsSelected)
+{
+    if (rowNumber < 0 || rowNumber >= owner.allBanks.size())
+        return;
+
+    juce::String bankName = owner.allBanks[rowNumber];
+    bool isAll = bankName.equalsIgnoreCase("ALL BANKS");
+    bool isFactory = bankName.equalsIgnoreCase("Factory");
+    int count = owner.presetManager.getPresetCountForBank(bankName);
+
+    auto cardBounds = juce::Rectangle<float>(4.0f, 2.0f, (float)width - 8.0f, (float)height - 4.0f);
+    float corner = 5.0f;
+
+    if (rowIsSelected)
+    {
+        g.setColour(SpectralUILookAndFeel::accentColour.withAlpha(0.08f));
+        g.fillRoundedRectangle(cardBounds, corner);
+        g.setColour(SpectralUILookAndFeel::accentColour);
+        g.drawRoundedRectangle(cardBounds, corner, 1.2f);
+    }
+    else
+    {
+        g.setColour(juce::Colour(0xFA, 0xFA, 0xFA));
+        g.fillRoundedRectangle(cardBounds, corner);
+        g.setColour(juce::Colour(0xE4, 0xE4, 0xE7));
+        g.drawRoundedRectangle(cardBounds, corner, 1.0f);
+    }
+
+    // Title
+    g.setFont(SpectralUILookAndFeel::getSpaceGrotesk(10.5f, rowIsSelected));
+    g.setColour(rowIsSelected ? juce::Colour(0x18, 0x18, 0x1B) : juce::Colour(0x27, 0x27, 0x2A));
+    g.drawText(bankName, (int)cardBounds.getX() + 10, (int)cardBounds.getY() + 4, (int)cardBounds.getWidth() - 70, 20, juce::Justification::centredLeft, true);
+
+    // Subtitle / Preset count
+    g.setFont(SpectralUILookAndFeel::getSpaceGrotesk(9.0f, false));
+    g.setColour(juce::Colour(0x71, 0x71, 0x7A));
+    juce::String subText = isAll ? (juce::String(count) + juce::String::fromUTF8(" Presets \xc2\xb7 All Items")) : (juce::String(count) + " Presets");
+    g.drawText(subText, (int)cardBounds.getX() + 10, (int)cardBounds.getY() + 24, (int)cardBounds.getWidth() - 20, 16, juce::Justification::centredLeft, true);
+
+    // Badge on right
+    if (isFactory)
+    {
+        g.setFont(SpectralUILookAndFeel::getSpaceGrotesk(8.0f, true));
+        g.setColour(juce::Colour(0x8B, 0x5C, 0xF6));
+        g.drawText("FACTORY", (int)cardBounds.getRight() - 56, (int)cardBounds.getY() + 6, 48, 16, juce::Justification::centredRight, false);
+    }
+    else if (!isAll)
+    {
+        g.setFont(SpectralUILookAndFeel::getSpaceGrotesk(8.0f, false));
+        g.setColour(juce::Colour(0xA1, 0xA1, 0xAA));
+        g.drawText("BANK", (int)cardBounds.getRight() - 56, (int)cardBounds.getY() + 6, 48, 16, juce::Justification::centredRight, false);
+    }
+}
+
+void PresetBrowserOverlay::BankListModel::listBoxItemClicked(int row, const juce::MouseEvent& e)
+{
+    if (row >= 0 && row < owner.allBanks.size())
+    {
+        juce::String bankName = owner.allBanks[row];
+
+        if (e.mods.isPopupMenu())
+        {
+            juce::PopupMenu menu;
+            menu.addItem("Filter to '" + bankName + "'", [this, row, bankName]() {
+                owner.selectedBankIndex = row;
+                owner.activeBankFilter = bankName;
+                owner.activeBankName = bankName;
+                owner.currentSelectionType = SelectedViewType::Bank;
+                owner.filterPresets();
+                owner.updateBottomBar();
+                if (owner.onBankSelected)
+                    owner.onBankSelected(bankName);
+            });
+
+            if (!bankName.equalsIgnoreCase("ALL BANKS") && !bankName.equalsIgnoreCase("Factory") && !bankName.equalsIgnoreCase("User"))
+            {
+                menu.addItem("Rename Bank...", [this, bankName]() {
+                    owner.showRenameBankDialog(bankName);
+                });
+                menu.addItem("Delete Bank", [this, bankName]() {
+                    owner.showBankActionsMenu();
+                });
+            }
+            menu.showMenuAsync(juce::PopupMenu::Options());
+            return;
+        }
+
+        owner.selectedBankIndex = row;
+        owner.activeBankFilter = bankName;
+        owner.activeBankName = bankName;
+        owner.currentSelectionType = SelectedViewType::Bank;
+
+        owner.filterPresets();
+        owner.updateBottomBar();
+
+        if (owner.onBankSelected)
+            owner.onBankSelected(bankName);
+    }
+}
+
+void PresetBrowserOverlay::BankListModel::listBoxItemDoubleClicked(int row, const juce::MouseEvent&)
+{
+    if (row >= 0 && row < owner.allBanks.size())
+    {
+        owner.selectedBankIndex = row;
+        owner.activeBankFilter = owner.allBanks[row];
+        owner.activeBankName = owner.allBanks[row];
+        owner.filterPresets();
+        owner.updateBottomBar();
+    }
+}
+
+//==============================================================================
+// Sample ListBoxModel (Panel 3)
+//==============================================================================
 void PresetBrowserOverlay::SampleListModel::paintListBoxItem(int rowNumber, juce::Graphics& g, int width, int height, bool rowIsSelected)
 {
     if (rowNumber < 0 || rowNumber >= owner.allSamples.size())
         return;
 
-    auto sample = owner.allSamples[rowNumber];
+    const auto& file = owner.allSamples[rowNumber];
+    juce::Rectangle<int> bounds(0, 0, width, height);
 
     if (rowIsSelected)
     {
-        g.setColour(SpectralUILookAndFeel::accentColour.withAlpha(0.18f));
-        g.fillRoundedRectangle(2, 2, (float)width - 4, (float)height - 4, 4.0f);
+        g.setColour(SpectralUILookAndFeel::accentColour.withAlpha(0.12f));
+        g.fillRect(bounds);
         g.setColour(SpectralUILookAndFeel::accentColour);
-        g.drawRoundedRectangle(2, 2, (float)width - 4, (float)height - 4, 4.0f, 1.2f);
+        g.fillRect(0, 0, 3, height);
     }
-    else
+    else if (rowNumber % 2 == 1)
     {
-        g.setColour(rowNumber % 2 == 0 ? juce::Colour(0x14, 0x14, 0x1A) : juce::Colour(0x18, 0x18, 0x20));
-        g.fillRect(0, 0, width, height);
+        g.setColour(juce::Colour(0xFA, 0xFA, 0xFA));
+        g.fillRect(bounds);
     }
 
-    g.setFont(SpectralUILookAndFeel::getGeometricFont(12.0f, false));
-    g.setColour(rowIsSelected ? juce::Colours::white : juce::Colour(0xD0, 0xCC, 0xC0));
-    g.drawText(sample.getFileName(), 10, 0, width - 20, height, juce::Justification::centredLeft);
+    // Audio Play icon
+    g.setColour(rowIsSelected ? SpectralUILookAndFeel::accentColour : juce::Colour(0xA1, 0xA1, 0xAA));
+    juce::Path tri;
+    float tx = bounds.getX() + 8.0f;
+    float ty = bounds.getCentreY() - 4.0f;
+    tri.startNewSubPath(tx, ty);
+    tri.lineTo(tx + 5.0f, ty + 4.0f);
+    tri.lineTo(tx, ty + 8.0f);
+    tri.closeSubPath();
+    g.fillPath(tri);
+
+    // Sample filename
+    g.setFont(SpectralUILookAndFeel::getSpaceGrotesk(10.0f, rowIsSelected));
+    g.setColour(rowIsSelected ? juce::Colour(0x18, 0x18, 0x1B) : juce::Colour(0x27, 0x27, 0x2A));
+    int fileW = width - 85;
+    g.drawText(file.getFileName(), 22, 2, fileW, height - 4, juce::Justification::centredLeft, true);
+
+    // Format badge (derived purely from extension, ZERO disk I/O in paint!)
+    juce::String ext = file.getFileExtension().replace(".", "").toUpperCase();
+    if (ext.isEmpty()) ext = "WAV";
+    g.setFont(SpectralUILookAndFeel::getSpaceGrotesk(8.5f, true));
+    g.setColour(juce::Colour(0x71, 0x71, 0x7A));
+    g.drawText(ext, width - 60, 0, 52, height, juce::Justification::centredRight, false);
 }
 
-void PresetBrowserOverlay::SampleListModel::listBoxItemClicked(int row, const juce::MouseEvent&)
+void PresetBrowserOverlay::SampleListModel::listBoxItemClicked(int row, const juce::MouseEvent& e)
 {
-    owner.selectedSampleIndex = row;
-    owner.confirmDeleteSamplePending = false;
-    owner.deleteSampleBtn.setButtonText("DELETE SAMPLE");
+    if (row >= 0 && row < owner.allSamples.size())
+    {
+        if (e.mods.isPopupMenu())
+        {
+            juce::PopupMenu menu;
+            menu.addItem("Load Sample into Engine", [this, row]() {
+                if (owner.onSampleSelected) owner.onSampleSelected(owner.allSamples[row]);
+            });
+            menu.addItem("Reveal in Explorer", [this, row]() {
+                owner.allSamples[row].revealToUser();
+            });
+            menu.addItem("Rename Sample...", [this, row]() {
+                owner.showRenameSampleDialog(row);
+            });
+            menu.addSeparator();
+            menu.addItem("Delete Sample...", [this, row]() {
+                owner.selectedSampleIndex = row;
+                owner.selectedSampleFile = owner.allSamples[row];
+                owner.currentSelectionType = SelectedViewType::Sample;
+                owner.sampleListBox.selectRow(row);
+                owner.updateBottomBar();
+                owner.executeDeleteCurrentSelection();
+            });
+            menu.showMenuAsync(juce::PopupMenu::Options());
+            return;
+        }
+
+        owner.selectedSampleIndex = row;
+        owner.selectedSampleFile = owner.allSamples[row];
+        owner.currentSelectionType = SelectedViewType::Sample;
+
+        // Deselect preset list
+        owner.selectedPresetIndex = -1;
+        owner.presetListBox.deselectAllRows();
+
+        owner.updateBottomBar();
+    }
 }
 
 void PresetBrowserOverlay::SampleListModel::listBoxItemDoubleClicked(int row, const juce::MouseEvent&)
 {
-    owner.selectedSampleIndex = row;
     if (row >= 0 && row < owner.allSamples.size())
     {
-        auto sampleFile = owner.allSamples[row];
-        owner.currentSampleName = sampleFile.getFileName();
-        if (owner.onSampleSelected)
-            owner.onSampleSelected(sampleFile);
-        owner.statusLabel.setText("Loaded Sample into Engine: " + sampleFile.getFileName(), juce::dontSendNotification);
+        owner.selectedSampleIndex = row;
+        owner.selectedSampleFile = owner.allSamples[row];
+        owner.currentSelectionType = SelectedViewType::Sample;
+        owner.executeLoadCurrentSelection();
     }
 }
 
 juce::var PresetBrowserOverlay::SampleListModel::getDragSourceDescription(const juce::SparseSet<int>& selectedRows)
 {
-    if (selectedRows.size() > 0)
+    if (!selectedRows.isEmpty())
     {
         int row = selectedRows[0];
         if (row >= 0 && row < owner.allSamples.size())
-        {
-            auto sampleFile = owner.allSamples[row];
-            if (sampleFile.existsAsFile())
-            {
-                if (auto* dragContainer = juce::DragAndDropContainer::findParentDragContainerFor(&owner.sampleListBox))
-                {
-                    juce::StringArray files;
-                    files.add(sampleFile.getFullPathName());
-                    dragContainer->performExternalDragDropOfFiles(files, false);
-                }
-            }
-        }
+            return owner.allSamples[row].getFullPathName();
     }
     return {};
 }
 
+//==============================================================================
+// History ListBoxModel (Panel 3)
+//==============================================================================
 void PresetBrowserOverlay::HistoryListModel::paintListBoxItem(int rowNumber, juce::Graphics& g, int width, int height, bool rowIsSelected)
 {
     if (rowNumber < 0 || rowNumber >= owner.allHistoryEntries.size())
         return;
 
-    auto entry = owner.allHistoryEntries[rowNumber];
+    const auto& entry = owner.allHistoryEntries[rowNumber];
+    juce::Rectangle<int> bounds(0, 0, width, height);
 
     if (rowIsSelected)
     {
-        g.setColour(SpectralUILookAndFeel::accentColour.withAlpha(0.18f));
-        g.fillRoundedRectangle(2, 2, (float)width - 4, (float)height - 4, 4.0f);
+        g.setColour(SpectralUILookAndFeel::accentColour.withAlpha(0.12f));
+        g.fillRect(bounds);
         g.setColour(SpectralUILookAndFeel::accentColour);
-        g.drawRoundedRectangle(2, 2, (float)width - 4, (float)height - 4, 4.0f, 1.2f);
+        g.fillRect(0, 0, 3, height);
     }
-    else
+    else if (rowNumber % 2 == 1)
     {
-        g.setColour(rowNumber % 2 == 0 ? juce::Colour(0x14, 0x14, 0x1A) : juce::Colour(0x18, 0x18, 0x20));
-        g.fillRect(0, 0, width, height);
+        g.setColour(juce::Colour(0xFA, 0xFA, 0xFA));
+        g.fillRect(bounds);
     }
 
-    g.setFont(SpectralUILookAndFeel::getGeometricFont(12.0f, true));
-    g.setColour(rowIsSelected ? juce::Colours::white : juce::Colour(0xE0, 0xDC, 0xD0));
-    g.drawText(entry.label, 10, 3, width - 20, height / 2, juce::Justification::bottomLeft);
+    g.setFont(SpectralUILookAndFeel::getSpaceGrotesk(10.0f, rowIsSelected));
+    g.setColour(rowIsSelected ? juce::Colour(0x18, 0x18, 0x1B) : juce::Colour(0x27, 0x27, 0x2A));
+    g.drawText(entry.label, 12, 2, width - 110, height - 4, juce::Justification::centredLeft, true);
 
-    g.setFont(SpectralUILookAndFeel::getMonospaceFont(9.5f));
-    g.setColour(SpectralUILookAndFeel::accentColour);
-    g.drawText(entry.formattedTime + (entry.sampleFileName.isNotEmpty() ? " | " + entry.sampleFileName : ""), 10, height / 2, width - 20, height / 2 - 3, juce::Justification::topLeft);
+    g.setFont(SpectralUILookAndFeel::getSpaceGrotesk(9.0f, false));
+    g.setColour(juce::Colour(0x71, 0x71, 0x7A));
+    g.drawText(entry.formattedTime, width - 100, 0, 92, height, juce::Justification::centredRight, false);
 }
 
-void PresetBrowserOverlay::HistoryListModel::listBoxItemClicked(int row, const juce::MouseEvent&)
+void PresetBrowserOverlay::HistoryListModel::listBoxItemClicked(int row, const juce::MouseEvent& e)
 {
-    owner.selectedHistoryIndex = row;
+    if (row >= 0 && row < owner.allHistoryEntries.size())
+    {
+        if (e.mods.isPopupMenu())
+        {
+            juce::PopupMenu menu;
+            menu.addItem("Restore this Snapshot", [this, row]() {
+                owner.selectedHistoryIndex = row;
+                owner.executeRestoreSelectedHistory();
+            });
+            menu.addItem("Delete Snapshot...", [this, row]() {
+                owner.selectedHistoryIndex = row;
+                owner.currentSelectionType = SelectedViewType::History;
+                owner.historyListBox.selectRow(row);
+                owner.updateBottomBar();
+                owner.executeDeleteCurrentSelection();
+            });
+            menu.showMenuAsync(juce::PopupMenu::Options());
+            return;
+        }
+
+        owner.selectedHistoryIndex = row;
+        owner.currentSelectionType = SelectedViewType::History;
+        owner.updateBottomBar();
+    }
 }
 
 void PresetBrowserOverlay::HistoryListModel::listBoxItemDoubleClicked(int row, const juce::MouseEvent&)
 {
-    owner.selectedHistoryIndex = row;
-    owner.executeRestoreSelectedHistory();
+    if (row >= 0 && row < owner.allHistoryEntries.size())
+    {
+        owner.selectedHistoryIndex = row;
+        owner.executeRestoreSelectedHistory();
+    }
 }
 
+//==============================================================================
+// Drag and Drop Audio Import
+//==============================================================================
+bool PresetBrowserOverlay::isInterestedInFileDrag(const juce::StringArray& files)
+{
+    for (const auto& file : files)
+    {
+        juce::String ext = juce::File(file).getFileExtension().toLowerCase();
+        if (ext == ".wav" || ext == ".mp3" || ext == ".flac" || ext == ".aiff" || ext == ".ogg" || ext == ".m4a")
+            return true;
+    }
+    return false;
+}
+
+void PresetBrowserOverlay::filesDropped(const juce::StringArray& files, int, int)
+{
+    for (const auto& fPath : files)
+    {
+        juce::File file(fPath);
+        if (file.existsAsFile())
+        {
+            auto existingDest = presetManager.findMatchingSample(file);
+            if (existingDest.existsAsFile())
+                promptDuplicateSampleImport(file, existingDest);
+            else
+                presetManager.importSample(file, false);
+        }
+    }
+    refreshSampleList();
+}
+
+//==============================================================================
+// Keyboard Navigation
+//==============================================================================
+bool PresetBrowserOverlay::keyPressed(const juce::KeyPress& key)
+{
+    if (key == juce::KeyPress::escapeKey)
+    {
+        if (onClose) onClose();
+        else setVisible(false);
+        return true;
+    }
+
+    if (key == juce::KeyPress::returnKey)
+    {
+        executeLoadCurrentSelection();
+        return true;
+    }
+
+    if (key == juce::KeyPress::upKey)
+    {
+        if (currentSelectionType == SelectedViewType::Preset && selectedPresetIndex > 0)
+        {
+            selectedPresetIndex--;
+            activePresetFile = filteredPresets[selectedPresetIndex].file;
+            presetListBox.selectRow(selectedPresetIndex);
+            updateBottomBar();
+            return true;
+        }
+        else if (currentSelectionType == SelectedViewType::Sample && selectedSampleIndex > 0)
+        {
+            selectedSampleIndex--;
+            selectedSampleFile = allSamples[selectedSampleIndex];
+            sampleListBox.selectRow(selectedSampleIndex);
+            updateBottomBar();
+            return true;
+        }
+    }
+    else if (key == juce::KeyPress::downKey)
+    {
+        if (currentSelectionType == SelectedViewType::Preset && selectedPresetIndex < filteredPresets.size() - 1)
+        {
+            selectedPresetIndex++;
+            activePresetFile = filteredPresets[selectedPresetIndex].file;
+            presetListBox.selectRow(selectedPresetIndex);
+            updateBottomBar();
+            return true;
+        }
+        else if (currentSelectionType == SelectedViewType::Sample && selectedSampleIndex < allSamples.size() - 1)
+        {
+            selectedSampleIndex++;
+            selectedSampleFile = allSamples[selectedSampleIndex];
+            sampleListBox.selectRow(selectedSampleIndex);
+            updateBottomBar();
+            return true;
+        }
+    }
+
+    return false;
+}
+
+//==============================================================================
+// Paint / Layout
+//==============================================================================
 void PresetBrowserOverlay::paint(juce::Graphics& g)
 {
-    // Full screen dark translucent overlay backdrop
-    g.fillAll(juce::Colour(0x0A, 0x0A, 0x0E).withAlpha(0.95f));
+    // Translucent dark backdrop
+    g.fillAll(juce::Colour(0x0A, 0x0A, 0x0C).withAlpha(0.72f));
 
-    // Main Modal Box
-    auto mainBounds = getLocalBounds().reduced(20).toFloat();
-    g.setColour(juce::Colour(0x14, 0x14, 0x1A));
-    g.fillRoundedRectangle(mainBounds, 12.0f);
+    // Modal Card
+    auto bounds = getLocalBounds().reduced(24).toFloat();
+    float corner = 8.0f;
 
-    g.setColour(juce::Colour(0x2A, 0x2A, 0x36));
-    g.drawRoundedRectangle(mainBounds, 12.0f, 1.5f);
+    // Outer drop shadow
+    juce::Path p;
+    juce::DropShadow shadow(juce::Colours::black.withAlpha(0.28f), 16, juce::Point<int>(0, 4));
+    shadow.drawForPath(g, p);
 
-    // Title Bar Area (Header)
-    auto headerArea = mainBounds.removeFromTop(50.0f);
-    g.setColour(juce::Colour(0x1B, 0x1B, 0x24));
-    g.fillRoundedRectangle(headerArea.reduced(2.0f, 2.0f), 10.0f);
+    // Modal Background
+    g.setColour(juce::Colours::white);
+    g.fillRoundedRectangle(bounds, corner);
 
-    g.setFont(SpectralUILookAndFeel::getMonospaceFont(15.0f));
+    // Chassis Border
+    g.setColour(juce::Colour(0xE4, 0xE4, 0xE7));
+    g.drawRoundedRectangle(bounds, corner, 1.0f);
+
+    // Header strip separator
+    float headerH = 46.0f;
+    g.setColour(juce::Colour(0xE4, 0xE4, 0xE7));
+    g.drawHorizontalLine((int)(bounds.getY() + headerH), bounds.getX(), bounds.getRight());
+
+    // Title text
+    g.setFont(SpectralUILookAndFeel::getSpaceGrotesk(14.0f, true));
+    g.setColour(juce::Colour(0x18, 0x18, 0x1B));
+    g.drawText("BROWSE", (int)bounds.getX() + 18, (int)bounds.getY() + 8, 120, 20, juce::Justification::centredLeft, false);
+
+    g.setFont(SpectralUILookAndFeel::getSpaceGrotesk(9.0f, false));
+    g.setColour(juce::Colour(0x71, 0x71, 0x7A));
+    g.drawText("PRESET BROWSER / SAMPLE LIBRARY", (int)bounds.getX() + 18, (int)bounds.getY() + 26, 240, 16, juce::Justification::centredLeft, false);
+
+    // Vertical panel dividers
+    float totalW = bounds.getWidth();
+    float colW = (totalW - 2.0f) / 3.0f;
+    float col1Right = bounds.getX() + colW;
+    float col2Right = col1Right + colW;
+    float bodyTop   = bounds.getY() + headerH;
+    float footerH   = 44.0f;
+    float bodyBot   = bounds.getBottom() - footerH;
+
+    g.setColour(juce::Colour(0xE4, 0xE4, 0xE7));
+    g.drawVerticalLine((int)col1Right, bodyTop, bodyBot);
+    g.drawVerticalLine((int)col2Right, bodyTop, bodyBot);
+
+    // Footer divider
+    g.drawHorizontalLine((int)bodyBot, bounds.getX(), bounds.getRight());
+
+    // Status indicator dot
     g.setColour(SpectralUILookAndFeel::accentColour);
-    g.drawText("PRESET BROWSER & SAMPLE LIBRARY", headerArea.reduced(20.0f, 0.0f), juce::Justification::left, false);
+    g.fillEllipse(bounds.getX() + 18.0f, bodyBot + (footerH - 7.0f) * 0.5f, 7.0f, 7.0f);
+}
 
-    // Sub-Card Background Panels
-    auto area = getLocalBounds().reduced(32);
-    area.removeFromTop(45); // Space below header
-
-    int gap = 16;
-    int colW = (area.getWidth() - (gap * 2)) / 3;
-
-    auto col1Bounds = area.removeFromLeft(colW).toFloat();
-    area.removeFromLeft(gap);
-    auto col2Bounds = area.removeFromLeft(colW).toFloat();
-    area.removeFromLeft(gap);
-    auto col3Bounds = area.toFloat();
-
-    auto drawCardPanel = [&](juce::Rectangle<float> cardBounds, const juce::String& cardTitle) {
-        g.setColour(juce::Colour(0x18, 0x18, 0x20));
-        g.fillRoundedRectangle(cardBounds, 8.0f);
-
-        g.setColour(juce::Colour(0x2C, 0x2C, 0x3A));
-        g.drawRoundedRectangle(cardBounds, 8.0f, 1.2f);
-
-        // Header strip inside card
-        auto titleStrip = cardBounds.removeFromTop(36.0f);
-        g.setColour(juce::Colour(0x20, 0x20, 0x2C));
-        g.fillRoundedRectangle(titleStrip.reduced(1.0f, 1.0f), 7.0f);
-
-        g.setFont(SpectralUILookAndFeel::getGeometricFont(12.0f, true));
-        g.setColour(SpectralUILookAndFeel::accentColour);
-        g.drawText(cardTitle, titleStrip.reduced(14.0f, 0.0f), juce::Justification::left, false);
-    };
-
-    drawCardPanel(col1Bounds, "PRESETS LIBRARY");
-    drawCardPanel(col2Bounds, "PRESET ACTIONS & SAVE");
-    drawCardPanel(col3Bounds, "SAMPLE STORAGE");
+void PresetBrowserOverlay::paintOverChildren(juce::Graphics&)
+{
 }
 
 void PresetBrowserOverlay::resized()
 {
-    auto area = getLocalBounds().reduced(32);
-    
-    // Top Bar Close Button (X)
-    closeButton.setBounds(getWidth() - 65, 28, 34, 28);
+    auto cardArea = getLocalBounds().reduced(24);
+    int headerH = 46;
+    int footerH = 44;
 
-    area.removeFromTop(50); // Header height
+    // Header Controls
+    closeButton.setBounds(cardArea.getRight() - 34, cardArea.getY() + 10, 26, 26);
+    libraryIndexedBadge.setBounds(cardArea.getRight() - 250, cardArea.getY() + 10, 208, 26);
 
-    int gap = 16;
-    int colW = (area.getWidth() - (gap * 2)) / 3;
+    // Content area
+    auto contentArea = cardArea;
+    contentArea.removeFromTop(headerH);
+    contentArea.removeFromBottom(footerH);
 
-    auto col1 = area.removeFromLeft(colW).reduced(12, 10);
-    area.removeFromLeft(gap);
+    int totalW = contentArea.getWidth();
+    int colW = totalW / 3;
 
-    auto col2 = area.removeFromLeft(colW).reduced(12, 10);
-    area.removeFromLeft(gap);
+    auto col1 = contentArea.removeFromLeft(colW).reduced(12, 10);
+    auto col2 = contentArea.removeFromLeft(colW).reduced(12, 10);
+    auto col3 = contentArea.reduced(12, 10);
 
-    auto col3 = area.reduced(12, 10);
+    //==========================================================================
+    // PANEL 1: PRESETS (Left)
+    //==========================================================================
+    auto header1 = col1.removeFromTop(22);
+    presetsHeaderLabel.setBounds(header1.removeFromLeft(120));
+    presetsCountLabel.setBounds(header1);
 
-    // Column 1: Presets Library
-    col1.removeFromTop(32); // Title strip offset
+    col1.removeFromTop(6);
+    searchBox.setBounds(col1.removeFromTop(28));
 
-    // Bank Selector Row
-    auto bankRow = col1.removeFromTop(30);
-    shuffleFxBtn.setBounds(bankRow.removeFromLeft(96));
-    bankRow.removeFromLeft(6);
-    bankSelector.setBounds(bankRow.removeFromLeft(bankRow.getWidth() - 78));
-    bankActionsBtn.setBounds(bankRow.removeFromRight(74));
-    col1.removeFromTop(8);
+    col1.removeFromTop(6);
+    categoryViewport.setBounds(col1.removeFromTop(26));
+    categoryContainer.setBounds(0, 0, 420, 26);
 
-    // Search & Sort & Favs Row
-    auto searchRow = col1.removeFromTop(30);
-    int favW = 68;
-    int sortW = 120;
-    searchBox.setBounds(searchRow.removeFromLeft(searchRow.getWidth() - (sortW + favW + 8)));
-    sortSelector.setBounds(searchRow.removeFromLeft(sortW));
-    favoriteFilterBtn.setBounds(searchRow.removeFromRight(favW));
-    col1.removeFromTop(8);
+    col1.removeFromTop(6);
+    auto toolbar1 = col1.removeFromTop(26);
+    shuffleFxBtn.setBounds(toolbar1.removeFromLeft(105));
+    toolbar1.removeFromLeft(4);
+    favoriteFilterBtn.setBounds(toolbar1.removeFromRight(64));
+    toolbar1.removeFromRight(4);
+    sortSelector.setBounds(toolbar1);
 
-    // Category Filter Row (Scrollable Viewport with 7 tabs)
-    auto filterRow = col1.removeFromTop(26);
-    categoryViewport.setBounds(filterRow);
-    categoryContainer.setBounds(0, 0, 440, filterRow.getHeight());
-    col1.removeFromTop(8);
-
+    col1.removeFromTop(6);
     presetListBox.setBounds(col1);
 
-    // Column 2: Selected Preset Details & Save New
-    col2.removeFromTop(32); // Title strip offset
+    //==========================================================================
+    // PANEL 2: BANKS (Middle)
+    //==========================================================================
+    auto header2 = col2.removeFromTop(22);
+    banksHeaderLabel.setBounds(header2.removeFromLeft(120));
+    banksCountLabel.setBounds(header2);
 
-    selectedPresetTitle.setBounds(col2.removeFromTop(28));
-    statusLabel.setBounds(col2.removeFromTop(24));
-    col2.removeFromTop(10);
+    col2.removeFromTop(6);
+    auto toolbar2 = col2.removeFromTop(28);
+    newBankBtn.setBounds(toolbar2.removeFromLeft(105));
+    toolbar2.removeFromLeft(6);
+    bankActionsBtn.setBounds(toolbar2.removeFromLeft(95));
 
-    loadPresetBtn.setBounds(col2.removeFromTop(36));
-    col2.removeFromTop(8);
-    deletePresetBtn.setBounds(col2.removeFromTop(34));
+    col2.removeFromTop(6);
+    bankListBox.setBounds(col2);
 
-    col2.removeFromTop(20); // Divider gap
+    //==========================================================================
+    // PANEL 3: SAMPLES & HISTORY (Right)
+    //==========================================================================
+    auto header3 = col3.removeFromTop(22);
+    panel3HeaderLabel.setBounds(header3.removeFromLeft(100));
+    historyTabBtn.setBounds(header3.removeFromRight(95));
+    header3.removeFromRight(4);
+    samplesTabBtn.setBounds(header3.removeFromRight(95));
 
-    // Save Section
-    saveNameInput.setBounds(col2.removeFromTop(32));
-    col2.removeFromTop(8);
-    saveCategoryInput.setBounds(col2.removeFromTop(32));
-    col2.removeFromTop(8);
-    saveBankSelector.setBounds(col2.removeFromTop(32));
-    col2.removeFromTop(12);
-    savePresetBtn.setBounds(col2.removeFromTop(38));
+    col3.removeFromTop(6);
 
-    // Column 3: Sample Storage & Edit History
-    col3.removeFromTop(32); // Title strip offset
-
-    auto tabRow = col3.removeFromTop(28);
-    int halfTabW = tabRow.getWidth() / 2 - 2;
-    sampleStorageTabBtn.setBounds(tabRow.removeFromLeft(halfTabW));
-    historyTabBtn.setBounds(tabRow.removeFromRight(halfTabW));
-    col3.removeFromTop(8);
-
-    if (activeSampleStorageTab == 0)
+    if (!isHistoryViewActive)
     {
-        sampleListBox.setBounds(col3.removeFromTop(col3.getHeight() - 84));
-        col3.removeFromTop(10);
-        
-        auto sampleBtnRow1 = col3.removeFromTop(34);
-        int halfW = sampleBtnRow1.getWidth() / 2 - 4;
-        importSampleBtn.setBounds(sampleBtnRow1.removeFromLeft(halfW));
-        loadSampleToEngineBtn.setBounds(sampleBtnRow1.removeFromRight(halfW));
+        sampleSortSelector.setBounds(col3.removeFromTop(28));
         col3.removeFromTop(6);
 
-        auto sampleBtnRow2 = col3.removeFromTop(32);
-        renameSampleBtn.setBounds(sampleBtnRow2.removeFromLeft(halfW));
-        deleteSampleBtn.setBounds(sampleBtnRow2.removeFromRight(halfW));
+        dropImportZone.setBounds(col3.removeFromBottom(36));
+        col3.removeFromBottom(6);
+        sampleListBox.setBounds(col3);
     }
     else
     {
-        historyListBox.setBounds(col3.removeFromTop(col3.getHeight() - 44));
-        col3.removeFromTop(10);
+        auto histBot = col3.removeFromBottom(30);
+        restoreHistoryBtn.setBounds(histBot.removeFromLeft((histBot.getWidth() - 6) / 2));
+        histBot.removeFromLeft(6);
+        clearHistoryBtn.setBounds(histBot);
 
-        auto historyBtnRow = col3.removeFromTop(34);
-        int restW = (historyBtnRow.getWidth() * 2) / 3 - 4;
-        restoreHistoryBtn.setBounds(historyBtnRow.removeFromLeft(restW));
-        clearHistoryBtn.setBounds(historyBtnRow.removeFromRight(historyBtnRow.getWidth()));
+        col3.removeFromBottom(6);
+        historyListBox.setBounds(col3);
     }
-}
 
-void PresetBrowserOverlay::CategoryBarContainer::resized()
-{
-    int btnW = 56;
-    int gap = 4;
-    owner.filterAllBtn.setBounds(0, 0, btnW, getHeight());
-    owner.filterSynthBtn.setBounds((btnW + gap) * 1, 0, btnW + 8, getHeight());
-    owner.filterLeadBtn.setBounds((btnW + gap) * 2 + 8, 0, btnW, getHeight());
-    owner.filterBassBtn.setBounds((btnW + gap) * 3 + 8, 0, btnW, getHeight());
-    owner.filterPadBtn.setBounds((btnW + gap) * 4 + 8, 0, btnW, getHeight());
-    owner.filterFxBtn.setBounds((btnW + gap) * 5 + 8, 0, btnW - 6, getHeight());
-    owner.filterStatesBtn.setBounds((btnW + gap) * 6 + 2, 0, btnW + 16, getHeight());
-}
+    //==========================================================================
+    // FOOTER STRIP
+    //==========================================================================
+    auto footerArea = cardArea.removeFromBottom(footerH);
+    int btnH = 26;
+    int botY = footerArea.getY() + (footerH - btnH) / 2;
 
-void PresetBrowserOverlay::CategoryBarContainer::mouseWheelMove(const juce::MouseEvent&, const juce::MouseWheelDetails& wheel)
-{
-    int newX = owner.categoryViewport.getViewPositionX() - (int)(wheel.deltaY * 80.0f);
-    int maxX = juce::jmax(0, getWidth() - owner.categoryViewport.getWidth());
-    owner.categoryViewport.setViewPosition(juce::jlimit(0, maxX, newX), 0);
-}
+    int curBtnX = footerArea.getRight() - 14;
 
+    deleteBtn.setBounds(curBtnX - 110, botY, 110, btnH);
+    curBtnX -= 118;
+
+    loadMainBtn.setBounds(curBtnX - 130, botY, 130, btnH);
+    curBtnX -= 138;
+
+    saveAsBtn.setBounds(curBtnX - 85, botY, 85, btnH);
+    curBtnX -= 93;
+
+    revealFileBtn.setBounds(curBtnX - 75, botY, 75, btnH);
+
+    bottomStatusLabel.setBounds(footerArea.getX() + 32, botY, curBtnX - 75 - (footerArea.getX() + 36), btnH);
+}

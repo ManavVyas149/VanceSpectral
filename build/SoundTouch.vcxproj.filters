@@ -1,0 +1,55 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\Ansh Srivastava\OneDrive\Documents\GitHub\VanceSpectral\ThirdParty\SoundTouch\source\SoundTouch\AAFilter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Ansh Srivastava\OneDrive\Documents\GitHub\VanceSpectral\ThirdParty\SoundTouch\source\SoundTouch\BPMDetect.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Ansh Srivastava\OneDrive\Documents\GitHub\VanceSpectral\ThirdParty\SoundTouch\source\SoundTouch\cpu_detect_x86.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Ansh Srivastava\OneDrive\Documents\GitHub\VanceSpectral\ThirdParty\SoundTouch\source\SoundTouch\FIFOSampleBuffer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Ansh Srivastava\OneDrive\Documents\GitHub\VanceSpectral\ThirdParty\SoundTouch\source\SoundTouch\FIRFilter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Ansh Srivastava\OneDrive\Documents\GitHub\VanceSpectral\ThirdParty\SoundTouch\source\SoundTouch\InterpolateCubic.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Ansh Srivastava\OneDrive\Documents\GitHub\VanceSpectral\ThirdParty\SoundTouch\source\SoundTouch\InterpolateLinear.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Ansh Srivastava\OneDrive\Documents\GitHub\VanceSpectral\ThirdParty\SoundTouch\source\SoundTouch\InterpolateShannon.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Ansh Srivastava\OneDrive\Documents\GitHub\VanceSpectral\ThirdParty\SoundTouch\source\SoundTouch\mmx_optimized.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Ansh Srivastava\OneDrive\Documents\GitHub\VanceSpectral\ThirdParty\SoundTouch\source\SoundTouch\PeakFinder.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Ansh Srivastava\OneDrive\Documents\GitHub\VanceSpectral\ThirdParty\SoundTouch\source\SoundTouch\RateTransposer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Ansh Srivastava\OneDrive\Documents\GitHub\VanceSpectral\ThirdParty\SoundTouch\source\SoundTouch\SoundTouch.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Ansh Srivastava\OneDrive\Documents\GitHub\VanceSpectral\ThirdParty\SoundTouch\source\SoundTouch\sse_optimized.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Ansh Srivastava\OneDrive\Documents\GitHub\VanceSpectral\ThirdParty\SoundTouch\source\SoundTouch\TDStretch.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\Ansh Srivastava\OneDrive\Documents\GitHub\VanceSpectral\ThirdParty\SoundTouch\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{A18AF1CB-107E-330C-864E-2B500A2DCF12}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

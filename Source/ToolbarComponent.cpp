@@ -22,7 +22,7 @@ void ToolbarComponent::ToolButton::paintButton(juce::Graphics &g,
     g.setColour(SpectralUILookAndFeel::accentColour);
     g.drawRoundedRectangle(bounds, 5.0f, 1.2f);
   } else if (isHighlighted && enabled) {
-    g.setColour(juce::Colour::fromRGB(0xEA, 0xE5, 0xDA));
+    g.setColour(juce::Colour::fromRGB(0xEE, 0xF0, 0xF8));
     g.fillRoundedRectangle(bounds, 5.0f);
 
     g.setColour(SpectralUILookAndFeel::dividerColour);

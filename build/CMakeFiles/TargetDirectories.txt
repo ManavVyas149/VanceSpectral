@@ -1,0 +1,5 @@
+C:/Users/Ansh Srivastava/OneDrive/Documents/GitHub/VanceSpectral/build/CMakeFiles/SoundTouch.dir
+C:/Users/Ansh Srivastava/OneDrive/Documents/GitHub/VanceSpectral/build/CMakeFiles/soundstretch.dir
+C:/Users/Ansh Srivastava/OneDrive/Documents/GitHub/VanceSpectral/build/CMakeFiles/INSTALL.dir
+C:/Users/Ansh Srivastava/OneDrive/Documents/GitHub/VanceSpectral/build/CMakeFiles/ALL_BUILD.dir
+C:/Users/Ansh Srivastava/OneDrive/Documents/GitHub/VanceSpectral/build/CMakeFiles/ZERO_CHECK.dir

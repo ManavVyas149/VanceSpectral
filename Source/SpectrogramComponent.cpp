@@ -13,28 +13,137 @@ SpectrogramComponent::SpectrogramComponent(VancespectralAudioProcessor &p)
   loopButton.onClick = [this]() {
     loopEnabled = loopButton.getToggleState();
     processor.setLoop(loopEnabled);
-    repaint();
+    invalidateStaticGraph();
   };
 
   startTimerHz(60);
 }
 
-SpectrogramComponent::~SpectrogramComponent() { stopTimer(); }
+SpectrogramComponent::~SpectrogramComponent() {
+  stopTimer();
+  dismissActiveDialog();
+}
+
+void SpectrogramComponent::dismissActiveDialog() {
+  if (activeAlertWindow != nullptr) {
+    activeAlertWindow->exitModalState(0);
+    activeAlertWindow = nullptr;
+  }
+}
+
+void SpectrogramComponent::invalidateStaticGraph() {
+  staticGraphDirty = true;
+  repaint();
+}
 
 void SpectrogramComponent::timerCallback() {
-  if (processor.isPlaying() || isDrawing || dragState != DragState::None) {
+  if (isDrawing || dragState != DragState::None) {
     repaint();
+    return;
+  }
+
+  double nowSec = juce::Time::getMillisecondCounterHiRes() * 0.001;
+  double dt = (lastTimerTimeSec > 0.0) ? (nowSec - lastTimerTimeSec) : 0.01667;
+  if (dt <= 0.0 || dt > 0.100)
+    dt = 0.01667;
+  lastTimerTimeSec = nowSec;
+
+  bool isPlaying = processor.isPlaying();
+  if (isPlaying || wasPlaying) {
+    auto graphBounds = getGraphBounds();
+    if (graphBounds.isEmpty())
+      return;
+
+    float voicePosBuffer[maxVoiceSmoothers];
+    int count = 0;
+    if (isPlaying) {
+      count = processor.getActiveVoicePositionsAtomic(voicePosBuffer, maxVoiceSmoothers);
+      if (count == 0) {
+        voicePosBuffer[0] = (float)processor.getPlayheadPosition();
+        count = 1;
+      }
+    }
+
+    // Nominal speed in normalized-pos / second
+    float nominalSpeed = 0.5f;
+    if (fileLoaded && audioBuffer.getNumSamples() > 0) {
+      double sr = processor.getSampleRate() > 0.0 ? processor.getSampleRate() : 44100.0;
+      nominalSpeed = (float)(sr / (double)audioBuffer.getNumSamples());
+    }
+
+    // Check playback direction
+    auto mode = processor.getPlaybackMode();
+    if (mode == PlaybackMode::Backward)
+      nominalSpeed = -nominalSpeed;
+
+    juce::Array<VisualPlayhead> newPlayheads;
+    newPlayheads.ensureStorageAllocated(maxVoiceSmoothers);
+
+    if (isPlaying && count > 0) {
+      bool isPoly = processor.isPolyMode();
+
+      if (!isPoly || count <= 1) {
+        float rawPos = voicePosBuffer[0];
+        voiceSmoothers[0].update(rawPos, nowSec, dt, nominalSpeed);
+
+        VisualPlayhead ph;
+        ph.positionNorm = voiceSmoothers[0].visualPos;
+        ph.alpha = 1.0f;
+        newPlayheads.add(ph);
+      } else {
+        float baseAlpha = juce::jlimit(0.55f, 0.90f, 1.4f / std::sqrt((float)count));
+        int numToTrack = juce::jmin(count, maxVoiceSmoothers);
+
+        for (int i = 0; i < numToTrack; ++i) {
+          voiceSmoothers[i].update(voicePosBuffer[i], nowSec, dt, nominalSpeed);
+
+          VisualPlayhead ph;
+          ph.positionNorm = voiceSmoothers[i].visualPos;
+          ph.alpha = baseAlpha;
+          newPlayheads.add(ph);
+        }
+      }
+    } else {
+      // Stopped: reset smoothers
+      for (int i = 0; i < maxVoiceSmoothers; ++i)
+        voiceSmoothers[i].reset();
+    }
+
+    int y = (int)std::floor(graphBounds.getY());
+    int h = (int)std::ceil(graphBounds.getHeight());
+
+    // Invalidate strips for previous playheads to cleanly erase them
+    for (const auto& prevPh : prevVoicePlayheads) {
+      int oldX = (int)std::round(graphBounds.getX() + graphBounds.getWidth() * prevPh.positionNorm);
+      repaint(oldX - 3, y, 7, h);
+    }
+
+    // Invalidate strips for current playheads to draw them
+    for (const auto& newPh : newPlayheads) {
+      int newX = (int)std::round(graphBounds.getX() + graphBounds.getWidth() * newPh.positionNorm);
+      repaint(newX - 3, y, 7, h);
+    }
+
+    // Synchronize renderedPlayheads to EXACT coordinates drawn in paint()
+    renderedPlayheads = newPlayheads;
+    prevVoicePlayheads = newPlayheads;
+    wasPlaying = isPlaying;
   }
 }
 
 void SpectrogramComponent::loadAudioFile(const juce::File &file, bool isPartOfPresetLoad) {
   if (!file.existsAsFile() || file.getSize() == 0) {
+    dismissActiveDialog();
     auto* dialog = new juce::AlertWindow(
         "Invalid Sample File",
         "The selected audio file is empty or missing: " + file.getFileName(),
         juce::AlertWindow::WarningIcon);
     dialog->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
-    dialog->enterModalState(true, nullptr, true);
+    activeAlertWindow = dialog;
+    dialog->enterModalState(true, juce::ModalCallbackFunction::create([this, dialog](int) {
+      if (activeAlertWindow == dialog)
+        activeAlertWindow = nullptr;
+    }), true);
     return;
   }
 
@@ -50,12 +159,17 @@ void SpectrogramComponent::loadAudioFile(const juce::File &file, bool isPartOfPr
       juce::MessageManager::callAsync([this, file]() {
         isLoadingSample = false;
         repaint();
+        dismissActiveDialog();
         auto* dialog = new juce::AlertWindow(
             "Unsupported Sample Format",
             "Could not decode audio from file: " + file.getFileName() + "\nPlease ensure it is a valid WAV, MP3, FLAC, AIFF, or OGG file.",
             juce::AlertWindow::WarningIcon);
         dialog->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
-        dialog->enterModalState(true, nullptr, true);
+        activeAlertWindow = dialog;
+        dialog->enterModalState(true, juce::ModalCallbackFunction::create([this, dialog](int) {
+          if (activeAlertWindow == dialog)
+            activeAlertWindow = nullptr;
+        }), true);
       });
       return;
     }
@@ -142,16 +256,18 @@ void SpectrogramComponent::loadAudioFile(const juce::File &file, bool isPartOfPr
       processor.setRegion(startPosition, endPosition);
       processor.setLoop(loopEnabled);
       updateFrequencyFilterFromSelections();
+      generateWaveformPaths(getGraphBounds());
 
       if (onFileLoadedStateChanged)
         onFileLoadedStateChanged(true);
 
-      repaint();
+      invalidateStaticGraph();
     });
   });
 }
 
 void SpectrogramComponent::loadDirectAudioBuffer(const juce::AudioBuffer<float>& buffer, double sampleRate, const juce::String& fileName, bool isLooping) {
+  juce::ignoreUnused(fileName);
   if (buffer.getNumSamples() == 0)
     return;
 
@@ -164,23 +280,23 @@ void SpectrogramComponent::loadDirectAudioBuffer(const juce::AudioBuffer<float>&
   loopButton.setToggleState(loopEnabled, juce::dontSendNotification);
 
   processor.setLoadedSample(juce::File(), audioBuffer, targetSr);
-  processor.setCurrentPresetName(fileName.isNotEmpty() ? fileName : "Custom / Unsaved");
   processor.setRegion(startPosition, endPosition);
   processor.setLoop(loopEnabled);
   updateFrequencyFilterFromSelections();
   generateSpectrogramImage();
+  generateWaveformPaths(getGraphBounds());
 
   if (onFileLoadedStateChanged)
     onFileLoadedStateChanged(true);
 
-  repaint();
+  invalidateStaticGraph();
 }
 
 void SpectrogramComponent::setLoopEnabled(bool loop) {
   loopEnabled = loop;
   loopButton.setToggleState(loopEnabled, juce::dontSendNotification);
   processor.setLoop(loopEnabled);
-  repaint();
+  invalidateStaticGraph();
 }
 
 void SpectrogramComponent::restoreFromProcessorState() {
@@ -242,12 +358,13 @@ void SpectrogramComponent::restoreFromProcessorState() {
 
   if (fileLoaded) {
     generateSpectrogramImage();
+    generateWaveformPaths(getGraphBounds());
     if (onFileLoadedStateChanged)
       onFileLoadedStateChanged(true);
   }
 
   updateFrequencyFilterFromSelections();
-  repaint();
+  invalidateStaticGraph();
 }
 
 void SpectrogramComponent::restorePresetSnapshot(float startRegion, float endRegion, const juce::var& selectionsVar) {
@@ -286,7 +403,7 @@ void SpectrogramComponent::restorePresetSnapshot(float startRegion, float endReg
   }
 
   updateFrequencyFilterFromSelections();
-  repaint();
+  invalidateStaticGraph();
 }
 
 juce::var SpectrogramComponent::getSelectionsAsVar() const {
@@ -356,7 +473,7 @@ void SpectrogramComponent::generateRandomSelections() {
 
   activeSelectionIndex = selections.isEmpty() ? -1 : 0;
   updateFrequencyFilterFromSelections();
-  repaint();
+  invalidateStaticGraph();
 }
 
 void SpectrogramComponent::updateFrequencyFilterFromSelections() {
@@ -366,6 +483,7 @@ void SpectrogramComponent::updateFrequencyFilterFromSelections() {
     startPosition = 0.0f;
     endPosition = 1.0f;
     processor.setRegion(startPosition, endPosition);
+    invalidateStaticGraph();
     return;
   }
 
@@ -410,6 +528,7 @@ void SpectrogramComponent::updateFrequencyFilterFromSelections() {
     endPosition = maxTimeEnd;
     processor.setRegion(startPosition, endPosition);
   }
+  invalidateStaticGraph();
 }
 
 juce::Colour
@@ -548,9 +667,13 @@ void SpectrogramComponent::drawFrequencyAxis(
                      axisBounds.getBottom() + 4.0f);
 }
 
-void SpectrogramComponent::drawWaveform(juce::Graphics &g,
-                                        juce::Rectangle<float> bounds) {
-  if (!fileLoaded || audioBuffer.getNumSamples() == 0)
+void SpectrogramComponent::generateWaveformPaths(juce::Rectangle<float> bounds) {
+  cachedWaveformEnvelope.clear();
+  cachedWaveformTop.clear();
+  cachedWaveformBottom.clear();
+  cachedWaveformBounds = bounds;
+
+  if (!fileLoaded || audioBuffer.getNumSamples() == 0 || bounds.isEmpty() || bounds.getWidth() <= 1.0f)
     return;
 
   const auto *samples = audioBuffer.getReadPointer(0);
@@ -561,18 +684,9 @@ void SpectrogramComponent::drawWaveform(juce::Graphics &g,
 
   int samplesPerPixel = juce::jmax(1, numSamples / (int)width);
 
-  // Center zero-crossing hairline in translucent violet accent
-  juce::Colour waveCol = SpectralUILookAndFeel::accentColour;
-  g.setColour(waveCol.withAlpha(0.20f));
-  g.drawHorizontalLine((int)centreY, bounds.getX(), bounds.getRight());
-
-  juce::Path waveformEnvelope;
-  juce::Path waveformTop;
-  juce::Path waveformBottom;
-
-  waveformTop.startNewSubPath(bounds.getX(), centreY);
-  waveformBottom.startNewSubPath(bounds.getX(), centreY);
-  waveformEnvelope.startNewSubPath(bounds.getX(), centreY);
+  cachedWaveformTop.startNewSubPath(bounds.getX(), centreY);
+  cachedWaveformBottom.startNewSubPath(bounds.getX(), centreY);
+  cachedWaveformEnvelope.startNewSubPath(bounds.getX(), centreY);
 
   for (int x = 0; x < (int)width; ++x) {
     int samplePos = x * samplesPerPixel;
@@ -591,12 +705,12 @@ void SpectrogramComponent::drawWaveform(juce::Graphics &g,
     float yMax = centreY - (maxS * height * 0.42f);
     float yMin = centreY - (minS * height * 0.42f);
 
-    waveformTop.lineTo(px, yMax);
-    waveformBottom.lineTo(px, yMin);
+    cachedWaveformTop.lineTo(px, yMax);
+    cachedWaveformBottom.lineTo(px, yMin);
   }
 
   // Construct closed silhouette envelope for filled glow
-  waveformEnvelope.addPath(waveformTop);
+  cachedWaveformEnvelope.addPath(cachedWaveformTop);
   for (int x = (int)width - 1; x >= 0; --x) {
     int samplePos = x * samplesPerPixel;
     float minS = 1.0f;
@@ -606,19 +720,35 @@ void SpectrogramComponent::drawWaveform(juce::Graphics &g,
     }
     float px = bounds.getX() + (float)x;
     float yMin = centreY - (minS * height * 0.42f);
-    waveformEnvelope.lineTo(px, yMin);
+    cachedWaveformEnvelope.lineTo(px, yMin);
   }
-  waveformEnvelope.closeSubPath();
+  cachedWaveformEnvelope.closeSubPath();
+}
+
+void SpectrogramComponent::drawWaveform(juce::Graphics &g,
+                                        juce::Rectangle<float> bounds) {
+  if (!fileLoaded || audioBuffer.getNumSamples() == 0)
+    return;
+
+  if (cachedWaveformBounds != bounds || cachedWaveformEnvelope.isEmpty())
+    generateWaveformPaths(bounds);
+
+  float centreY = bounds.getCentreY();
+
+  // Center zero-crossing hairline in translucent violet accent
+  juce::Colour waveCol = SpectralUILookAndFeel::accentColour;
+  g.setColour(waveCol.withAlpha(0.20f));
+  g.drawHorizontalLine((int)centreY, bounds.getX(), bounds.getRight());
 
   // Translucent burple waveform fill (~14% alpha)
   g.setColour(waveCol.withAlpha(0.14f));
-  g.fillPath(waveformEnvelope);
+  g.fillPath(cachedWaveformEnvelope);
 
   // Crisp top & bottom burple/bright waveform outlines (~90% alpha)
   g.setColour(SpectralUILookAndFeel::accentBright.withAlpha(0.90f));
-  g.strokePath(waveformTop, juce::PathStrokeType(1.2f));
+  g.strokePath(cachedWaveformTop, juce::PathStrokeType(1.2f));
   g.setColour(waveCol.withAlpha(0.70f));
-  g.strokePath(waveformBottom, juce::PathStrokeType(1.2f));
+  g.strokePath(cachedWaveformBottom, juce::PathStrokeType(1.2f));
 }
 
 bool SpectrogramComponent::isInterestedInFileDrag(
@@ -634,14 +764,14 @@ bool SpectrogramComponent::isInterestedInFileDrag(
 
 void SpectrogramComponent::fileDragEnter(const juce::StringArray &, int, int) {
   dragActive = true;
-  repaint();
+  invalidateStaticGraph();
 }
 
 void SpectrogramComponent::fileDragMove(const juce::StringArray &, int, int) {}
 
 void SpectrogramComponent::fileDragExit(const juce::StringArray &) {
   dragActive = false;
-  repaint();
+  invalidateStaticGraph();
 }
 
 void SpectrogramComponent::filesDropped(const juce::StringArray &files, int,
@@ -651,11 +781,11 @@ void SpectrogramComponent::filesDropped(const juce::StringArray &files, int,
     loadedFile = juce::File(files[0]);
     loadAudioFile(loadedFile);
   }
-  repaint();
+  invalidateStaticGraph();
 }
 
 void SpectrogramComponent::changeListenerCallback(juce::ChangeBroadcaster *) {
-  repaint();
+  invalidateStaticGraph();
 }
 
 juce::File SpectrogramComponent::createTempWavForExport(bool exportSelectionOnly) {
@@ -812,7 +942,7 @@ void SpectrogramComponent::mouseDown(const juce::MouseEvent &e) {
       selections.remove(i);
       activeSelectionIndex = selections.isEmpty() ? -1 : selections.size() - 1;
       updateFrequencyFilterFromSelections();
-      repaint();
+      invalidateStaticGraph();
       return;
     }
   }
@@ -824,7 +954,7 @@ void SpectrogramComponent::mouseDown(const juce::MouseEvent &e) {
         selections.remove(i);
         activeSelectionIndex = selections.isEmpty() ? -1 : selections.size() - 1;
         updateFrequencyFilterFromSelections();
-        repaint();
+        invalidateStaticGraph();
         return;
       }
     }
@@ -841,7 +971,7 @@ void SpectrogramComponent::mouseDown(const juce::MouseEvent &e) {
         selections.add(dup);
         activeSelectionIndex = selections.size() - 1;
         updateFrequencyFilterFromSelections();
-        repaint();
+        invalidateStaticGraph();
         return;
       }
     }
@@ -896,7 +1026,7 @@ void SpectrogramComponent::mouseDown(const juce::MouseEvent &e) {
       initialSelectionBoundsNormalized = selections.getReference(i).normalizedBounds;
       dragStartMousePosNormalized = juce::Point<float>(normX, normY);
       updateFrequencyFilterFromSelections();
-      repaint();
+      invalidateStaticGraph();
       return;
     }
   }
@@ -937,14 +1067,14 @@ void SpectrogramComponent::mouseDrag(const juce::MouseEvent &e) {
   if (dragState == DragState::DraggingStartMarker) {
     startPosition = juce::jlimit(0.0f, endPosition - 0.01f, normX);
     processor.setRegion(startPosition, endPosition);
-    repaint();
+    invalidateStaticGraph();
     return;
   }
 
   if (dragState == DragState::DraggingEndMarker) {
     endPosition = juce::jlimit(startPosition + 0.01f, 1.0f, normX);
     processor.setRegion(startPosition, endPosition);
-    repaint();
+    invalidateStaticGraph();
     return;
   }
 
@@ -959,7 +1089,7 @@ void SpectrogramComponent::mouseDrag(const juce::MouseEvent &e) {
     if (b.getBottom() > 1.0f) b.setY(1.0f - b.getHeight());
 
     selections.getReference(activeSelectionIndex).normalizedBounds = b;
-    repaint();
+    invalidateStaticGraph();
     return;
   }
 
@@ -989,7 +1119,7 @@ void SpectrogramComponent::mouseDrag(const juce::MouseEvent &e) {
 
     selections.getReference(activeSelectionIndex).normalizedBounds =
         juce::Rectangle<float>(left, top, right - left, bottom - top);
-    repaint();
+    invalidateStaticGraph();
     return;
   }
 
@@ -1006,6 +1136,7 @@ void SpectrogramComponent::mouseDrag(const juce::MouseEvent &e) {
 void SpectrogramComponent::mouseUp(const juce::MouseEvent &) {
   if (dragState == DragState::DraggingStartMarker || dragState == DragState::DraggingEndMarker) {
     dragState = DragState::None;
+    invalidateStaticGraph();
     return;
   }
 
@@ -1014,7 +1145,7 @@ void SpectrogramComponent::mouseUp(const juce::MouseEvent &) {
       dragState == DragState::ResizingBottomRight) {
     dragState = DragState::None;
     updateFrequencyFilterFromSelections();
-    repaint();
+    invalidateStaticGraph();
     return;
   }
 
@@ -1054,7 +1185,7 @@ void SpectrogramComponent::mouseUp(const juce::MouseEvent &) {
 
     currentDrawingPathNormalized.clear();
     updateFrequencyFilterFromSelections();
-    repaint();
+    invalidateStaticGraph();
   }
 }
 
@@ -1072,35 +1203,44 @@ bool SpectrogramComponent::keyPressed(const juce::KeyPress &key) {
       selections.remove(activeSelectionIndex);
       activeSelectionIndex = selections.isEmpty() ? -1 : selections.size() - 1;
       updateFrequencyFilterFromSelections();
-      repaint();
+      invalidateStaticGraph();
       return true;
     }
   }
   return false;
 }
 
-void SpectrogramComponent::paint(juce::Graphics &g) {
+void SpectrogramComponent::renderStaticGraph() {
+  int w = juce::jmax(1, getWidth());
+  int h = juce::jmax(1, getHeight());
+
+  if (cachedStaticGraph.isNull() || cachedStaticGraph.getWidth() != w || cachedStaticGraph.getHeight() != h) {
+    cachedStaticGraph = juce::Image(juce::Image::ARGB, w, h, true);
+  }
+
+  juce::Graphics g(cachedStaticGraph);
+  g.fillAll(juce::Colours::transparentBlack);
+
   auto bounds = getLocalBounds().toFloat();
 
-  // Panel background
+  // 1. Panel background
   g.setColour(SpectralUILookAndFeel::graphBgColour);
   g.fillRoundedRectangle(bounds, 8.0f);
 
-  // Left Frequency Axis Margin (44px width, 20kHz at Top -> 20Hz at Bottom)
+  // 2. Left Frequency Axis Margin (44px width, 20kHz at Top -> 20Hz at Bottom)
   auto axisBounds = getAxisBounds();
   drawFrequencyAxis(g, axisBounds);
 
   auto graphBounds = getGraphBounds();
 
   if (fileLoaded && !spectrogramImage.isNull()) {
-    // 1. Draw Spectrogram Image
-    g.drawImage(spectrogramImage, graphBounds,
-                juce::RectanglePlacement::stretchToFit);
+    // 3. Draw Spectrogram Image
+    g.drawImage(spectrogramImage, graphBounds, juce::RectanglePlacement::stretchToFit);
 
-    // 2. Draw Waveform Overlay
+    // 4. Draw Waveform Overlay
     drawWaveform(g, graphBounds);
 
-    // 3. Darken out-of-region areas
+    // 5. Darken out-of-region areas
     float startX = graphBounds.getX() + graphBounds.getWidth() * startPosition;
     float endX = graphBounds.getX() + graphBounds.getWidth() * endPosition;
 
@@ -1116,43 +1256,97 @@ void SpectrogramComponent::paint(juce::Graphics &g) {
                  graphBounds.getHeight());
     }
 
-    // 4. Draw Start Position Marker Line & Dual Top/Bottom Drag Handles
+    // 6. Draw Start Position Marker Line & Dual Top/Bottom Drag Handles
     g.setColour(SpectralUILookAndFeel::accentColour);
-    g.drawVerticalLine((int)startX, graphBounds.getY(),
-                       graphBounds.getBottom());
+    g.drawVerticalLine((int)startX, graphBounds.getY(), graphBounds.getBottom());
 
-    juce::Rectangle<float> startTopFlag(
-        startX - 2.0f, graphBounds.getY() + 4.0f, 42.0f, 16.0f);
+    juce::Rectangle<float> startTopFlag(startX - 2.0f, graphBounds.getY() + 4.0f, 42.0f, 16.0f);
     g.setColour(SpectralUILookAndFeel::accentColour);
     g.fillRoundedRectangle(startTopFlag, 3.0f);
     g.setFont(SpectralUILookAndFeel::getGeometricFont(9.0f, true));
     g.setColour(juce::Colours::black);
-    g.drawText("START >", startTopFlag.toNearestInt(),
-               juce::Justification::centred, false);
+    g.drawText("START >", startTopFlag.toNearestInt(), juce::Justification::centred, false);
 
-    juce::Rectangle<float> startBottomGrip(
-        startX - 6.0f, graphBounds.getBottom() - 14.0f, 12.0f, 10.0f);
+    juce::Rectangle<float> startBottomGrip(startX - 6.0f, graphBounds.getBottom() - 14.0f, 12.0f, 10.0f);
     g.setColour(SpectralUILookAndFeel::accentColour);
     g.fillRoundedRectangle(startBottomGrip, 2.0f);
 
-    // 5. Draw End Position Marker Line & Dual Top/Bottom Drag Handles
+    // 7. Draw End Position Marker Line & Dual Top/Bottom Drag Handles
     g.setColour(SpectralUILookAndFeel::accentColour);
     g.drawVerticalLine((int)endX, graphBounds.getY(), graphBounds.getBottom());
 
-    juce::Rectangle<float> endTopFlag(endX - 40.0f, graphBounds.getY() + 4.0f,
-                                      42.0f, 16.0f);
+    juce::Rectangle<float> endTopFlag(endX - 40.0f, graphBounds.getY() + 4.0f, 42.0f, 16.0f);
     g.setColour(SpectralUILookAndFeel::accentColour);
     g.fillRoundedRectangle(endTopFlag, 3.0f);
     g.setFont(SpectralUILookAndFeel::getGeometricFont(9.0f, true));
     g.setColour(juce::Colours::black);
-    g.drawText("< END", endTopFlag.toNearestInt(), juce::Justification::centred,
-               false);
+    g.drawText("< END", endTopFlag.toNearestInt(), juce::Justification::centred, false);
 
-    juce::Rectangle<float> endBottomGrip(
-        endX - 6.0f, graphBounds.getBottom() - 14.0f, 12.0f, 10.0f);
+    juce::Rectangle<float> endBottomGrip(endX - 6.0f, graphBounds.getBottom() - 14.0f, 12.0f, 10.0f);
     g.setColour(SpectralUILookAndFeel::accentColour);
     g.fillRoundedRectangle(endBottomGrip, 2.0f);
 
+    // 8. Render stored selection regions with ID tags and handles
+    for (int i = 0; i < selections.size(); ++i) {
+      const auto &region = selections.getReference(i);
+      bool isActive = (i == activeSelectionIndex);
+
+      juce::Rectangle<float> rect(
+          graphBounds.getX() + region.normalizedBounds.getX() * graphBounds.getWidth(),
+          graphBounds.getY() + region.normalizedBounds.getY() * graphBounds.getHeight(),
+          region.normalizedBounds.getWidth() * graphBounds.getWidth(),
+          region.normalizedBounds.getHeight() * graphBounds.getHeight());
+
+      juce::Rectangle<float> tagBg(rect.getX() + 2.0f, rect.getY() + 2.0f, 156.0f, 16.0f);
+
+      g.setColour(SpectralUILookAndFeel::accentColour.withAlpha(isActive ? 0.15f : 0.08f));
+
+      if (region.type == ToolType::Freehand && !region.normalizedPath.isEmpty()) {
+        juce::Path p = region.normalizedPath;
+        p.applyTransform(
+            juce::AffineTransform::scale(graphBounds.getWidth(), graphBounds.getHeight())
+                .translated(graphBounds.getX(), graphBounds.getY()));
+        g.fillPath(p);
+        g.setColour(SpectralUILookAndFeel::accentColour.withAlpha(isActive ? 1.0f : 0.6f));
+        g.strokePath(p, juce::PathStrokeType(1.2f));
+      } else {
+        g.fillRect(rect);
+        g.setColour(SpectralUILookAndFeel::accentColour.withAlpha(isActive ? 1.0f : 0.6f));
+        g.drawRect(rect, 1.2f);
+
+        if (isActive) {
+          float hs = 4.0f;
+          g.setColour(SpectralUILookAndFeel::accentColour);
+          g.fillRect(rect.getX() - hs * 0.5f, rect.getY() - hs * 0.5f, hs, hs);
+          g.fillRect(rect.getRight() - hs * 0.5f, rect.getY() - hs * 0.5f, hs, hs);
+          g.fillRect(rect.getX() - hs * 0.5f, rect.getBottom() - hs * 0.5f, hs, hs);
+          g.fillRect(rect.getRight() - hs * 0.5f, rect.getBottom() - hs * 0.5f, hs, hs);
+        }
+      }
+
+      float yTop = region.normalizedBounds.getY();
+      float yBottom = region.normalizedBounds.getBottom();
+      float maxF = yToFrequency(yTop);
+      float minF = yToFrequency(yBottom);
+      if (minF > maxF)
+        std::swap(minF, maxF);
+
+      juce::String tag = "#0" + juce::String(region.id) + " [" +
+                         formatFrequency(minF) + " - " +
+                         formatFrequency(maxF) + "]";
+
+      g.setColour(juce::Colour::fromRGB(0x10, 0x11, 0x14).withAlpha(0.90f));
+      g.fillRoundedRectangle(tagBg, 3.0f);
+
+      g.setFont(SpectralUILookAndFeel::getMonospaceFont(9.0f));
+      g.setColour(SpectralUILookAndFeel::accentColour);
+      g.drawText(tag, tagBg.toNearestInt().withTrimmedLeft(4).withTrimmedRight(16),
+                 juce::Justification::centredLeft, false);
+
+      juce::Rectangle<float> deleteBtn(tagBg.getRight() - 15.0f, tagBg.getY() + 1.0f, 14.0f, 14.0f);
+      g.setColour(SpectralUILookAndFeel::accentColour);
+      g.drawText("x", deleteBtn.toNearestInt(), juce::Justification::centred, false);
+    }
   } else {
     // Empty state prompt
     g.setColour(SpectralUILookAndFeel::dividerColour);
@@ -1173,7 +1367,15 @@ void SpectrogramComponent::paint(juce::Graphics &g) {
                juce::Justification::centred, false);
   }
 
-  // Draw dragged selection in progress
+  // 9. Outer panel hairline border
+  g.setColour(dragActive ? SpectralUILookAndFeel::accentColour
+                         : SpectralUILookAndFeel::dividerColour);
+  g.drawRoundedRectangle(bounds, 8.0f, 1.0f);
+
+  staticGraphDirty = false;
+}
+
+void SpectrogramComponent::drawInteractiveOverlays(juce::Graphics &g, juce::Rectangle<float> graphBounds) {
   if (isLoadingSample) {
     g.setColour(juce::Colours::black.withAlpha(0.75f));
     g.fillRoundedRectangle(graphBounds, 6.0f);
@@ -1192,12 +1394,8 @@ void SpectrogramComponent::paint(juce::Graphics &g) {
       float y1 = graphBounds.getY() + juce::jmin(dragStartPosNormalized.y,
                                                  dragCurrentPosNormalized.y) *
                                           graphBounds.getHeight();
-      float w =
-          std::abs(dragCurrentPosNormalized.x - dragStartPosNormalized.x) *
-          graphBounds.getWidth();
-      float h =
-          std::abs(dragCurrentPosNormalized.y - dragStartPosNormalized.y) *
-          graphBounds.getHeight();
+      float w = std::abs(dragCurrentPosNormalized.x - dragStartPosNormalized.x) * graphBounds.getWidth();
+      float h = std::abs(dragCurrentPosNormalized.y - dragStartPosNormalized.y) * graphBounds.getHeight();
 
       juce::Rectangle<float> rect(x1, y1, w, h);
       g.fillRect(rect);
@@ -1206,122 +1404,50 @@ void SpectrogramComponent::paint(juce::Graphics &g) {
     } else if (currentTool == ToolType::Freehand) {
       juce::Path scaledPath = currentDrawingPathNormalized;
       scaledPath.applyTransform(
-          juce::AffineTransform::scale(graphBounds.getWidth(),
-                                       graphBounds.getHeight())
+          juce::AffineTransform::scale(graphBounds.getWidth(), graphBounds.getHeight())
               .translated(graphBounds.getX(), graphBounds.getY()));
       g.fillPath(scaledPath);
       g.setColour(SpectralUILookAndFeel::accentColour);
       g.strokePath(scaledPath, juce::PathStrokeType(1.2f));
     }
   }
+}
 
-  // Render stored selection regions with ID tags and handles
-  if (fileLoaded) {
-    for (int i = 0; i < selections.size(); ++i) {
-      const auto &region = selections.getReference(i);
-      bool isActive = (i == activeSelectionIndex);
+void SpectrogramComponent::drawPlayheads(juce::Graphics &g, juce::Rectangle<float> graphBounds) {
+  if (graphBounds.isEmpty())
+    return;
 
-      juce::Rectangle<float> rect(
-          graphBounds.getX() +
-              region.normalizedBounds.getX() * graphBounds.getWidth(),
-          graphBounds.getY() +
-              region.normalizedBounds.getY() * graphBounds.getHeight(),
-          region.normalizedBounds.getWidth() * graphBounds.getWidth(),
-          region.normalizedBounds.getHeight() * graphBounds.getHeight());
+  for (const auto& ph : renderedPlayheads) {
+    float playheadX = graphBounds.getX() + graphBounds.getWidth() * ph.positionNorm;
+    g.setColour(SpectralUILookAndFeel::accentColour.withAlpha(ph.alpha));
+    g.drawVerticalLine((int)std::round(playheadX), graphBounds.getY(), graphBounds.getBottom());
+  }
+}
 
-      g.setColour(SpectralUILookAndFeel::accentColour.withAlpha(
-          isActive ? 0.15f : 0.08f));
-
-      if (region.type == ToolType::Freehand &&
-          !region.normalizedPath.isEmpty()) {
-        juce::Path p = region.normalizedPath;
-        p.applyTransform(
-            juce::AffineTransform::scale(graphBounds.getWidth(),
-                                         graphBounds.getHeight())
-                .translated(graphBounds.getX(), graphBounds.getY()));
-        g.fillPath(p);
-        g.setColour(SpectralUILookAndFeel::accentColour.withAlpha(
-            isActive ? 1.0f : 0.6f));
-        g.strokePath(p, juce::PathStrokeType(1.2f));
-      } else {
-        g.fillRect(rect);
-        g.setColour(SpectralUILookAndFeel::accentColour.withAlpha(
-            isActive ? 1.0f : 0.6f));
-        g.drawRect(rect, 1.2f);
-
-        if (isActive) {
-          float hs = 4.0f;
-          g.setColour(SpectralUILookAndFeel::accentColour);
-          g.fillRect(rect.getX() - hs * 0.5f, rect.getY() - hs * 0.5f, hs, hs);
-          g.fillRect(rect.getRight() - hs * 0.5f, rect.getY() - hs * 0.5f, hs,
-                     hs);
-          g.fillRect(rect.getX() - hs * 0.5f, rect.getBottom() - hs * 0.5f, hs,
-                     hs);
-          g.fillRect(rect.getRight() - hs * 0.5f, rect.getBottom() - hs * 0.5f,
-                     hs, hs);
-        }
-      }
-
-      float yTop = region.normalizedBounds.getY();
-      float yBottom = region.normalizedBounds.getBottom();
-      float maxF = yToFrequency(yTop);
-      float minF = yToFrequency(yBottom);
-      if (minF > maxF)
-        std::swap(minF, maxF);
-
-      juce::String tag = "#0" + juce::String(region.id) + " [" +
-                         formatFrequency(minF) + " - " +
-                         formatFrequency(maxF) + "]";
-
-      juce::Rectangle<float> tagBg(rect.getX() + 2.0f, rect.getY() + 2.0f, 156.0f, 16.0f);
-      g.setColour(juce::Colour::fromRGB(0x10, 0x11, 0x14).withAlpha(0.90f));
-      g.fillRoundedRectangle(tagBg, 3.0f);
-
-      g.setFont(SpectralUILookAndFeel::getMonospaceFont(9.0f));
-      g.setColour(SpectralUILookAndFeel::accentColour);
-      g.drawText(tag, tagBg.toNearestInt().withTrimmedLeft(4).withTrimmedRight(16),
-                 juce::Justification::centredLeft, false);
-
-      juce::Rectangle<float> deleteBtn(tagBg.getRight() - 15.0f, tagBg.getY() + 1.0f, 14.0f, 14.0f);
-      g.setColour(SpectralUILookAndFeel::accentColour);
-      g.drawText("x", deleteBtn.toNearestInt(), juce::Justification::centred, false);
-    }
+void SpectrogramComponent::paint(juce::Graphics &g) {
+  if (staticGraphDirty || cachedStaticGraph.isNull() ||
+      cachedStaticGraph.getWidth() != getWidth() || cachedStaticGraph.getHeight() != getHeight()) {
+    renderStaticGraph();
   }
 
-  // Playhead line sweep during playback (Multi-cursor in Poly mode, Single-cursor in Mono mode)
-  if (processor.isPlaying()) {
-    bool isPoly = processor.isPolyMode();
-    auto voicePositions = processor.getActiveVoicePositions();
+  // 1. Blit cached static graph (JUCE will only copy the dirty clip region)
+  g.drawImageAt(cachedStaticGraph, 0, 0);
 
-    if (!isPoly || voicePositions.size() <= 1) {
-      float playheadPosNorm = (voicePositions.size() > 0) ? voicePositions[0] : (float)processor.getPlayheadPosition();
-      float playheadX = graphBounds.getX() + graphBounds.getWidth() * playheadPosNorm;
+  auto graphBounds = getGraphBounds();
 
-      g.setColour(SpectralUILookAndFeel::accentColour);
-      g.drawVerticalLine((int)playheadX, graphBounds.getY(), graphBounds.getBottom());
-    } else {
-      int numVoices = voicePositions.size();
-      float baseAlpha = juce::jlimit(0.55f, 0.90f, 1.4f / std::sqrt((float)numVoices));
+  // 2. Draw active interactive overlays (loading or drag-to-draw selection)
+  drawInteractiveOverlays(g, graphBounds);
 
-      for (int i = 0; i < numVoices; ++i) {
-        float posNorm = voicePositions[i];
-        float playheadX = graphBounds.getX() + graphBounds.getWidth() * posNorm;
-
-        g.setColour(SpectralUILookAndFeel::accentColour.withAlpha(baseAlpha));
-        g.drawVerticalLine((int)playheadX, graphBounds.getY(), graphBounds.getBottom());
-      }
-    }
-  }
-
-  // Outer panel hairline border
-  g.setColour(dragActive ? SpectralUILookAndFeel::accentColour
-                         : SpectralUILookAndFeel::dividerColour);
-  g.drawRoundedRectangle(getLocalBounds().toFloat(), 8.0f, 1.0f);
+  // 3. Draw lightweight dynamic playhead(s) at synchronized coordinates
+  drawPlayheads(g, graphBounds);
 }
 
 void SpectrogramComponent::resized() {
-  loopButton.setBounds(getWidth() - 84, 8, 76, 22);
+  loopButton.setBounds(getWidth() - 84, getHeight() - 30, 76, 22);
 
-  if (fileLoaded)
+  if (fileLoaded) {
     generateSpectrogramImage();
+    generateWaveformPaths(getGraphBounds());
+  }
+  staticGraphDirty = true;
 }

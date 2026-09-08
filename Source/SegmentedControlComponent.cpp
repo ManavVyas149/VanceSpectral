@@ -1,7 +1,7 @@
 #include "SegmentedControlComponent.h"
 
-SegmentedControlComponent::SegmentedControlComponent(const juce::String& sectionLabel, const juce::StringArray& options)
-    : labelText(sectionLabel), optionsList(options)
+SegmentedControlComponent::SegmentedControlComponent(const juce::String& sectionLabel, const juce::StringArray& options, LayoutMode mode)
+    : labelText(sectionLabel), optionsList(options), layoutMode(mode)
 {
     for (int i = 0; i < optionsList.size(); ++i)
     {
@@ -14,6 +14,16 @@ SegmentedControlComponent::SegmentedControlComponent(const juce::String& section
             if (onOptionClicked)
                 onOptionClicked(i, isReclick);
         };
+    }
+}
+
+void SegmentedControlComponent::setLayoutMode(LayoutMode mode)
+{
+    if (layoutMode != mode)
+    {
+        layoutMode = mode;
+        resized();
+        repaint();
     }
 }
 
@@ -39,18 +49,35 @@ void SegmentedControlComponent::paint(juce::Graphics& g)
 
 void SegmentedControlComponent::resized()
 {
-    auto area = getLocalBounds().reduced(6, 4);
-    area.removeFromTop(16); // Reserve for section label
+    auto area = getLocalBounds().reduced(8, 6);
+    area.removeFromTop(20); // Reserve for section label
 
     if (buttons.isEmpty())
         return;
 
     int numButtons = buttons.size();
-    float btnWidth = (float)area.getWidth() / (float)numButtons;
 
-    for (int i = 0; i < numButtons; ++i)
+    if (layoutMode == LayoutMode::Vertical)
     {
-        auto btnArea = area.removeFromLeft((int)btnWidth);
-        buttons[i]->setBounds(btnArea.reduced(2, 1));
+        float totalH = (float)area.getHeight();
+        float gap = 3.0f;
+        float btnHeight = (totalH - (numButtons - 1) * gap) / (float)numButtons;
+
+        for (int i = 0; i < numButtons; ++i)
+        {
+            int y = (int)(area.getY() + i * (btnHeight + gap));
+            int h = (int)btnHeight;
+            buttons[i]->setBounds(area.getX(), y, area.getWidth(), h);
+        }
+    }
+    else
+    {
+        float btnWidth = (float)area.getWidth() / (float)numButtons;
+
+        for (int i = 0; i < numButtons; ++i)
+        {
+            auto btnArea = area.removeFromLeft((int)btnWidth);
+            buttons[i]->setBounds(btnArea.reduced(2, 1));
+        }
     }
 }

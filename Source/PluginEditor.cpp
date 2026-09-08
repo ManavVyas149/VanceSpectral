@@ -1,5 +1,6 @@
 #include "PluginEditor.h"
 #include "PluginProcessor.h"
+#include "BinaryFontData.h"
 
 VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(VancespectralAudioProcessor &p)
     : AudioProcessorEditor(&p), audioProcessor(p),
@@ -15,20 +16,22 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
 
   presetManager.createDefaultFactoryPresets(audioProcessor.getAPVTS());
 
-  addAndMakeVisible(presetBar);
-  addAndMakeVisible(toolbar);
-  addAndMakeVisible(*spectrogram);
-  addAndMakeVisible(playbackControl);
-  addAndMakeVisible(pitchControl);
-  addAndMakeVisible(adsrPanel);
-  addAndMakeVisible(effectsPanel);
+  addAndMakeVisible(contentWrapper);
+
+  contentWrapper.addAndMakeVisible(presetBar);
+  contentWrapper.addAndMakeVisible(toolbar);
+  contentWrapper.addAndMakeVisible(*spectrogram);
+  contentWrapper.addAndMakeVisible(playbackControl);
+  contentWrapper.addAndMakeVisible(pitchControl);
+  contentWrapper.addAndMakeVisible(adsrPanel);
+  contentWrapper.addAndMakeVisible(effectsPanel);
 
   volumeSlider.setSliderStyle(juce::Slider::LinearHorizontal);
   volumeSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
   volumeSlider.setName("VOLUME");
-  addAndMakeVisible(volumeSlider);
+  contentWrapper.addAndMakeVisible(volumeSlider);
 
-  addAndMakeVisible(polyButton);
+  contentWrapper.addAndMakeVisible(polyButton);
 
   polyButton.onClick = [this]() {
     if (auto* param = audioProcessor.getAPVTS().getParameter("POLY_MODE")) {
@@ -42,7 +45,7 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
   volumeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
       audioProcessor.getAPVTS(), "GAIN", volumeSlider);
 
-  addAndMakeVisible(*presetOverlay);
+  contentWrapper.addAndMakeVisible(*presetOverlay);
   presetOverlay->setVisible(false);
 
   auto syncUIFromAPVTS = [this]() {
@@ -81,12 +84,9 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
   // Wire preset bar callbacks
   presetBar.onBrowseClicked = [this]() {
     presetOverlay->syncActivePresetFromProcessor(audioProcessor.getCurrentPresetName());
-    presetOverlay->refreshBankList();
-    presetOverlay->refreshPresetList();
-    presetOverlay->refreshSampleList();
-    presetOverlay->refreshHistoryList();
     presetOverlay->setVisible(true);
     presetOverlay->toFront(true);
+    presetOverlay->checkForExternalLibraryChangesAsync();
   };
 
   presetBar.onShuffleFxClicked = [this]() {
@@ -121,7 +121,9 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
             if (presetManager.savePreset(name, "STATES", "User", sampleFileName, audioProcessor.getAPVTS(), startReg, endReg, selectionsVar, false, loopEnabled, audioBuf, 44100.0))
             {
               presetBar.setPresetName(name);
+              presetBar.setBankName("User");
               audioProcessor.setCurrentPresetName(name);
+              audioProcessor.setCurrentBankName("User");
               if (presetOverlay)
               {
                 presetOverlay->syncActivePresetFromProcessor(name);
@@ -129,6 +131,7 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
               }
               double currentSr = audioProcessor.getSampleRate() > 0.0 ? audioProcessor.getSampleRate() : 44100.0;
               audioProcessor.checkpointHistoryState("State Saved: " + name, audioBuf, currentSr);
+              updatePresetNavigationButtons();
             }
             else
             {
@@ -196,6 +199,10 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
       presetBar.setPresetName(pName);
       audioProcessor.setCurrentPresetName(pName);
 
+      juce::String bank = presetManager.getBankForPreset(presetFile);
+      presetBar.setBankName(bank);
+      audioProcessor.setCurrentBankName(bank);
+
       if (presetOverlay)
         presetOverlay->syncActivePresetFromProcessor(pName);
 
@@ -217,41 +224,88 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
       const juce::AudioBuffer<float>* audioBuf = spectrogram ? &spectrogram->getAudioBuffer() : nullptr;
       double currentSr = audioProcessor.getSampleRate() > 0.0 ? audioProcessor.getSampleRate() : 44100.0;
       audioProcessor.checkpointHistoryState("Preset Loaded: " + pName, audioBuf, currentSr);
+      updatePresetNavigationButtons();
     }
   };
 
   presetBar.onPrevClicked = [this, loadPresetAtomic]() {
-    auto allPresets = presetManager.getAllPresets();
-    if (!allPresets.isEmpty()) {
-      juce::String current = presetBar.getCurrentPresetName();
-      int index = 0;
-      for (int i = 0; i < allPresets.size(); ++i) {
-        if (allPresets[i].name.equalsIgnoreCase(current)) {
-          index = (i - 1 + allPresets.size()) % allPresets.size();
-          break;
-        }
-      }
-      loadPresetAtomic(allPresets[index].file);
+    juce::String currentBank = presetBar.getBankName();
+    auto list = presetOverlay ? presetOverlay->getNavigablePresetsForBank(currentBank) : juce::Array<PresetInfo>();
+    if (list.isEmpty()) {
+      updatePresetNavigationButtons();
+      return;
     }
+
+    juce::String currentName = presetBar.getCurrentPresetName();
+    juce::File currentFile = presetOverlay ? presetOverlay->getActivePresetFile() : juce::File();
+
+    int currentIndex = -1;
+    for (int i = 0; i < list.size(); ++i) {
+      if ((currentFile.existsAsFile() && list[i].file == currentFile) ||
+          list[i].name.equalsIgnoreCase(currentName) ||
+          list[i].file.getFileNameWithoutExtension().equalsIgnoreCase(currentName)) {
+        currentIndex = i;
+        break;
+      }
+    }
+
+    int targetIndex = -1;
+    if (currentIndex < 0) {
+      targetIndex = 0;
+    } else if (currentIndex > 0) {
+      targetIndex = currentIndex - 1;
+    }
+
+    if (targetIndex >= 0 && targetIndex < list.size()) {
+      loadPresetAtomic(list[targetIndex].file);
+    }
+    updatePresetNavigationButtons();
   };
 
   presetBar.onNextClicked = [this, loadPresetAtomic]() {
-    auto allPresets = presetManager.getAllPresets();
-    if (!allPresets.isEmpty()) {
-      juce::String current = presetBar.getCurrentPresetName();
-      int index = 0;
-      for (int i = 0; i < allPresets.size(); ++i) {
-        if (allPresets[i].name.equalsIgnoreCase(current)) {
-          index = (i + 1) % allPresets.size();
-          break;
-        }
-      }
-      loadPresetAtomic(allPresets[index].file);
+    juce::String currentBank = presetBar.getBankName();
+    auto list = presetOverlay ? presetOverlay->getNavigablePresetsForBank(currentBank) : juce::Array<PresetInfo>();
+    if (list.isEmpty()) {
+      updatePresetNavigationButtons();
+      return;
     }
+
+    juce::String currentName = presetBar.getCurrentPresetName();
+    juce::File currentFile = presetOverlay ? presetOverlay->getActivePresetFile() : juce::File();
+
+    int currentIndex = -1;
+    for (int i = 0; i < list.size(); ++i) {
+      if ((currentFile.existsAsFile() && list[i].file == currentFile) ||
+          list[i].name.equalsIgnoreCase(currentName) ||
+          list[i].file.getFileNameWithoutExtension().equalsIgnoreCase(currentName)) {
+        currentIndex = i;
+        break;
+      }
+    }
+
+    int targetIndex = -1;
+    if (currentIndex < 0) {
+      targetIndex = 0;
+    } else if (currentIndex < list.size() - 1) {
+      targetIndex = currentIndex + 1;
+    }
+
+    if (targetIndex >= 0 && targetIndex < list.size()) {
+      loadPresetAtomic(list[targetIndex].file);
+    }
+    updatePresetNavigationButtons();
+  };
+
+  presetOverlay->onFilterOrSortChanged = [this]() {
+    updatePresetNavigationButtons();
   };
 
   presetOverlay->onPresetSelected = [this, loadPresetAtomic](const juce::File &presetFile, const juce::String &) {
     loadPresetAtomic(presetFile);
+  };
+
+  presetOverlay->onBankSelected = [this](const juce::String &/*bankName*/) {
+    updatePresetNavigationButtons();
   };
 
   presetOverlay->onSampleSelected = [this](const juce::File &sampleFile) {
@@ -305,12 +359,28 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
       spectrogram->restoreFromProcessorState();
     }
     presetBar.setPresetName(audioProcessor.getCurrentPresetName());
+    presetBar.setBankName(audioProcessor.getCurrentBankName());
     syncUIFromAPVTS();
     toolbar.setEnabled(spectrogram && spectrogram->isFileLoaded());
   }
 
+  updatePresetNavigationButtons();
+
   startTimer(2000);
-  setSize(1280, 640);
+
+  setResizable(true, true);
+  if (auto* c = getConstrainer())
+  {
+      c->setFixedAspectRatio((double)nativeWidth / (double)nativeHeight);
+      c->setSizeLimits(816, 408, 1904, 952);
+  }
+  setResizeLimits(816, 408, 1904, 952);
+
+  float savedScale = audioProcessor.getEditorScale();
+  if (savedScale < 0.75f || savedScale > 1.75f)
+      savedScale = 1.0f;
+
+  setSize((int)std::round((float)nativeWidth * savedScale), (int)std::round((float)nativeHeight * savedScale));
 }
 
 VancespectralAudioProcessorEditor::~VancespectralAudioProcessorEditor() {
@@ -336,112 +406,158 @@ void VancespectralAudioProcessorEditor::timerCallback() {
   }
 }
 
-void VancespectralAudioProcessorEditor::paint(juce::Graphics &g) {
+void VancespectralAudioProcessorEditor::ContentWrapper::paint(juce::Graphics &g) {
+  g.setImageResamplingQuality(juce::Graphics::highResamplingQuality);
   auto bounds = getLocalBounds().toFloat();
 
-  // 1. Draw outer cream chassis, PCB trace motif, corner screws, and 1px border
+  // 1. Draw outer frosted-white chassis, PCB trace motif, corner screws, and 1px border
   SpectralUILookAndFeel::drawChassisBackground(g, bounds);
 
-  // 2. Footer strip at bottom
-  auto footerArea = bounds.removeFromBottom(24.0f).reduced(16.0f, 0.0f);
+  // 2. Footer strip at bottom (26px height)
+  auto footerArea = bounds.removeFromBottom(26.0f).reduced(16.0f, 0.0f);
   g.setColour(SpectralUILookAndFeel::dividerColour);
   g.drawHorizontalLine((int)footerArea.getY(), 16.0f, (float)getWidth() - 16.0f);
 
-  // Branding text on left
-  g.setFont(SpectralUILookAndFeel::getMonospaceFont(9.5f));
-  g.setColour(SpectralUILookAndFeel::textMutedColour);
+  // Branding text on left with authentic Vance logo
+  float logoH = 14.0f;
+  float logoW = logoH * (793.0f / 1024.0f); // 0.7744 aspect ratio
+  float logoX = footerArea.getX() + 2.0f;
+  float logoY = footerArea.getCentreY() - logoH * 0.5f;
+  juce::Rectangle<float> logoRect(logoX, logoY, logoW, logoH);
+  juce::MemoryInputStream stream(BinaryData::VanceLogo_png, (size_t)BinaryData::VanceLogo_pngSize, false);
+  auto footerLogo = juce::PNGImageFormat().decodeImage(stream);
+  if (footerLogo.isValid())
+  {
+      g.drawImageWithin(footerLogo, (int)logoRect.getX(), (int)logoRect.getY(), (int)logoRect.getWidth(), (int)logoRect.getHeight(),
+                        juce::RectanglePlacement::centred | juce::RectanglePlacement::onlyReduceInSize, false);
+  }
+  else
+  {
+      g.setColour(SpectralUILookAndFeel::accentColour);
+      g.fillRoundedRectangle(logoRect, 2.0f);
+  }
 
-  // Small square logo mark with "V"
-  float logoX = footerArea.getX() + 4.0f;
-  float logoY = footerArea.getCentreY() - 5.0f;
-  juce::Rectangle<float> logoRect(logoX, logoY, 10.0f, 10.0f);
-  g.setColour(SpectralUILookAndFeel::accentColour);
-  g.fillRoundedRectangle(logoRect, 2.0f);
-  g.setFont(SpectralUILookAndFeel::getGeometricFont(7.5f, true));
-  g.setColour(juce::Colours::black);
-  g.drawText("V", logoRect.toNearestInt(), juce::Justification::centred, false);
-
-  g.setFont(SpectralUILookAndFeel::getMonospaceFont(9.0f));
+  // Left branding text (strictly bounded so it never collides with center badge)
+  g.setFont(SpectralUILookAndFeel::getJetBrainsMono(9.0f));
   g.setColour(SpectralUILookAndFeel::textMutedColour);
+  int maxBrandingWidth = (int)(bounds.getWidth() * 0.5f - logoRect.getRight() - 75.0f);
+  juce::Rectangle<int> brandingRect((int)logoRect.getRight() + 6, (int)footerArea.getY(),
+                                    juce::jmax(50, maxBrandingWidth), (int)footerArea.getHeight());
   g.drawText("VANCESPECTRAL // PRECISION BRUTALIST INSTRUMENT // MODEL-01",
-             footerArea.toNearestInt().withTrimmedLeft(20), juce::Justification::centredLeft, true);
+             brandingRect, juce::Justification::centredLeft, true);
 
-  // Base Octave Readout Badge in bottom status bar
-  int octaveNum = 3 + (currentOctaveOffset / 12);
+  // Base Octave Readout Badge (dynamically centered in bottom status bar)
+  int octaveNum = 3 + (editor.currentOctaveOffset / 12);
   juce::String octaveText = "OCTAVE: C" + juce::String(octaveNum) + " [Z/X]";
-  auto octaveRect = footerArea.toNearestInt().withTrimmedLeft(460).withWidth(120).reduced(0, 3);
+  float badgeW = 124.0f;
+  float badgeH = 18.0f;
+  float badgeX = (bounds.getWidth() - badgeW) * 0.5f;
+  float badgeY = footerArea.getY() + (footerArea.getHeight() - badgeH) * 0.5f;
+  auto octaveRect = juce::Rectangle<float>(badgeX, badgeY, badgeW, badgeH);
+
   g.setColour(SpectralUILookAndFeel::panelBgColour);
-  g.fillRoundedRectangle(octaveRect.toFloat(), 3.0f);
+  g.fillRoundedRectangle(octaveRect, 3.0f);
   g.setColour(SpectralUILookAndFeel::dividerColour);
-  g.drawRoundedRectangle(octaveRect.toFloat(), 3.0f, 1.0f);
+  g.drawRoundedRectangle(octaveRect, 3.0f, 1.0f);
   g.setColour(SpectralUILookAndFeel::textMainColour);
-  g.setFont(SpectralUILookAndFeel::getMonospaceFont(9.0f, true));
-  g.drawText(octaveText, octaveRect, juce::Justification::centred, false);
+  g.setFont(SpectralUILookAndFeel::getJetBrainsMono(9.0f, true));
+  g.drawText(octaveText, octaveRect.toNearestInt(), juce::Justification::centred, false);
 }
 
-void VancespectralAudioProcessorEditor::resized() {
-  constexpr int margin = 16;
-  constexpr int gap = 12;
+void VancespectralAudioProcessorEditor::ContentWrapper::resized() {
+  constexpr int margin = 12;
+  constexpr int gap = 10;
 
-  auto area = getLocalBounds().reduced(margin);
-  auto footerArea = area.removeFromBottom(24); // Reserve for footer strip
+  auto totalBounds = getLocalBounds();
 
-  // Compact master volume slider on far right of bottom footer bar (opposite branding text)
-  int volumeWidth = 180;
+  // Bottom Status Bar (26px height, 16px horizontal inset)
+  auto footerArea = totalBounds.removeFromBottom(26).reduced(16, 0);
+
+  // Full-size master volume horizontal fader on far right of bottom footer bar (extended to 240px width)
+  int volumeWidth = 240;
+  int volH = 18;
   auto volumeArea = footerArea.removeFromRight(volumeWidth);
-  volumeSlider.setBounds(volumeArea);
+  int volY = footerArea.getY() + (footerArea.getHeight() - volH) / 2;
+  editor.volumeSlider.setBounds(volumeArea.getX(), volY, volumeArea.getWidth(), volH);
 
-  footerArea.removeFromRight(8);
+  // Main work area bounded above the footer bar
+  auto area = totalBounds.reduced(margin);
 
-  auto polyArea = footerArea.removeFromRight(64).reduced(0, 2);
-  polyButton.setBounds(polyArea);
+  // Top Bar (Preset Navigation & Management) - 32px height
+  auto topBarArea = area.removeFromTop(32);
+  editor.presetBar.setBounds(topBarArea);
 
-  // Top Bar (Preset Browser) - 36px height
-  auto topBarArea = area.removeFromTop(36);
-  presetBar.setBounds(topBarArea);
+  // Relocate MONO/POLY toggle button to top navigation bar immediately to the left of the preset group
+  auto polyArea = editor.presetBar.getPolyButtonArea().translated(editor.presetBar.getX(), editor.presetBar.getY());
+  editor.polyButton.setBounds(polyArea);
+  editor.polyButton.toFront(false);
 
   area.removeFromTop(gap);
 
-  // Upper main surface: ~58% of remaining height
-  int upperHeight = (int)(area.getHeight() * 0.58f);
+  // Split remaining vertical height between Upper Main Surface and Lower Area
+  int totalMainHeight = area.getHeight() - gap;
+  int upperHeight = (int)(totalMainHeight * 0.55f);
   auto upperArea = area.removeFromTop(upperHeight);
 
   area.removeFromTop(gap);
-
-  // Left Toolbox (40px width)
-  auto toolboxArea = upperArea.removeFromLeft(40);
-  toolbar.setBounds(toolboxArea);
-
-  upperArea.removeFromLeft(gap);
-
-  // Spectrogram Graph takes remaining upper area
-  if (spectrogram)
-    spectrogram->setBounds(upperArea);
-
-  // Lower Area: Segmented Controls + ADSR Panel + Effects Panel
   auto lowerArea = area;
 
-  // Segmented controls column (Playback & Pitch) on left (300px width)
-  auto controlsArea = lowerArea.removeFromLeft(300);
-  lowerArea.removeFromLeft(gap);
-
-  int controlHeight = (controlsArea.getHeight() - gap) / 2;
-  playbackControl.setBounds(controlsArea.removeFromTop(controlHeight));
-  controlsArea.removeFromTop(gap);
-  pitchControl.setBounds(controlsArea);
-
-  // Effects Panel positioned to the right of AMP ENV / PITCH / EXCITER
-  int effectsWidth = juce::jmin(460, (int)(lowerArea.getWidth() * 0.46f));
+  // Effects Panel on right side of lower row (330px width)
+  int effectsWidth = 330;
   auto effectsArea = lowerArea.removeFromRight(effectsWidth);
   lowerArea.removeFromRight(gap);
+  editor.effectsPanel.setBounds(effectsArea);
 
-  effectsPanel.setBounds(effectsArea);
+  // AMP ENV + PITCH & DRIFT + EXCITER & GLIDE takes full remaining lower row width
+  editor.adsrPanel.setBounds(lowerArea);
 
-  // Unified Envelope + Performance section taking remaining lower width
-  adsrPanel.setBounds(lowerArea);
+  // Upper Area:
+  // 1. Left Toolbox (36px width)
+  auto toolboxArea = upperArea.removeFromLeft(36);
+  editor.toolbar.setBounds(toolboxArea);
+  upperArea.removeFromLeft(gap);
 
-  if (presetOverlay)
-    presetOverlay->setBounds(getLocalBounds());
+  // 2. Relocated PLAYBACK & PITCH panel on right side of upper row
+  // Sits flush beside screen-graph, matching effectsPanel width and aligning directly above it
+  auto upperControlsArea = upperArea.removeFromRight(effectsWidth);
+  upperArea.removeFromRight(gap);
+
+  // 3. Screen-Graph (Spectrogram): takes the remaining upperArea
+  // Its right edge aligns exactly with adsrPanel's right edge (EXCITER & GLIDE)
+  if (editor.spectrogram)
+    editor.spectrogram->setBounds(upperArea);
+
+  // PLAYBACK & PITCH stacked vertically inside upperControlsArea, matching screen-graph's height
+  int playbackHeight = (int)(upperControlsArea.getHeight() * 0.64f);
+  editor.playbackControl.setBounds(upperControlsArea.removeFromTop(playbackHeight));
+  upperControlsArea.removeFromTop(gap);
+  editor.pitchControl.setBounds(upperControlsArea);
+
+  if (editor.presetOverlay)
+    editor.presetOverlay->setBounds(getLocalBounds());
+}
+
+void VancespectralAudioProcessorEditor::paint(juce::Graphics &g) {
+  g.fillAll(SpectralUILookAndFeel::bgColour);
+}
+
+void VancespectralAudioProcessorEditor::resized() {
+  juce::AudioProcessorEditor::resized(); // Positions the corner resizer component if present
+
+  float scale = (float)getWidth() / (float)nativeWidth;
+  audioProcessor.setEditorScale(scale);
+
+  contentWrapper.setBounds(0, 0, nativeWidth, nativeHeight);
+  contentWrapper.setTransform(juce::AffineTransform::scale(scale));
+
+  for (auto* child : getChildren())
+  {
+      if (dynamic_cast<juce::ResizableCornerComponent*>(child) != nullptr)
+      {
+          child->toFront(false);
+          break;
+      }
+  }
 }
 
 int VancespectralAudioProcessorEditor::getQwertySemitone(juce::juce_wchar c) {
@@ -473,6 +589,11 @@ int VancespectralAudioProcessorEditor::getQwertySemitone(juce::juce_wchar c) {
 }
 
 bool VancespectralAudioProcessorEditor::keyPressed(const juce::KeyPress &key) {
+  if (presetOverlay && presetOverlay->isVisible()) {
+    if (presetOverlay->keyPressed(key))
+      return true;
+  }
+
   if (!hasKeyboardFocus(true))
     return false;
 
@@ -488,12 +609,12 @@ bool VancespectralAudioProcessorEditor::keyPressed(const juce::KeyPress &key) {
 
   if (c == 'z') {
     currentOctaveOffset = juce::jmax(-36, currentOctaveOffset - 12);
-    repaint();
+    contentWrapper.repaint();
     return true;
   }
   if (c == 'x') {
     currentOctaveOffset = juce::jmin(36, currentOctaveOffset + 12);
-    repaint();
+    contentWrapper.repaint();
     return true;
   }
 
@@ -540,5 +661,38 @@ void VancespectralAudioProcessorEditor::triggerRandomConfigurationReroll() {
 
   if (spectrogram) {
     spectrogram->generateRandomSelections();
+  }
+}
+
+void VancespectralAudioProcessorEditor::updatePresetNavigationButtons() {
+  juce::String currentBank = presetBar.getBankName();
+  auto list = presetOverlay ? presetOverlay->getNavigablePresetsForBank(currentBank) : juce::Array<PresetInfo>();
+
+  if (list.isEmpty()) {
+    presetBar.setPrevEnabled(false);
+    presetBar.setNextEnabled(false);
+    return;
+  }
+
+  juce::String currentName = presetBar.getCurrentPresetName();
+  juce::File currentFile = presetOverlay ? presetOverlay->getActivePresetFile() : juce::File();
+
+  int currentIndex = -1;
+  for (int i = 0; i < list.size(); ++i) {
+    if ((currentFile.existsAsFile() && list[i].file == currentFile) ||
+        list[i].name.equalsIgnoreCase(currentName) ||
+        list[i].file.getFileNameWithoutExtension().equalsIgnoreCase(currentName)) {
+      currentIndex = i;
+      break;
+    }
+  }
+
+  if (currentIndex < 0) {
+    // Current preset not in the active filtered bank list
+    presetBar.setPrevEnabled(true);
+    presetBar.setNextEnabled(true);
+  } else {
+    presetBar.setPrevEnabled(currentIndex > 0);
+    presetBar.setNextEnabled(currentIndex < list.size() - 1);
   }
 }

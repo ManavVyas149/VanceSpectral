@@ -95,6 +95,9 @@ public:
     void setCurrentPresetName(const juce::String& name) { currentPresetName = name; }
     juce::String getCurrentPresetName() const { return currentPresetName; }
 
+    void setCurrentBankName(const juce::String& bank) { currentBankName = bank; }
+    juce::String getCurrentBankName() const { return currentBankName; }
+
     bool isPluginInitialized() const { return isInitialized; }
     void setPluginInitialized(bool init) { isInitialized = init; }
 
@@ -139,6 +142,11 @@ public:
     juce::Array<float> getActiveVoicePositions() const
     {
         return sampleEngine.getActiveVoicePositionsNormalized();
+    }
+
+    int getActiveVoicePositionsAtomic(float* outPositions, int maxPositions) const noexcept
+    {
+        return sampleEngine.getActiveVoicePositionsAtomic(outPositions, maxPositions);
     }
 
     juce::Array<ActiveVoiceVisualInfo> getActiveVoiceVisualInfos() const
@@ -190,6 +198,9 @@ public:
     EffectsEngine& getEffectsEngine() { return effectsEngine; }
     HistoryManager& getHistoryManager() { return historyManager; }
 
+    float getEditorScale() const noexcept { return editorScale; }
+    void setEditorScale(float s) noexcept { editorScale = s; }
+
     bool checkpointHistoryState(const juce::String& label, const juce::AudioBuffer<float>* audioBuffer = nullptr, double sampleRate = 44100.0)
     {
         return historyManager.pushHistoryState(
@@ -227,7 +238,9 @@ private:
 
     juce::var selectionsVar;
     juce::String currentPresetName = "Custom / Unsaved";
+    juce::String currentBankName = "Factory";
     bool isInitialized = false;
+    float editorScale = 1.0f;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (VancespectralAudioProcessor)
 };

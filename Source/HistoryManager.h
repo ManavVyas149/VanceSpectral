@@ -50,9 +50,17 @@ public:
                              double& outSampleRate);
 
     void clearHistory();
+    bool deleteHistoryEntry(const juce::String& id);
+    bool deleteHistoryFile(const juce::File& snapshotFile);
+    void invalidateHistoryCache() const { isHistoryCacheValid = false; }
 
 private:
     juce::File historyFolder;
+    juce::int64 lastSnapshotTimeMs = 0;
+    juce::String lastSnapshotSample;
+
+    mutable juce::Array<HistoryEntry> cachedHistoryEntries;
+    mutable bool isHistoryCacheValid = false;
 
     void ensureHistoryFolderExists();
     void pruneOldest();

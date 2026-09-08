@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\Ansh Srivastava\OneDrive\Documents\GitHub\VanceSpectral\build\CMakeFiles\ff716d1c591d34469bd36734fb7cf6e8\INSTALL_force.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{B4E408FB-E080-3E16-9C0E-D48DE09DD196}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

@@ -12,6 +12,8 @@
       <FILE id="IbS1Uw" name="SampleEngine.cpp" compile="1" resource="0"
             file="Source/SampleEngine.cpp"/>
       <FILE id="sCQJxc" name="SampleEngine.h" compile="0" resource="0" file="Source/SampleEngine.h"/>
+      <FILE id="bfdCpp" name="BinaryFontData.cpp" compile="1" resource="0" file="Source/BinaryFontData.cpp"/>
+      <FILE id="bfdH" name="BinaryFontData.h" compile="0" resource="0" file="Source/BinaryFontData.h"/>
     </GROUP>
     <FILE id="f5m8vy" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
     <FILE id="Uf3jvS" name="PluginEditor.cpp" compile="1" resource="0"
@@ -50,6 +52,10 @@
             resource="0" file="Source/PresetBrowserOverlay.cpp"/>
       <FILE id="pBrdOverlayH" name="PresetBrowserOverlay.h" compile="0" resource="0"
             file="Source/PresetBrowserOverlay.h"/>
+      <FILE id="audPlayerCpp" name="AuditionPlayer.cpp" compile="1"
+            resource="0" file="Source/AuditionPlayer.cpp"/>
+      <FILE id="audPlayerH" name="AuditionPlayer.h" compile="0" resource="0"
+            file="Source/AuditionPlayer.h"/>
     </GROUP>
     <GROUP id="{D2799E5B-D928-092C-DA8E-BF6BA1A2449D}" name="DSP">
       <FILE id="eEnvDataCpp" name="EnvelopeData.cpp" compile="1" resource="0"

@@ -103,7 +103,7 @@ void EffectsEngine::prepare(double sampleRate, int maxBlockSize)
     driveTone.reset(currentSampleRate, 0.02);
     driveTone.setCurrentAndTargetValue(0.5f);
 
-    tempEffectBuffer.setSize(2, maxExpectedBlockSize);
+    tempEffectBuffer.setSize(2, juce::jmax(8192, maxExpectedBlockSize * 2));
 }
 
 void EffectsEngine::reset()
