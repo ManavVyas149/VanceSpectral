@@ -87,14 +87,12 @@ void PresetBarComponent::paint(juce::Graphics& g)
                           juce::RectanglePlacement::centred | juce::RectanglePlacement::onlyReduceInSize, false);
     }
 
-    // Left: Bank Name Label (positioned after SHUFFLE FX button, dynamically sized)
+    // Left: Bank Name Label (now leftmost, placed directly beside the top-left logo)
     g.setFont(SpectralUILookAndFeel::getJetBrainsMono(11.5f, true));
     g.setColour(SpectralUILookAndFeel::textMutedColour);
-    auto polyArea = getPolyButtonArea();
-    float bankX = (float)shuffleFxButton.getRight() + 10.0f;
-    float maxBankW = (float)(polyArea.getX() - 8) - bankX;
-    if (maxBankW < 80.0f) maxBankW = 80.0f;
-    auto bankRect = juce::Rectangle<float>(bankX, 0.0f, maxBankW, (float)getHeight());
+    int bankX = 32;
+    int bankW = juce::jmax(40, shuffleFxButton.getX() - 10 - bankX);
+    auto bankRect = juce::Rectangle<float>((float)bankX, 0.0f, (float)bankW, (float)getHeight());
     g.drawText(bankName.toUpperCase(), bankRect.toNearestInt(), juce::Justification::centredLeft, true);
 
     // Center Preset Display Pill (Pure Read-Only Label)
@@ -118,8 +116,13 @@ void PresetBarComponent::resized()
 {
     auto bounds = getLocalBounds().reduced(8, 3);
 
-    // Left side SHUFFLE FX button (placed beside the top-left logo)
-    shuffleFxButton.setBounds(30, bounds.getY() + 1, 90, bounds.getHeight() - 2);
+    // Left side: Bank name is leftmost (beside the logo at x=32), followed by SHUFFLE FX button
+    int bankX = 32;
+    auto font = SpectralUILookAndFeel::getJetBrainsMono(11.5f, true);
+    int textW = juce::GlyphArrangement::getStringWidthInt(font, bankName.toUpperCase());
+    int bankW = juce::jlimit(45, 110, textW + 4);
+    int shuffleX = bankX + bankW + 10;
+    shuffleFxButton.setBounds(shuffleX, bounds.getY() + 1, 90, bounds.getHeight() - 2);
 
     // Center chevrons flanking the preset name area & dedicated Browse button
     float cx = (float)bounds.getCentreX();

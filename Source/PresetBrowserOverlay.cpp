@@ -262,6 +262,90 @@ void PresetBrowserOverlay::DropImportZone::mouseUp(const juce::MouseEvent&)
         }
     });
 }
+//==============================================================================
+// HistoryFlyoutComponent Implementation
+//==============================================================================
+PresetBrowserOverlay::HistoryFlyoutComponent::HistoryFlyoutComponent(PresetBrowserOverlay& o)
+    : owner(o)
+{
+    titleLabel.setText("HISTORY SNAPSHOTS", juce::dontSendNotification);
+    titleLabel.setFont(SpectralUILookAndFeel::getSpaceGrotesk(10.5f, true));
+    titleLabel.setColour(juce::Label::textColourId, juce::Colour(0x18, 0x18, 0x1B));
+    addAndMakeVisible(titleLabel);
+
+    closeBtn.onClick = [this]() { owner.hideHistoryFlyout(); };
+    addAndMakeVisible(closeBtn);
+}
+
+void PresetBrowserOverlay::HistoryFlyoutComponent::setupChildren()
+{
+    addAndMakeVisible(owner.historyListBox);
+    addAndMakeVisible(owner.restoreHistoryBtn);
+    addAndMakeVisible(owner.clearHistoryBtn);
+}
+
+void PresetBrowserOverlay::HistoryFlyoutComponent::paint(juce::Graphics& g)
+{
+    auto bounds = getLocalBounds().toFloat().reduced(1.0f);
+    float corner = 6.0f;
+
+    // Card background
+    g.setColour(juce::Colours::white);
+    g.fillRoundedRectangle(bounds, corner);
+
+    // Chassis Border
+    g.setColour(juce::Colour(0xE4, 0xE4, 0xE7));
+    g.drawRoundedRectangle(bounds, corner, 1.0f);
+
+    // Header divider line
+    g.drawHorizontalLine(34, bounds.getX(), bounds.getRight());
+}
+
+void PresetBrowserOverlay::HistoryFlyoutComponent::resized()
+{
+    auto area = getLocalBounds().reduced(12, 8);
+    auto header = area.removeFromTop(24);
+    titleLabel.setBounds(header.removeFromLeft(180));
+    closeBtn.setBounds(header.removeFromRight(22));
+
+    area.removeFromTop(10);
+    auto bot = area.removeFromBottom(28);
+    int halfW = (bot.getWidth() - 6) / 2;
+    owner.restoreHistoryBtn.setBounds(bot.removeFromLeft(halfW));
+    bot.removeFromLeft(6);
+    owner.clearHistoryBtn.setBounds(bot);
+
+    area.removeFromBottom(8);
+    owner.historyListBox.setBounds(area);
+}
+
+bool PresetBrowserOverlay::isHistoryFlyoutVisible() const { return historyFlyout.isVisible(); }
+
+void PresetBrowserOverlay::toggleHistoryFlyout()
+{
+    if (historyFlyout.isVisible())
+    {
+        hideHistoryFlyout();
+    }
+    else
+    {
+        refreshHistoryList();
+        historyBackdrop.setBounds(getLocalBounds());
+        historyBackdrop.setVisible(true);
+        historyBackdrop.toFront(true);
+        historyFlyout.setVisible(true);
+        historyFlyout.toFront(true);
+        historyButton.setToggleState(true, juce::dontSendNotification);
+        historyButton.toFront(true);
+    }
+}
+
+void PresetBrowserOverlay::hideHistoryFlyout()
+{
+    historyFlyout.setVisible(false);
+    historyBackdrop.setVisible(false);
+    historyButton.setToggleState(false, juce::dontSendNotification);
+}
 
 //==============================================================================
 // PresetBrowserOverlay Constructor / Destructor
@@ -389,72 +473,17 @@ PresetBrowserOverlay::PresetBrowserOverlay(PresetManager& manager, juce::AudioPr
     addAndMakeVisible(bankListBox);
 
     //==========================================================================
-    // PANEL 3: SAMPLES & HISTORY (Right)
+    // HISTORY CONTROLS SETUP (Shared between Library panel and History popover)
     //==========================================================================
-    addAndMakeVisible(panel3HeaderLabel);
-    panel3HeaderLabel.setText("03 / LIBRARY", juce::dontSendNotification);
-    panel3HeaderLabel.setFont(SpectralUILookAndFeel::getSpaceGrotesk(10.5f, true));
-    panel3HeaderLabel.setColour(juce::Label::textColourId, juce::Colour(0x18, 0x18, 0x1B));
-
-    addAndMakeVisible(samplesTabBtn);
-    samplesTabBtn.setClickingTogglesState(true);
-    samplesTabBtn.setRadioGroupId(1002);
-    samplesTabBtn.setToggleState(true, juce::dontSendNotification);
-    samplesTabBtn.onClick = [this]() {
-        isHistoryViewActive = false;
-        sampleListBox.setVisible(true);
-        sampleSortSelector.setVisible(true);
-        dropImportZone.setVisible(true);
-        historyListBox.setVisible(false);
-        restoreHistoryBtn.setVisible(false);
-        clearHistoryBtn.setVisible(false);
-        currentSelectionType = (selectedSampleIndex >= 0 && selectedSampleIndex < allSamples.size()) ? SelectedViewType::Sample : SelectedViewType::None;
-        updateBottomBar();
-        resized();
-    };
-
-    addAndMakeVisible(historyTabBtn);
-    historyTabBtn.setClickingTogglesState(true);
-    historyTabBtn.setRadioGroupId(1002);
-    historyTabBtn.onClick = [this]() {
-        isHistoryViewActive = true;
-        sampleListBox.setVisible(false);
-        sampleSortSelector.setVisible(false);
-        dropImportZone.setVisible(false);
-        historyListBox.setVisible(true);
-        restoreHistoryBtn.setVisible(true);
-        clearHistoryBtn.setVisible(true);
-        refreshHistoryList();
-        currentSelectionType = (selectedHistoryIndex >= 0 && selectedHistoryIndex < allHistoryEntries.size()) ? SelectedViewType::History : SelectedViewType::None;
-        updateBottomBar();
-        resized();
-    };
-
-    addAndMakeVisible(sampleSortSelector);
-    sampleSortSelector.addItem("SORT: RELEVANCE", 1);
-    sampleSortSelector.addItem("SORT: NAME A-Z", 2);
-    sampleSortSelector.setSelectedId(1, juce::dontSendNotification);
-    sampleSortSelector.onChange = [this]() { refreshSampleList(); };
-
-    sampleListBox.setModel(&sampleListModel);
-    sampleListBox.setRowHeight(32);
-    sampleListBox.setColour(juce::ListBox::backgroundColourId, juce::Colours::transparentBlack);
-    sampleListBox.setColour(juce::ListBox::outlineColourId, juce::Colours::transparentBlack);
-    addAndMakeVisible(sampleListBox);
-
-    addAndMakeVisible(dropImportZone);
-
     historyListBox.setModel(&historyListModel);
     historyListBox.setRowHeight(32);
     historyListBox.setColour(juce::ListBox::backgroundColourId, juce::Colours::transparentBlack);
     historyListBox.setColour(juce::ListBox::outlineColourId, juce::Colours::transparentBlack);
-    addChildComponent(historyListBox);
 
-    addChildComponent(restoreHistoryBtn);
     restoreHistoryBtn.onClick = [this]() { executeRestoreSelectedHistory(); };
 
-    addChildComponent(clearHistoryBtn);
     clearHistoryBtn.setName("DANGER");
+    clearHistoryBtn.setButtonText("CLEAR ALL");
     clearHistoryBtn.onClick = [this]() {
         if (historyManager)
         {
@@ -480,6 +509,80 @@ PresetBrowserOverlay::PresetBrowserOverlay(PresetManager& manager, juce::AudioPr
             }), true);
         }
     };
+
+    //==========================================================================
+    // PANEL 3 / HISTORY FLYOUT INITIALIZATION
+    //==========================================================================
+    if constexpr (enableLibraryPanel)
+    {
+        addAndMakeVisible(panel3HeaderLabel);
+        panel3HeaderLabel.setText("03 / LIBRARY", juce::dontSendNotification);
+        panel3HeaderLabel.setFont(SpectralUILookAndFeel::getSpaceGrotesk(10.5f, true));
+        panel3HeaderLabel.setColour(juce::Label::textColourId, juce::Colour(0x18, 0x18, 0x1B));
+
+        addAndMakeVisible(samplesTabBtn);
+        samplesTabBtn.setClickingTogglesState(true);
+        samplesTabBtn.setRadioGroupId(1002);
+        samplesTabBtn.setToggleState(true, juce::dontSendNotification);
+        samplesTabBtn.onClick = [this]() {
+            isHistoryViewActive = false;
+            sampleListBox.setVisible(true);
+            sampleSortSelector.setVisible(true);
+            dropImportZone.setVisible(true);
+            historyListBox.setVisible(false);
+            restoreHistoryBtn.setVisible(false);
+            clearHistoryBtn.setVisible(false);
+            currentSelectionType = (selectedSampleIndex >= 0 && selectedSampleIndex < allSamples.size()) ? SelectedViewType::Sample : SelectedViewType::None;
+            updateBottomBar();
+            resized();
+        };
+
+        addAndMakeVisible(historyTabBtn);
+        historyTabBtn.setClickingTogglesState(true);
+        historyTabBtn.setRadioGroupId(1002);
+        historyTabBtn.onClick = [this]() {
+            isHistoryViewActive = true;
+            sampleListBox.setVisible(false);
+            sampleSortSelector.setVisible(false);
+            dropImportZone.setVisible(false);
+            historyListBox.setVisible(true);
+            restoreHistoryBtn.setVisible(true);
+            clearHistoryBtn.setVisible(true);
+            refreshHistoryList();
+            currentSelectionType = (selectedHistoryIndex >= 0 && selectedHistoryIndex < allHistoryEntries.size()) ? SelectedViewType::History : SelectedViewType::None;
+            updateBottomBar();
+            resized();
+        };
+
+        addAndMakeVisible(sampleSortSelector);
+        sampleSortSelector.addItem("SORT: RELEVANCE", 1);
+        sampleSortSelector.addItem("SORT: NAME A-Z", 2);
+        sampleSortSelector.setSelectedId(1, juce::dontSendNotification);
+        sampleSortSelector.onChange = [this]() { refreshSampleList(); };
+
+        sampleListBox.setModel(&sampleListModel);
+        sampleListBox.setRowHeight(32);
+        sampleListBox.setColour(juce::ListBox::backgroundColourId, juce::Colours::transparentBlack);
+        sampleListBox.setColour(juce::ListBox::outlineColourId, juce::Colours::transparentBlack);
+        addAndMakeVisible(sampleListBox);
+
+        addAndMakeVisible(dropImportZone);
+        addChildComponent(historyListBox);
+        addChildComponent(restoreHistoryBtn);
+        addChildComponent(clearHistoryBtn);
+    }
+    else
+    {
+        addChildComponent(historyBackdrop);
+        historyBackdrop.setVisible(false);
+
+        historyFlyout.setupChildren();
+        addChildComponent(historyFlyout);
+        historyFlyout.setVisible(false);
+
+        addAndMakeVisible(historyButton);
+        historyButton.onClick = [this]() { toggleHistoryFlyout(); };
+    }
 
     //==========================================================================
     // FOOTER STRIP
@@ -541,6 +644,7 @@ PresetBrowserOverlay::PresetBrowserOverlay(PresetManager& manager, juce::AudioPr
 
 PresetBrowserOverlay::~PresetBrowserOverlay()
 {
+    hideHistoryFlyout();
     dismissActiveDialog();
     setLookAndFeel(nullptr);
 }
@@ -548,7 +652,10 @@ PresetBrowserOverlay::~PresetBrowserOverlay()
 void PresetBrowserOverlay::visibilityChanged()
 {
     if (!isVisible())
+    {
+        hideHistoryFlyout();
         dismissActiveDialog();
+    }
 }
 
 void PresetBrowserOverlay::dismissActiveDialog()
@@ -772,6 +879,30 @@ void PresetBrowserOverlay::syncActivePresetFromProcessor(const juce::String& loa
             break;
         }
     }
+    if (selectedPresetIndex < 0 || !activePresetFile.existsAsFile())
+    {
+        for (const auto& p : allPresets)
+        {
+            if (p.name.equalsIgnoreCase(loadedPresetName))
+            {
+                activeBankFilter = p.bank;
+                activeBankName = p.bank;
+                filterPresets();
+                for (int i = 0; i < filteredPresets.size(); ++i)
+                {
+                    if (filteredPresets[i].name.equalsIgnoreCase(loadedPresetName))
+                    {
+                        selectedPresetIndex = i;
+                        activePresetFile = filteredPresets[i].file;
+                        currentSelectionType = SelectedViewType::Preset;
+                        presetListBox.selectRow(i);
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+    }
     updateBottomBar();
 }
 
@@ -819,6 +950,18 @@ juce::Array<PresetInfo> PresetBrowserOverlay::getNavigablePresetsForBank(const j
     {
         if (bankName.equalsIgnoreCase("ALL BANKS") || p.bank.equalsIgnoreCase(bankName))
             list.add(p);
+    }
+    if (list.isEmpty() && !bankName.equalsIgnoreCase("ALL BANKS"))
+    {
+        for (const auto& p : allPresets)
+        {
+            if (p.bank.equalsIgnoreCase(bankName))
+            {
+                if (onlyFavoritesFilter && !p.isFavorite) continue;
+                if (activeCategoryFilter != "ALL" && !p.category.equalsIgnoreCase(activeCategoryFilter)) continue;
+                list.add(p);
+            }
+        }
     }
     return list;
 }
@@ -976,7 +1119,7 @@ void PresetBrowserOverlay::executeDeleteCurrentSelection()
         if (activeBankName.equalsIgnoreCase("ALL BANKS") || activeBankName.equalsIgnoreCase("Factory") || activeBankName.equalsIgnoreCase("User"))
             return;
 
-        showBankActionsMenu();
+        showDeleteBankDialog(activeBankName);
     }
     else if (currentSelectionType == SelectedViewType::Sample && selectedSampleFile.existsAsFile())
     {
@@ -1076,42 +1219,6 @@ void PresetBrowserOverlay::showNewBankDialog()
 void PresetBrowserOverlay::showBankActionsMenu()
 {
     juce::PopupMenu menu;
-    menu.addItem("Create New Bank...", [this]() { showNewBankDialog(); });
-
-    if (!activeBankName.equalsIgnoreCase("ALL BANKS") && !activeBankName.equalsIgnoreCase("Factory") && !activeBankName.equalsIgnoreCase("User"))
-    {
-        menu.addItem("Rename Bank ('" + activeBankName + "')...", [this]() {
-            showRenameBankDialog(activeBankName);
-        });
-
-        menu.addItem("Delete Bank ('" + activeBankName + "')", [this]() {
-            dismissActiveDialog();
-
-            auto* dialog = new juce::AlertWindow("DELETE BANK", "Delete bank '" + activeBankName + "' and all its presets permanently?", juce::AlertWindow::QuestionIcon);
-            dialog->addButton("Delete", 1);
-            dialog->addButton("Cancel", 0);
-            activeAlertWindow = dialog;
-
-            dialog->enterModalState(true, juce::ModalCallbackFunction::create([this, dialog](int res) {
-                if (activeAlertWindow == dialog)
-                    activeAlertWindow = nullptr;
-
-                if (res == 1)
-                {
-                    presetManager.deleteBank(activeBankName);
-                    activeBankFilter = "ALL BANKS";
-                    activeBankName = "ALL BANKS";
-                    selectedBankIndex = 0;
-                    refreshBankList();
-                    filterPresets();
-                    currentSelectionType = SelectedViewType::None;
-                    updateBottomBar();
-                }
-            }), true);
-        });
-    }
-
-    menu.addSeparator();
     menu.addItem("Import Bank Folder / Archive...", [this]() {
         fileChooser = std::make_unique<juce::FileChooser>(
             "Select Bank Folder or Package",
@@ -1128,6 +1235,75 @@ void PresetBrowserOverlay::showBankActionsMenu()
             }
         });
     });
+
+    menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&bankActionsBtn));
+}
+
+void PresetBrowserOverlay::showDeleteBankDialog(const juce::String& bankToDelete)
+{
+    if (bankToDelete.equalsIgnoreCase("ALL BANKS") || bankToDelete.equalsIgnoreCase("Factory") || bankToDelete.equalsIgnoreCase("User"))
+        return;
+
+    dismissActiveDialog();
+
+    auto* dialog = new juce::AlertWindow("DELETE BANK",
+        "Delete bank '" + bankToDelete + "' and all its presets permanently? This cannot be undone.",
+        juce::AlertWindow::QuestionIcon);
+    dialog->addButton("Delete", 1);
+    dialog->addButton("Cancel", 0);
+    activeAlertWindow = dialog;
+
+    dialog->enterModalState(true, juce::ModalCallbackFunction::create([this, bankToDelete, dialog](int res) {
+        if (activeAlertWindow == dialog)
+            activeAlertWindow = nullptr;
+
+        if (res == 1)
+        {
+            presetManager.deleteBank(bankToDelete);
+            if (activeBankFilter.equalsIgnoreCase(bankToDelete))
+            {
+                activeBankFilter = "ALL BANKS";
+                activeBankName = "ALL BANKS";
+                selectedBankIndex = 0;
+            }
+            refreshBankList();
+            filterPresets();
+            if (currentSelectionType == SelectedViewType::Bank && activeBankName.equalsIgnoreCase(bankToDelete))
+                currentSelectionType = SelectedViewType::None;
+            updateBottomBar();
+        }
+    }), true);
+}
+
+void PresetBrowserOverlay::showBankCardContextMenu(const juce::String& bankName)
+{
+    if (bankName.equalsIgnoreCase("ALL BANKS"))
+        return;
+
+    juce::PopupMenu menu;
+    bool isFactory = bankName.equalsIgnoreCase("Factory");
+    bool isUser = bankName.equalsIgnoreCase("User");
+
+    if (isFactory)
+    {
+        menu.addItem(1, "Rename Bank (Factory Protected)", false, false);
+        menu.addItem(2, "Delete Bank (Factory Protected)", false, false);
+    }
+    else if (isUser)
+    {
+        menu.addItem(1, "Rename Bank (Default Protected)", false, false);
+        menu.addItem(2, "Delete Bank (Default Protected)", false, false);
+    }
+    else
+    {
+        menu.addItem("Rename", [this, bankName]() {
+            showRenameBankDialog(bankName);
+        });
+
+        menu.addItem("Delete", [this, bankName]() {
+            showDeleteBankDialog(bankName);
+        });
+    }
 
     menu.showMenuAsync(juce::PopupMenu::Options());
 }
@@ -1444,30 +1620,49 @@ void PresetBrowserOverlay::BankListModel::paintListBoxItem(int rowNumber, juce::
         g.drawRoundedRectangle(cardBounds, corner, 1.0f);
     }
 
-    // Title
-    g.setFont(SpectralUILookAndFeel::getSpaceGrotesk(10.5f, rowIsSelected));
-    g.setColour(rowIsSelected ? juce::Colour(0x18, 0x18, 0x1B) : juce::Colour(0x27, 0x27, 0x2A));
-    g.drawText(bankName, (int)cardBounds.getX() + 10, (int)cardBounds.getY() + 4, (int)cardBounds.getWidth() - 70, 20, juce::Justification::centredLeft, true);
+    // 3-dot ('⋮') overflow button on each individual bank card (aligned consistently on all cards)
+    if (!isAll)
+    {
+        float dotBtnW = 24.0f;
+        float dotBtnH = 24.0f;
+        float dotBtnX = cardBounds.getRight() - 28.0f;
+        float dotBtnY = cardBounds.getY() + (cardBounds.getHeight() - dotBtnH) * 0.5f;
+        juce::Rectangle<float> dotRect(dotBtnX, dotBtnY, dotBtnW, dotBtnH);
 
-    // Subtitle / Preset count
-    g.setFont(SpectralUILookAndFeel::getSpaceGrotesk(9.0f, false));
-    g.setColour(juce::Colour(0x71, 0x71, 0x7A));
-    juce::String subText = isAll ? (juce::String(count) + juce::String::fromUTF8(" Presets \xc2\xb7 All Items")) : (juce::String(count) + " Presets");
-    g.drawText(subText, (int)cardBounds.getX() + 10, (int)cardBounds.getY() + 24, (int)cardBounds.getWidth() - 20, 16, juce::Justification::centredLeft, true);
+        float dotX = dotRect.getCentreX();
+        float dotY = dotRect.getCentreY();
+        g.setColour(SpectralUILookAndFeel::textMutedColour);
+        g.fillEllipse(dotX - 1.2f, dotY - 5.0f, 2.4f, 2.4f);
+        g.fillEllipse(dotX - 1.2f, dotY,        2.4f, 2.4f);
+        g.fillEllipse(dotX - 1.2f, dotY + 5.0f, 2.4f, 2.4f);
+    }
 
-    // Badge on right
+    // Badge on right (positioned to the left of 3-dot overflow button)
+    float badgeRight = !isAll ? (cardBounds.getRight() - 32.0f) : (cardBounds.getRight() - 8.0f);
     if (isFactory)
     {
         g.setFont(SpectralUILookAndFeel::getSpaceGrotesk(8.0f, true));
         g.setColour(juce::Colour(0x8B, 0x5C, 0xF6));
-        g.drawText("FACTORY", (int)cardBounds.getRight() - 56, (int)cardBounds.getY() + 6, 48, 16, juce::Justification::centredRight, false);
+        g.drawText("FACTORY", (int)badgeRight - 48, (int)cardBounds.getY() + 6, 48, 16, juce::Justification::centredRight, false);
     }
     else if (!isAll)
     {
         g.setFont(SpectralUILookAndFeel::getSpaceGrotesk(8.0f, false));
         g.setColour(juce::Colour(0xA1, 0xA1, 0xAA));
-        g.drawText("BANK", (int)cardBounds.getRight() - 56, (int)cardBounds.getY() + 6, 48, 16, juce::Justification::centredRight, false);
+        g.drawText("BANK", (int)badgeRight - 48, (int)cardBounds.getY() + 6, 48, 16, juce::Justification::centredRight, false);
     }
+
+    // Title
+    int maxTextW = (int)badgeRight - 54 - ((int)cardBounds.getX() + 10);
+    g.setFont(SpectralUILookAndFeel::getSpaceGrotesk(10.5f, rowIsSelected));
+    g.setColour(rowIsSelected ? juce::Colour(0x18, 0x18, 0x1B) : juce::Colour(0x27, 0x27, 0x2A));
+    g.drawText(bankName, (int)cardBounds.getX() + 10, (int)cardBounds.getY() + 4, maxTextW, 20, juce::Justification::centredLeft, true);
+
+    // Subtitle / Preset count
+    g.setFont(SpectralUILookAndFeel::getSpaceGrotesk(9.0f, false));
+    g.setColour(juce::Colour(0x71, 0x71, 0x7A));
+    juce::String subText = isAll ? (juce::String(count) + juce::String::fromUTF8(" Presets \xc2\xb7 All Items")) : (juce::String(count) + " Presets");
+    g.drawText(subText, (int)cardBounds.getX() + 10, (int)cardBounds.getY() + 24, maxTextW, 16, juce::Justification::centredLeft, true);
 }
 
 void PresetBrowserOverlay::BankListModel::listBoxItemClicked(int row, const juce::MouseEvent& e)
@@ -1475,31 +1670,25 @@ void PresetBrowserOverlay::BankListModel::listBoxItemClicked(int row, const juce
     if (row >= 0 && row < owner.allBanks.size())
     {
         juce::String bankName = owner.allBanks[row];
+        bool isAll = bankName.equalsIgnoreCase("ALL BANKS");
 
+        auto cardBounds = juce::Rectangle<float>(4.0f, 2.0f, (float)owner.bankListBox.getWidth() - 8.0f, 44.0f);
+        juce::Rectangle<int> dotBtnHitArea((int)(cardBounds.getRight() - 32.0f), (int)cardBounds.getY(), 32, (int)cardBounds.getHeight());
+
+        // 3-dot overflow button clicked
+        if (!isAll && dotBtnHitArea.contains(e.x, e.y))
+        {
+            owner.showBankCardContextMenu(bankName);
+            return;
+        }
+
+        // Right-click context menu on bank card
         if (e.mods.isPopupMenu())
         {
-            juce::PopupMenu menu;
-            menu.addItem("Filter to '" + bankName + "'", [this, row, bankName]() {
-                owner.selectedBankIndex = row;
-                owner.activeBankFilter = bankName;
-                owner.activeBankName = bankName;
-                owner.currentSelectionType = SelectedViewType::Bank;
-                owner.filterPresets();
-                owner.updateBottomBar();
-                if (owner.onBankSelected)
-                    owner.onBankSelected(bankName);
-            });
-
-            if (!bankName.equalsIgnoreCase("ALL BANKS") && !bankName.equalsIgnoreCase("Factory") && !bankName.equalsIgnoreCase("User"))
+            if (!isAll)
             {
-                menu.addItem("Rename Bank...", [this, bankName]() {
-                    owner.showRenameBankDialog(bankName);
-                });
-                menu.addItem("Delete Bank", [this, bankName]() {
-                    owner.showBankActionsMenu();
-                });
+                owner.showBankCardContextMenu(bankName);
             }
-            menu.showMenuAsync(juce::PopupMenu::Options());
             return;
         }
 
@@ -1748,6 +1937,12 @@ bool PresetBrowserOverlay::keyPressed(const juce::KeyPress& key)
 {
     if (key == juce::KeyPress::escapeKey)
     {
+        if (historyFlyout.isVisible())
+        {
+            hideHistoryFlyout();
+            return true;
+        }
+
         if (onClose) onClose();
         else setVisible(false);
         return true;
@@ -1842,16 +2037,25 @@ void PresetBrowserOverlay::paint(juce::Graphics& g)
 
     // Vertical panel dividers
     float totalW = bounds.getWidth();
-    float colW = (totalW - 2.0f) / 3.0f;
-    float col1Right = bounds.getX() + colW;
-    float col2Right = col1Right + colW;
     float bodyTop   = bounds.getY() + headerH;
     float footerH   = 44.0f;
     float bodyBot   = bounds.getBottom() - footerH;
 
     g.setColour(juce::Colour(0xE4, 0xE4, 0xE7));
-    g.drawVerticalLine((int)col1Right, bodyTop, bodyBot);
-    g.drawVerticalLine((int)col2Right, bodyTop, bodyBot);
+
+    if constexpr (enableLibraryPanel)
+    {
+        float colW = (totalW - 2.0f) / 3.0f;
+        float col1Right = bounds.getX() + colW;
+        float col2Right = col1Right + colW;
+        g.drawVerticalLine((int)col1Right, bodyTop, bodyBot);
+        g.drawVerticalLine((int)col2Right, bodyTop, bodyBot);
+    }
+    else
+    {
+        float col1Right = bounds.getX() + (totalW - 1.0f) * 0.5f;
+        g.drawVerticalLine((int)col1Right, bodyTop, bodyBot);
+    }
 
     // Footer divider
     g.drawHorizontalLine((int)bodyBot, bounds.getX(), bounds.getRight());
@@ -1873,7 +2077,18 @@ void PresetBrowserOverlay::resized()
 
     // Header Controls
     closeButton.setBounds(cardArea.getRight() - 34, cardArea.getY() + 10, 26, 26);
-    libraryIndexedBadge.setBounds(cardArea.getRight() - 250, cardArea.getY() + 10, 208, 26);
+
+    if constexpr (!enableLibraryPanel)
+    {
+        historyButton.setBounds(cardArea.getRight() - 66, cardArea.getY() + 10, 26, 26);
+        libraryIndexedBadge.setBounds(cardArea.getRight() - 280, cardArea.getY() + 10, 208, 26);
+        historyFlyout.setBounds(cardArea.getRight() - 368, cardArea.getY() + 46, 360, 370);
+        historyBackdrop.setBounds(getLocalBounds());
+    }
+    else
+    {
+        libraryIndexedBadge.setBounds(cardArea.getRight() - 250, cardArea.getY() + 10, 208, 26);
+    }
 
     // Content area
     auto contentArea = cardArea;
@@ -1881,82 +2096,133 @@ void PresetBrowserOverlay::resized()
     contentArea.removeFromBottom(footerH);
 
     int totalW = contentArea.getWidth();
-    int colW = totalW / 3;
 
-    auto col1 = contentArea.removeFromLeft(colW).reduced(12, 10);
-    auto col2 = contentArea.removeFromLeft(colW).reduced(12, 10);
-    auto col3 = contentArea.reduced(12, 10);
-
-    //==========================================================================
-    // PANEL 1: PRESETS (Left)
-    //==========================================================================
-    auto header1 = col1.removeFromTop(22);
-    presetsHeaderLabel.setBounds(header1.removeFromLeft(120));
-    presetsCountLabel.setBounds(header1);
-
-    col1.removeFromTop(6);
-    searchBox.setBounds(col1.removeFromTop(28));
-
-    col1.removeFromTop(6);
-    categoryViewport.setBounds(col1.removeFromTop(26));
-    categoryContainer.setBounds(0, 0, 420, 26);
-
-    col1.removeFromTop(6);
-    auto toolbar1 = col1.removeFromTop(26);
-    shuffleFxBtn.setBounds(toolbar1.removeFromLeft(105));
-    toolbar1.removeFromLeft(4);
-    favoriteFilterBtn.setBounds(toolbar1.removeFromRight(64));
-    toolbar1.removeFromRight(4);
-    sortSelector.setBounds(toolbar1);
-
-    col1.removeFromTop(6);
-    presetListBox.setBounds(col1);
-
-    //==========================================================================
-    // PANEL 2: BANKS (Middle)
-    //==========================================================================
-    auto header2 = col2.removeFromTop(22);
-    banksHeaderLabel.setBounds(header2.removeFromLeft(120));
-    banksCountLabel.setBounds(header2);
-
-    col2.removeFromTop(6);
-    auto toolbar2 = col2.removeFromTop(28);
-    newBankBtn.setBounds(toolbar2.removeFromLeft(105));
-    toolbar2.removeFromLeft(6);
-    bankActionsBtn.setBounds(toolbar2.removeFromLeft(95));
-
-    col2.removeFromTop(6);
-    bankListBox.setBounds(col2);
-
-    //==========================================================================
-    // PANEL 3: SAMPLES & HISTORY (Right)
-    //==========================================================================
-    auto header3 = col3.removeFromTop(22);
-    panel3HeaderLabel.setBounds(header3.removeFromLeft(100));
-    historyTabBtn.setBounds(header3.removeFromRight(95));
-    header3.removeFromRight(4);
-    samplesTabBtn.setBounds(header3.removeFromRight(95));
-
-    col3.removeFromTop(6);
-
-    if (!isHistoryViewActive)
+    if constexpr (enableLibraryPanel)
     {
-        sampleSortSelector.setBounds(col3.removeFromTop(28));
+        int colW = totalW / 3;
+
+        auto col1 = contentArea.removeFromLeft(colW).reduced(12, 10);
+        auto col2 = contentArea.removeFromLeft(colW).reduced(12, 10);
+        auto col3 = contentArea.reduced(12, 10);
+
+        //==========================================================================
+        // PANEL 1: PRESETS (Left)
+        //==========================================================================
+        auto header1 = col1.removeFromTop(22);
+        presetsHeaderLabel.setBounds(header1.removeFromLeft(120));
+        presetsCountLabel.setBounds(header1);
+
+        col1.removeFromTop(6);
+        searchBox.setBounds(col1.removeFromTop(28));
+
+        col1.removeFromTop(6);
+        categoryViewport.setBounds(col1.removeFromTop(26));
+        categoryContainer.setBounds(0, 0, 420, 26);
+
+        col1.removeFromTop(6);
+        auto toolbar1 = col1.removeFromTop(26);
+        shuffleFxBtn.setBounds(toolbar1.removeFromLeft(105));
+        toolbar1.removeFromLeft(4);
+        favoriteFilterBtn.setBounds(toolbar1.removeFromRight(64));
+        toolbar1.removeFromRight(4);
+        sortSelector.setBounds(toolbar1);
+
+        col1.removeFromTop(6);
+        presetListBox.setBounds(col1);
+
+        //==========================================================================
+        // PANEL 2: BANKS (Middle)
+        //==========================================================================
+        auto header2 = col2.removeFromTop(22);
+        banksHeaderLabel.setBounds(header2.removeFromLeft(120));
+        banksCountLabel.setBounds(header2);
+
+        col2.removeFromTop(6);
+        auto toolbar2 = col2.removeFromTop(28);
+        newBankBtn.setBounds(toolbar2.removeFromLeft(105));
+        toolbar2.removeFromLeft(6);
+        bankActionsBtn.setBounds(toolbar2.removeFromLeft(95));
+
+        col2.removeFromTop(6);
+        bankListBox.setBounds(col2);
+
+        //==========================================================================
+        // PANEL 3: SAMPLES & HISTORY (Right)
+        //==========================================================================
+        auto header3 = col3.removeFromTop(22);
+        panel3HeaderLabel.setBounds(header3.removeFromLeft(100));
+        historyTabBtn.setBounds(header3.removeFromRight(95));
+        header3.removeFromRight(4);
+        samplesTabBtn.setBounds(header3.removeFromRight(95));
+
         col3.removeFromTop(6);
 
-        dropImportZone.setBounds(col3.removeFromBottom(36));
-        col3.removeFromBottom(6);
-        sampleListBox.setBounds(col3);
+        if (!isHistoryViewActive)
+        {
+            sampleSortSelector.setBounds(col3.removeFromTop(28));
+            col3.removeFromTop(6);
+
+            dropImportZone.setBounds(col3.removeFromBottom(36));
+            col3.removeFromBottom(6);
+            sampleListBox.setBounds(col3);
+        }
+        else
+        {
+            auto histBot = col3.removeFromBottom(30);
+            restoreHistoryBtn.setBounds(histBot.removeFromLeft((histBot.getWidth() - 6) / 2));
+            histBot.removeFromLeft(6);
+            clearHistoryBtn.setBounds(histBot);
+
+            col3.removeFromBottom(6);
+            historyListBox.setBounds(col3);
+        }
     }
     else
     {
-        auto histBot = col3.removeFromBottom(30);
-        restoreHistoryBtn.setBounds(histBot.removeFromLeft((histBot.getWidth() - 6) / 2));
-        histBot.removeFromLeft(6);
-        clearHistoryBtn.setBounds(histBot);
+        int col1W = totalW / 2;
+        auto col1 = contentArea.removeFromLeft(col1W).reduced(12, 10);
+        auto col2 = contentArea.reduced(12, 10);
 
-        col3.removeFromBottom(6);
-        historyListBox.setBounds(col3);
+        //==========================================================================
+        // PANEL 1: PRESETS (Left, expanded)
+        //==========================================================================
+        auto header1 = col1.removeFromTop(22);
+        presetsHeaderLabel.setBounds(header1.removeFromLeft(120));
+        presetsCountLabel.setBounds(header1);
+
+        col1.removeFromTop(6);
+        searchBox.setBounds(col1.removeFromTop(28));
+
+        col1.removeFromTop(6);
+        categoryViewport.setBounds(col1.removeFromTop(26));
+        categoryContainer.setBounds(0, 0, juce::jmax(420, col1.getWidth()), 26);
+
+        col1.removeFromTop(6);
+        auto toolbar1 = col1.removeFromTop(26);
+        shuffleFxBtn.setBounds(toolbar1.removeFromLeft(105));
+        toolbar1.removeFromLeft(6);
+        favoriteFilterBtn.setBounds(toolbar1.removeFromRight(64));
+        toolbar1.removeFromRight(6);
+        sortSelector.setBounds(toolbar1);
+
+        col1.removeFromTop(6);
+        presetListBox.setBounds(col1);
+
+        //==========================================================================
+        // PANEL 2: BANKS (Right, expanded)
+        //==========================================================================
+        auto header2 = col2.removeFromTop(22);
+        banksHeaderLabel.setBounds(header2.removeFromLeft(120));
+        banksCountLabel.setBounds(header2);
+
+        col2.removeFromTop(6);
+        auto toolbar2 = col2.removeFromTop(28);
+        newBankBtn.setBounds(toolbar2.removeFromLeft(105));
+        toolbar2.removeFromLeft(6);
+        bankActionsBtn.setBounds(toolbar2.removeFromLeft(95));
+
+        col2.removeFromTop(6);
+        bankListBox.setBounds(col2);
     }
 
     //==========================================================================

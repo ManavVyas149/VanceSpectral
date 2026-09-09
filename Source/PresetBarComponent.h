@@ -15,6 +15,7 @@ public:
   void setPresetName(const juce::String &name);
   void setBankName(const juce::String &bank) {
     bankName = bank;
+    resized();
     repaint();
   }
   juce::String getBankName() const { return bankName; }

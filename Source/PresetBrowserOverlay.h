@@ -23,6 +23,88 @@ public:
     juce::AlertWindow* getActiveAlertWindow() const { return activeAlertWindow.getComponent(); }
     void executeDeleteCurrentSelection();
     void showNewBankDialog();
+    void showDeleteBankDialog(const juce::String& bankName);
+    void showBankCardContextMenu(const juce::String& bankName);
+    class HistoryIconButton : public juce::Button
+    {
+    public:
+        HistoryIconButton() : juce::Button("History")
+        {
+            setTooltip("History snapshots");
+        }
+
+        void paintButton(juce::Graphics& g, bool isHighlighted, bool isDown) override
+        {
+            auto bounds = getLocalBounds().toFloat().reduced(0.5f);
+            float cornerRadius = 4.0f;
+
+            bool isToggled = getToggleState();
+            juce::Colour fillColour = isToggled ? SpectralUILookAndFeel::accentColour.withAlpha(0.15f)
+                                                : (isDown ? juce::Colour(0xE4, 0xE4, 0xE7)
+                                                          : (isHighlighted ? juce::Colour(0xF4, 0xF4, 0xF5)
+                                                                           : juce::Colours::white));
+            juce::Colour borderColour = isToggled ? SpectralUILookAndFeel::accentColour
+                                                  : (isHighlighted ? juce::Colour(0x8B, 0x5C, 0xF6).withAlpha(0.6f)
+                                                                   : juce::Colour(0xE4, 0xE4, 0xE7));
+
+            g.setColour(fillColour);
+            g.fillRoundedRectangle(bounds, cornerRadius);
+            g.setColour(borderColour);
+            g.drawRoundedRectangle(bounds, cornerRadius, 1.0f);
+
+            float cx = bounds.getCentreX();
+            float cy = bounds.getCentreY();
+            float r = 6.0f;
+
+            juce::Colour iconColour = isToggled ? SpectralUILookAndFeel::accentColour
+                                                : (isHighlighted ? SpectralUILookAndFeel::textMainColour
+                                                                 : juce::Colour(0x71, 0x71, 0x7A));
+            g.setColour(iconColour);
+            g.drawEllipse(cx - r, cy - r, r * 2.0f, r * 2.0f, 1.3f);
+
+            juce::Path hands;
+            hands.startNewSubPath(cx, cy - r + 2.0f);
+            hands.lineTo(cx, cy);
+            hands.lineTo(cx + r - 2.5f, cy);
+            g.strokePath(hands, juce::PathStrokeType(1.3f, juce::PathStrokeType::mitered, juce::PathStrokeType::square));
+        }
+    };
+
+    class HistoryFlyoutComponent : public juce::Component
+    {
+    public:
+        HistoryFlyoutComponent(PresetBrowserOverlay& owner);
+        void setupChildren();
+        void paint(juce::Graphics& g) override;
+        void resized() override;
+        void mouseDown(const juce::MouseEvent&) override {}
+    private:
+        PresetBrowserOverlay& owner;
+        juce::Label titleLabel;
+        juce::TextButton closeBtn{ juce::String::fromUTF8("\xe2\x9c\x95") };
+    };
+
+    class FlyoutBackdropComponent : public juce::Component
+    {
+    public:
+        FlyoutBackdropComponent(std::function<void()> onDismiss) : dismissCallback(onDismiss)
+        {
+            setInterceptsMouseClicks(true, false);
+        }
+        void mouseDown(const juce::MouseEvent&) override
+        {
+            if (dismissCallback)
+                dismissCallback();
+        }
+    private:
+        std::function<void()> dismissCallback;
+    };
+
+    void toggleHistoryFlyout();
+    void hideHistoryFlyout();
+    bool isHistoryFlyoutVisible() const;
+    HistoryIconButton& getHistoryButton() { return historyButton; }
+    HistoryFlyoutComponent& getHistoryFlyout() { return historyFlyout; }
     int getSampleCount() const { return allSamples.size(); }
     juce::File getSampleAt(int index) const { return (index >= 0 && index < allSamples.size()) ? allSamples[index] : juce::File(); }
     void selectSampleRow(int row);
@@ -95,8 +177,12 @@ private:
     juce::AudioProcessorValueTreeState& apvts;
     HistoryManager* historyManager = nullptr;
 
+    // Feature toggle: set to true to restore the 3-column Library panel
+    static constexpr bool enableLibraryPanel = false;
+
     // Header Controls
     juce::TextButton closeButton{ juce::String::fromUTF8("\xe2\x9c\x95") }; // ✕
+    HistoryIconButton historyButton;
     juce::Label libraryIndexedBadge;
 
     //==========================================================================
@@ -169,6 +255,10 @@ private:
     juce::ListBox historyListBox;
     juce::TextButton restoreHistoryBtn{ "RESTORE SELECTED" };
     juce::TextButton clearHistoryBtn{ "CLEAR ALL" };
+
+    // History Flyout popover controls
+    FlyoutBackdropComponent historyBackdrop{ [this]() { hideHistoryFlyout(); } };
+    HistoryFlyoutComponent historyFlyout{ *this };
 
     //==========================================================================
     // FOOTER: Status & Actions Bar
