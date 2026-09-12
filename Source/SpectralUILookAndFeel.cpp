@@ -243,14 +243,12 @@ void SpectralUILookAndFeel::drawChassisBackground(juce::Graphics& g, juce::Recta
     // 5. Embedded PCB traces
     drawPcbTraces(g, bounds);
 
-    // 6. Corner Mounting Screws (4 precision slotted screws)
+    // 6. Corner Mounting Screws (top 2 precision slotted screws; bottom screws removed for clean chassis)
     constexpr float screwInset = 16.0f;
     constexpr float screwRadius = 5.0f;
 
     drawCornerScrew(g, bounds.getX() + screwInset, bounds.getY() + screwInset, screwRadius, 0.65f);
     drawCornerScrew(g, bounds.getRight() - screwInset, bounds.getY() + screwInset, screwRadius, 2.10f);
-    drawCornerScrew(g, bounds.getX() + screwInset, bounds.getBottom() - screwInset, screwRadius, 1.45f);
-    drawCornerScrew(g, bounds.getRight() - screwInset, bounds.getBottom() - screwInset, screwRadius, 0.35f);
 }
 
 void SpectralUILookAndFeel::drawPanelCard(juce::Graphics& g, juce::Rectangle<float> bounds,

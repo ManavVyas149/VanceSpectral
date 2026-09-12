@@ -76,6 +76,7 @@ private:
   juce::String bankName{"FACTORY"};
   juce::String currentPresetName{"Cold Synth"};
 
+  juce::Rectangle<int> bankArea;
   ChevronButton prevButton{false};
   ChevronButton nextButton{true};
   juce::TextButton browseButton{ "BROWSE" };

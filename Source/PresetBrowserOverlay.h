@@ -183,7 +183,6 @@ private:
     // Header Controls
     juce::TextButton closeButton{ juce::String::fromUTF8("\xe2\x9c\x95") }; // ✕
     HistoryIconButton historyButton;
-    juce::Label libraryIndexedBadge;
 
     //==========================================================================
     // PANEL 1: PRESETS (Left Panel)
@@ -263,7 +262,35 @@ private:
     //==========================================================================
     // FOOTER: Status & Actions Bar
     //==========================================================================
-    juce::Label bottomStatusLabel;
+    class BottomStatusComponent : public juce::Component
+    {
+    public:
+        BottomStatusComponent() = default;
+        ~BottomStatusComponent() override = default;
+
+        void paint(juce::Graphics& g) override
+        {
+            if (attributedText.getText().isNotEmpty())
+            {
+                juce::TextLayout layout;
+                layout.createLayout(attributedText, (float)getWidth());
+                float y = (getHeight() - layout.getHeight()) * 0.5f;
+                layout.draw(g, juce::Rectangle<float>(0.0f, y, (float)getWidth(), layout.getHeight()));
+            }
+        }
+
+        void setAttributedText(const juce::AttributedString& as)
+        {
+            attributedText = as;
+            repaint();
+        }
+
+    private:
+        juce::AttributedString attributedText;
+        JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(BottomStatusComponent)
+    };
+
+    BottomStatusComponent bottomStatusLabel;
     juce::TextButton revealFileBtn{ "REVEAL FILE" };
     juce::TextButton saveAsBtn{ "SAVE AS..." };
     juce::TextButton loadMainBtn{ juce::String::fromUTF8("LOAD PRESET \xe2\x9c\x93") };

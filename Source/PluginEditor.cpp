@@ -6,7 +6,6 @@ VancespectralAudioProcessorEditor::VancespectralAudioProcessorEditor(Vancespectr
     : AudioProcessorEditor(&p), audioProcessor(p),
       adsrPanel(p.getAPVTS()),
       effectsPanel(p.getAPVTS(), [&p]() { return p.getHostBpm(); }) {
-  
   setLookAndFeel(&spectralLookAndFeel);
   setWantsKeyboardFocus(true);
 
@@ -418,34 +417,6 @@ void VancespectralAudioProcessorEditor::ContentWrapper::paint(juce::Graphics &g)
   g.setColour(SpectralUILookAndFeel::dividerColour);
   g.drawHorizontalLine((int)footerArea.getY(), 16.0f, (float)getWidth() - 16.0f);
 
-  // Branding text on left with authentic Vance logo
-  float logoH = 14.0f;
-  float logoW = logoH * (793.0f / 1024.0f); // 0.7744 aspect ratio
-  float logoX = footerArea.getX() + 2.0f;
-  float logoY = footerArea.getCentreY() - logoH * 0.5f;
-  juce::Rectangle<float> logoRect(logoX, logoY, logoW, logoH);
-  juce::MemoryInputStream stream(BinaryData::VanceLogo_png, (size_t)BinaryData::VanceLogo_pngSize, false);
-  auto footerLogo = juce::PNGImageFormat().decodeImage(stream);
-  if (footerLogo.isValid())
-  {
-      g.drawImageWithin(footerLogo, (int)logoRect.getX(), (int)logoRect.getY(), (int)logoRect.getWidth(), (int)logoRect.getHeight(),
-                        juce::RectanglePlacement::centred | juce::RectanglePlacement::onlyReduceInSize, false);
-  }
-  else
-  {
-      g.setColour(SpectralUILookAndFeel::accentColour);
-      g.fillRoundedRectangle(logoRect, 2.0f);
-  }
-
-  // Left branding text (strictly bounded so it never collides with center badge)
-  g.setFont(SpectralUILookAndFeel::getJetBrainsMono(9.0f));
-  g.setColour(SpectralUILookAndFeel::textMutedColour);
-  int maxBrandingWidth = (int)(bounds.getWidth() * 0.5f - logoRect.getRight() - 75.0f);
-  juce::Rectangle<int> brandingRect((int)logoRect.getRight() + 6, (int)footerArea.getY(),
-                                    juce::jmax(50, maxBrandingWidth), (int)footerArea.getHeight());
-  g.drawText("VANCESPECTRAL // PRECISION BRUTALIST INSTRUMENT // MODEL-01",
-             brandingRect, juce::Justification::centredLeft, true);
-
   // Base Octave Readout Badge (dynamically centered in bottom status bar)
   int octaveNum = 3 + (editor.currentOctaveOffset / 12);
   juce::String octaveText = "OCTAVE: C" + juce::String(octaveNum) + " [Z/X]";
@@ -457,7 +428,7 @@ void VancespectralAudioProcessorEditor::ContentWrapper::paint(juce::Graphics &g)
 
   g.setColour(SpectralUILookAndFeel::panelBgColour);
   g.fillRoundedRectangle(octaveRect, 3.0f);
-  g.setColour(SpectralUILookAndFeel::dividerColour);
+  g.setColour(SpectralUILookAndFeel::accentColour);
   g.drawRoundedRectangle(octaveRect, 3.0f, 1.0f);
   g.setColour(SpectralUILookAndFeel::textMainColour);
   g.setFont(SpectralUILookAndFeel::getJetBrainsMono(9.0f, true));

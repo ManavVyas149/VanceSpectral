@@ -363,12 +363,6 @@ PresetBrowserOverlay::PresetBrowserOverlay(PresetManager& manager, juce::AudioPr
         else setVisible(false);
     };
 
-    addAndMakeVisible(libraryIndexedBadge);
-    libraryIndexedBadge.setFont(SpectralUILookAndFeel::getSpaceGrotesk(9.5f, false));
-    libraryIndexedBadge.setColour(juce::Label::textColourId, juce::Colour(0x71, 0x71, 0x7A));
-    libraryIndexedBadge.setColour(juce::Label::backgroundColourId, juce::Colour(0xF4, 0xF4, 0xF5));
-    libraryIndexedBadge.setJustificationType(juce::Justification::centred);
-
     //==========================================================================
     // PANEL 1: PRESETS (Left)
     //==========================================================================
@@ -588,9 +582,6 @@ PresetBrowserOverlay::PresetBrowserOverlay(PresetManager& manager, juce::AudioPr
     // FOOTER STRIP
     //==========================================================================
     addAndMakeVisible(bottomStatusLabel);
-    bottomStatusLabel.setFont(SpectralUILookAndFeel::getSpaceGrotesk(10.0f, false));
-    bottomStatusLabel.setColour(juce::Label::textColourId, juce::Colour(0x71, 0x71, 0x7A));
-    bottomStatusLabel.setJustificationType(juce::Justification::centredLeft);
 
     addAndMakeVisible(revealFileBtn);
     revealFileBtn.onClick = [this]() {
@@ -707,7 +698,6 @@ void PresetBrowserOverlay::refreshPresetList()
     presetManager.invalidatePresetsCache();
     allPresets = presetManager.getAllPresets();
     filterPresets();
-    libraryIndexedBadge.setText(juce::String::fromUTF8("   LIBRARY INDEXED \xc2\xb7 ") + juce::String(allPresets.size() + allSamples.size()) + " ITEMS", juce::dontSendNotification);
     updateShuffleFxButtonState();
 }
 
@@ -724,7 +714,6 @@ void PresetBrowserOverlay::refreshSampleList()
 
     sampleListBox.updateContent();
     sampleListBox.repaint();
-    libraryIndexedBadge.setText(juce::String::fromUTF8("   LIBRARY INDEXED \xc2\xb7 ") + juce::String(allPresets.size() + allSamples.size()) + " ITEMS", juce::dontSendNotification);
     samplesTabBtn.setButtonText(juce::String::formatted("SAMPLES (%d)", allSamples.size()));
 }
 
@@ -974,13 +963,23 @@ void PresetBrowserOverlay::updateBottomBar()
     if (currentSelectionType == SelectedViewType::Preset && activePresetFile.existsAsFile())
     {
         juce::String name = activePresetFile.getFileNameWithoutExtension();
-        juce::String bank = "USER";
+        juce::String bank = "User";
         for (const auto& p : allPresets)
         {
             if (p.file == activePresetFile) { bank = p.bank; break; }
         }
 
-        bottomStatusLabel.setText(juce::String::fromUTF8("\xe2\x97\x8f PRESET: ") + name.toUpperCase() + " [" + bank.toUpperCase() + juce::String::fromUTF8("] \xc2\xb7 DOUBLE-CLICK OR ENTER TO LOAD"), juce::dontSendNotification);
+        juce::AttributedString as;
+        as.setWordWrap(juce::AttributedString::WordWrap::none);
+        as.append("PRESET SELECTED: ", SpectralUILookAndFeel::getSpaceGrotesk(10.0f, false), SpectralUILookAndFeel::textMutedColour);
+        as.append(name + " [" + bank + "]", SpectralUILookAndFeel::getSpaceGrotesk(10.0f, false), SpectralUILookAndFeel::accentColour);
+        as.append(juce::String::fromUTF8(" \xc2\xb7 "), SpectralUILookAndFeel::getSpaceGrotesk(10.0f, false), SpectralUILookAndFeel::textMutedColour);
+        as.append("Double click ", SpectralUILookAndFeel::getSpaceGrotesk(10.0f, true), SpectralUILookAndFeel::textMutedColour);
+        as.append("or ", SpectralUILookAndFeel::getSpaceGrotesk(10.0f, false), SpectralUILookAndFeel::textMutedColour);
+        as.append("Enter ", SpectralUILookAndFeel::getSpaceGrotesk(10.0f, true), SpectralUILookAndFeel::textMutedColour);
+        as.append("to load", SpectralUILookAndFeel::getSpaceGrotesk(10.0f, false), SpectralUILookAndFeel::textMutedColour);
+        bottomStatusLabel.setAttributedText(as);
+
         revealFileBtn.setVisible(true);
         loadMainBtn.setButtonText(juce::String::fromUTF8("LOAD PRESET \xe2\x9c\x93"));
         loadMainBtn.setEnabled(true);
@@ -993,7 +992,13 @@ void PresetBrowserOverlay::updateBottomBar()
     else if (currentSelectionType == SelectedViewType::Bank)
     {
         int count = presetManager.getPresetCountForBank(activeBankName);
-        bottomStatusLabel.setText(juce::String::fromUTF8("\xe2\x97\x8f BANK: ") + activeBankName.toUpperCase() + juce::String::fromUTF8(" \xc2\xb7 ") + juce::String(count) + " PRESETS AVAILABLE", juce::dontSendNotification);
+        juce::AttributedString as;
+        as.setWordWrap(juce::AttributedString::WordWrap::none);
+        as.append("BANK SELECTED... ", SpectralUILookAndFeel::getSpaceGrotesk(10.0f, false), SpectralUILookAndFeel::textMutedColour);
+        as.append(activeBankName, SpectralUILookAndFeel::getSpaceGrotesk(10.0f, false), SpectralUILookAndFeel::accentColour);
+        as.append(juce::String::fromUTF8(" \xc2\xb7 ") + juce::String(count) + " PRESETS AVAILABLE", SpectralUILookAndFeel::getSpaceGrotesk(10.0f, false), SpectralUILookAndFeel::textMutedColour);
+        bottomStatusLabel.setAttributedText(as);
+
         revealFileBtn.setVisible(!activeBankName.equalsIgnoreCase("ALL BANKS"));
         loadMainBtn.setEnabled(false);
 
@@ -1004,7 +1009,15 @@ void PresetBrowserOverlay::updateBottomBar()
     }
     else if (currentSelectionType == SelectedViewType::Sample && selectedSampleFile.existsAsFile())
     {
-        bottomStatusLabel.setText(juce::String::fromUTF8("\xe2\x97\x8f SAMPLE: ") + selectedSampleFile.getFileName().toUpperCase() + juce::String::fromUTF8(" \xc2\xb7 DOUBLE-CLICK TO LOAD INTO ENGINE"), juce::dontSendNotification);
+        juce::AttributedString as;
+        as.setWordWrap(juce::AttributedString::WordWrap::none);
+        as.append("SAMPLE SELECTED... ", SpectralUILookAndFeel::getSpaceGrotesk(10.0f, false), SpectralUILookAndFeel::textMutedColour);
+        as.append(selectedSampleFile.getFileName(), SpectralUILookAndFeel::getSpaceGrotesk(10.0f, false), SpectralUILookAndFeel::accentColour);
+        as.append(juce::String::fromUTF8(" \xc2\xb7 "), SpectralUILookAndFeel::getSpaceGrotesk(10.0f, false), SpectralUILookAndFeel::textMutedColour);
+        as.append("Double click ", SpectralUILookAndFeel::getSpaceGrotesk(10.0f, true), SpectralUILookAndFeel::textMutedColour);
+        as.append("to load into engine", SpectralUILookAndFeel::getSpaceGrotesk(10.0f, false), SpectralUILookAndFeel::textMutedColour);
+        bottomStatusLabel.setAttributedText(as);
+
         revealFileBtn.setVisible(true);
         loadMainBtn.setButtonText(juce::String::fromUTF8("LOAD SAMPLE \xe2\x9c\x93"));
         loadMainBtn.setEnabled(true);
@@ -1016,7 +1029,12 @@ void PresetBrowserOverlay::updateBottomBar()
     else if (currentSelectionType == SelectedViewType::History && selectedHistoryIndex >= 0 && selectedHistoryIndex < allHistoryEntries.size())
     {
         const auto& h = allHistoryEntries[selectedHistoryIndex];
-        bottomStatusLabel.setText(juce::String::fromUTF8("\xe2\x97\x8f SNAPSHOT: ") + h.label.toUpperCase() + " (" + h.formattedTime + ")", juce::dontSendNotification);
+        juce::AttributedString as;
+        as.setWordWrap(juce::AttributedString::WordWrap::none);
+        as.append("SNAPSHOT SELECTED... ", SpectralUILookAndFeel::getSpaceGrotesk(10.0f, false), SpectralUILookAndFeel::textMutedColour);
+        as.append(h.label + " (" + h.formattedTime + ")", SpectralUILookAndFeel::getSpaceGrotesk(10.0f, false), SpectralUILookAndFeel::accentColour);
+        bottomStatusLabel.setAttributedText(as);
+
         revealFileBtn.setVisible(false);
         loadMainBtn.setButtonText(juce::String::fromUTF8("RESTORE SNAPSHOT"));
         loadMainBtn.setEnabled(true);
@@ -1027,7 +1045,12 @@ void PresetBrowserOverlay::updateBottomBar()
     }
     else
     {
-        bottomStatusLabel.setText(juce::String::fromUTF8("\xe2\x97\x8f NO ITEM SELECTED \xc2\xb7 SELECT A PRESET, BANK OR SAMPLE"), juce::dontSendNotification);
+        juce::AttributedString as;
+        as.setWordWrap(juce::AttributedString::WordWrap::none);
+        as.append("NO ITEM SELECTED", SpectralUILookAndFeel::getSpaceGrotesk(10.0f, false), SpectralUILookAndFeel::textMutedColour);
+        as.append(juce::String::fromUTF8(" \xc2\xb7 SELECT A PRESET, BANK OR SAMPLE"), SpectralUILookAndFeel::getSpaceGrotesk(10.0f, false), SpectralUILookAndFeel::textMutedColour);
+        bottomStatusLabel.setAttributedText(as);
+
         revealFileBtn.setVisible(false);
         loadMainBtn.setEnabled(false);
         deleteBtn.setVisible(false);
@@ -2059,10 +2082,6 @@ void PresetBrowserOverlay::paint(juce::Graphics& g)
 
     // Footer divider
     g.drawHorizontalLine((int)bodyBot, bounds.getX(), bounds.getRight());
-
-    // Status indicator dot
-    g.setColour(SpectralUILookAndFeel::accentColour);
-    g.fillEllipse(bounds.getX() + 18.0f, bodyBot + (footerH - 7.0f) * 0.5f, 7.0f, 7.0f);
 }
 
 void PresetBrowserOverlay::paintOverChildren(juce::Graphics&)
@@ -2081,13 +2100,8 @@ void PresetBrowserOverlay::resized()
     if constexpr (!enableLibraryPanel)
     {
         historyButton.setBounds(cardArea.getRight() - 66, cardArea.getY() + 10, 26, 26);
-        libraryIndexedBadge.setBounds(cardArea.getRight() - 280, cardArea.getY() + 10, 208, 26);
         historyFlyout.setBounds(cardArea.getRight() - 368, cardArea.getY() + 46, 360, 370);
         historyBackdrop.setBounds(getLocalBounds());
-    }
-    else
-    {
-        libraryIndexedBadge.setBounds(cardArea.getRight() - 250, cardArea.getY() + 10, 208, 26);
     }
 
     // Content area
@@ -2245,5 +2259,5 @@ void PresetBrowserOverlay::resized()
 
     revealFileBtn.setBounds(curBtnX - 75, botY, 75, btnH);
 
-    bottomStatusLabel.setBounds(footerArea.getX() + 32, botY, curBtnX - 75 - (footerArea.getX() + 36), btnH);
+    bottomStatusLabel.setBounds(footerArea.getX() + 18, botY, curBtnX - 75 - (footerArea.getX() + 22), btnH);
 }

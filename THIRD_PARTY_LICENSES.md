@@ -4,26 +4,33 @@ This project incorporates third-party open source software. Below are the detail
 
 ---
 
-## SoundTouch
+## 1. SoundTouch Audio Processing Library
 
-- **Library**: SoundTouch Audio Processing Library
+- **Library**: SoundTouch Audio Processing Library (v2.3.3)
 - **Author**: Olli Parviainen
 - **License**: GNU Lesser General Public License (LGPL) version 2.1
 - **Upstream Repository**: [https://codeberg.org/soundtouch/soundtouch](https://codeberg.org/soundtouch/soundtouch)
-- **Local Path**: `ThirdParty/SoundTouch/`
+- **Local Source Path**: `ThirdParty/SoundTouch/`
 
-### Licensing Compliance & Static Linking Notice
+### Licensing Compliance & Linking Notice
 
-SoundTouch is distributed under the terms of the GNU Lesser General Public License (LGPL) v2.1. 
+SoundTouch is distributed under the terms of the **GNU Lesser General Public License (LGPL) v2.1**.
 
-In this project, SoundTouch is integrated as a static library:
-- Release build: `ThirdParty/SoundTouch/lib/SoundTouch_x64.lib`
-- Debug build: `ThirdParty/SoundTouch/lib/SoundTouchD_x64.lib`
+#### Current Build Integration (Static Linkage)
+In the current Windows build environment, SoundTouch is integrated as a static C++ library:
+- **Release (x64)**: `ThirdParty/SoundTouch/lib/SoundTouch_x64.lib` (built with `/MD` CRT)
+- **Debug (x64)**: `ThirdParty/SoundTouch/lib/SoundTouchD_x64.lib` (built with `/MDd` CRT)
 
-In compliance with LGPL v2.1 Section 6:
-1. The full source code of the exact version of SoundTouch used is included in the `ThirdParty/SoundTouch/` directory of this repository (and upstream source is available at the repository link above).
-2. Users and developers are permitted to modify the SoundTouch library and relink the application.
-3. Instructions for rebuilding the SoundTouch library independently and relinking VanceSpectral are provided in [`ThirdParty/SoundTouch/INTEGRATION_NOTES.md`](file:///c:/Users/Ansh%20Srivastava/OneDrive/Documents/GitHub/VanceSpectral/ThirdParty/SoundTouch/INTEGRATION_NOTES.md).
+Under **LGPL v2.1 Section 6**, incorporating an LGPL library into a proprietary or closed-source application requires providing end users with a mechanism to modify the library and run the application with their modified version:
+
+1. **Option A — Object Code Distribution & Relinking (Current Static Linking)**:
+   - The full source code of the exact version of SoundTouch used is preserved in `ThirdParty/SoundTouch/`.
+   - Users and developers can recompile SoundTouch from source using MSVC (`ThirdParty\SoundTouch\source\SoundTouch\SoundTouch.vcxproj`).
+   - If distributing commercial static builds, the developer provides intermediate object files (`VanceSpectral.lib`) and linking instructions so an end user can relink against a custom version of `SoundTouch.lib`. Detailed rebuild and relinking instructions are provided in [`ThirdParty/SoundTouch/INTEGRATION_NOTES.md`](file:///c:/Users/Ansh%20Srivastava/OneDrive/Documents/GitHub/VanceSpectral/ThirdParty/SoundTouch/INTEGRATION_NOTES.md).
+
+2. **Option B — Dynamic Linking (Recommended for Public Distribution)**:
+   - For closed-source public distribution without providing proprietary object files, SoundTouch can be compiled as a dynamic link library (`SoundTouch.dll` on Windows / `libSoundTouch.dylib` on macOS) and shipped alongside the plugin bundle.
+   - This satisfies LGPL v2.1 Section 6(b) via standard dynamic library substitution (the user can swap the `.dll` or shared library file without touching the plugin binary).
 
 ---
 
@@ -35,9 +42,9 @@ This library is distributed in the hope that it will be useful, but WITHOUT ANY 
 
 ---
 
-## libsamplerate
+## 2. libsamplerate (Secret Rabbit Code)
 
-- **Library**: libsamplerate (Secret Rabbit Code) Sample Rate Converter
+- **Library**: libsamplerate Sample Rate Converter (v0.2.2)
 - **Author**: Erik de Castro Lopo
 - **License**: 2-Clause BSD License (FreeBSD)
 - **Upstream Repository**: [https://github.com/libsndfile/libsamplerate](https://github.com/libsndfile/libsamplerate)
@@ -45,7 +52,7 @@ This library is distributed in the hope that it will be useful, but WITHOUT ANY 
 
 ### Licensing Notice & Static Linking
 
-libsamplerate is distributed under the 2-Clause BSD License.
+libsamplerate is distributed under the permissive **2-Clause BSD License**.
 
 In this project, libsamplerate is integrated as a static library:
 - Release build: `ThirdParty/libsamplerate/lib/samplerate.lib` (built with `/MD` CRT)
@@ -85,29 +92,47 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ---
 
-## chowdsp_utils
+## 3. chowdsp_utils
 
 - **Library**: chowdsp_utils
 - **Author**: Jatin Chowdhury (Chowdhury DSP)
-- **License**: GPLv3 / BSD 3-Clause (per-module licenses)
+- **License**: Individual per-module licenses (BSD 3-Clause and GPLv3)
 - **Upstream Repository**: [https://github.com/Chowdhury-DSP/chowdsp_utils](https://github.com/Chowdhury-DSP/chowdsp_utils)
 - **Local Path**: `ThirdParty/chowdsp_utils/`
 
-### Licensing Notice
+### Licensing Notice & Module Breakdown
 
-`chowdsp_utils` is integrated as JUCE modules located in `ThirdParty/chowdsp_utils/modules/`. Non-module and core components follow GPLv3; math and SIMD utilities follow 3-Clause BSD.
+Per `ThirdParty/chowdsp_utils/LICENSE.md`, each JUCE module within `chowdsp_utils` possesses its own specific license:
+
+- **Permissive Modules (BSD 3-Clause)**:
+  - `chowdsp_core`
+  - `chowdsp_data_structures`
+  - `chowdsp_math`
+  - `chowdsp_simd`
+  - `chowdsp_buffers`
+  - `chowdsp_json`, `chowdsp_logging`, `chowdsp_units`, `chowdsp_parameters`, `chowdsp_presets_v2`
+
+- **Copyleft Modules (GPLv3)**:
+  - `chowdsp_filters`
+  - `chowdsp_dsp_utils`
+  - `chowdsp_dsp_data_structures`
+  - `chowdsp_sources`, `chowdsp_waveshapers`, `chowdsp_compressor`, `chowdsp_eq`, `chowdsp_reverb`
+
+*Implementation Note*: The active VanceSpectral 5-stage wet effects engine (`EffectsEngine.cpp`) is implemented using native `juce::dsp` components (`juce::dsp::Chorus`, `juce::dsp::Phaser`, `juce::dsp::DelayLine`) and Airwindows algorithms, together with an internal sidechain pump.
 
 ---
 
-## Airwindows
+## 4. Airwindows Audio DSP Algorithms
 
-- **Library**: Airwindows Audio DSP Algorithms (Spiral, ChorusEnsemble)
+- **Library**: Airwindows DSP (Spiral, ChorusEnsemble)
 - **Author**: Chris Johnson (airwindows.com)
 - **License**: MIT License
 - **Upstream Repository**: [https://github.com/airwindows/airwindows](https://github.com/airwindows/airwindows)
-- **Local Path**: `ThirdParty/Airwindows/`, `Source/Airwindows/`
+- **Local Path**: `Source/Airwindows/AirwindowsSpiral.h`, `Source/Airwindows/AirwindowsChorus.h`
 
-### MIT License Text
+### Licensing Notice & MIT License Text
+
+The Airwindows algorithms utilized in VanceSpectral are licensed under the permissive **MIT License**:
 
 ```text
 MIT License

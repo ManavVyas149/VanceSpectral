@@ -1219,7 +1219,7 @@ bool testTwoPanelBrowseAndBankOverflowAndTopBar(VancespectralAudioProcessor& pro
     auto* overlay = findChild<PresetBrowserOverlay>(&editor);
     TEST_ASSERT(presetBar != nullptr && overlay != nullptr, "PresetBar or Overlay missing");
 
-    // 17.1 Top Bar Swap: Bank Name leftmost (x = 32), followed by SHUFFLE FX
+    // 17.1 Top Bar Grouping: [FACTORY] [SHUFFLE FX] [MONO] cluster
     juce::TextButton* shuffleBtn = nullptr;
     for (int i = 0; i < presetBar->getNumChildComponents(); ++i)
     {
@@ -1230,8 +1230,11 @@ bool testTwoPanelBrowseAndBankOverflowAndTopBar(VancespectralAudioProcessor& pro
         }
     }
     TEST_ASSERT(shuffleBtn != nullptr, "SHUFFLE FX button missing from PresetBar");
+    auto polyArea = presetBar->getPolyButtonArea();
     TEST_ASSERT(shuffleBtn->getX() >= 70, "SHUFFLE FX button must be positioned to the right of bank name label");
-    std::cout << " [PASS] 17.1 Top bar Bank Name is leftmost, followed by SHUFFLE FX (x = " << shuffleBtn->getX() << ")\n";
+    TEST_ASSERT(std::abs((shuffleBtn->getRight() + 8) - polyArea.getX()) <= 2,
+                "SHUFFLE FX must sit directly beside the MONO/POLY toggle button forming a grouped cluster");
+    std::cout << " [PASS] 17.1 Top bar FACTORY, SHUFFLE FX, and MONO cluster grouped together (shuffleX = " << shuffleBtn->getX() << ", monoX = " << polyArea.getX() << ")\n";
 
     // 17.2 Two-Panel Browse Expansion & Library Panel Hidden
     overlay->setVisible(true);
